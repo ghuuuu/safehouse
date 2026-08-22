@@ -10,7 +10,8 @@ One household per deployment. Your documents stay on your server.
 
 ## Status
 
-Pre-development. Documentation and architecture only — no application code yet.
+Early development. The database and sign-in are built; there is no way to put
+a document in yet.
 
 - [`docs/PRODUCT.md`](docs/PRODUCT.md) — what it is and how it behaves
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — architecture decisions and reasoning
@@ -49,7 +50,7 @@ commit. The full command list is in [`CLAUDE.md`](CLAUDE.md).
 
 ### What exists so far
 
-The schema and the permission rules, and nothing above them yet.
+The schema, the permission rules, and signing in.
 
 Every table exists, and so does the layer that decides who may read each row:
 family circle, private records, third-party grants, and time-limited emergency
@@ -57,8 +58,15 @@ access are all enforced inside Postgres by row-level security, not by
 application code. `app/db/permissions.test.ts` states those rules in English and
 checks them against a real database as the real restricted role.
 
-There is still no sign-in, no upload and no vault interface. The page at
-<http://localhost:3000> reports whether the database is reachable.
+Sign-in works. The first time you open the app it offers to create the
+administrator; after that, accounts are made by the administrator and the public
+sign-up endpoint is closed. Signing in and reading documents use two different
+database roles, so the half of the application that checks passwords cannot read
+a single record (`docs/DECISIONS.md` D24).
+
+There is still no upload and no vault interface. The page you land on after
+signing in shows how much of the vault you are entitled to see, which is nothing
+at all until somebody adds a person and a record.
 
 ## Security
 

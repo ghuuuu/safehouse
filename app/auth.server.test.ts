@@ -183,3 +183,73 @@ describe("the cookie decides what the vault shows", () => {
     );
   });
 });
+
+describe("the sign-in page", () => {
+  const signInAction = async (fields: Record<string, string>) => {
+    const { action } = await import("./routes/sign-in");
+    const body = new URLSearchParams(fields);
+
+    return action({
+      request: new Request("http://localhost:5173/sign-in", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+      }),
+      params: {},
+      context: {} as never,
+      url: new URL("http://localhost:5173/sign-in"),
+      pattern: "/sign-in",
+    });
+  };
+
+  test("it says the same thing to a wrong password and an unknown address", async () => {
+    // Two different messages here would turn the form into a way to ask which
+    // of somebody's relatives has an account.
+    const wrongPassword = await signInAction({
+      email: "maya@example.invalid",
+      password: "not-the-password",
+    });
+    const noSuchUser = await signInAction({
+      email: "nobody@example.invalid",
+      password: PASSWORD,
+    });
+
+    expect(wrongPassword).toEqual(noSuchUser);
+    expect(wrongPassword).toHaveProperty("error");
+  });
+
+  test("it will not forward somebody off this server", async () => {
+    // `next` comes from the query string, so it is the attacker's to choose.
+    const result = await signInAction({
+      email: "maya@example.invalid",
+      password: PASSWORD,
+      next: "https://elsewhere.example/collect",
+    });
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).headers.get("location")).toBe("/");
+  });
+
+  test("it forwards to a page inside the vault", async () => {
+    const result = await signInAction({
+      email: "maya@example.invalid",
+      password: PASSWORD,
+      next: "/records/1",
+    });
+
+    expect((result as Response).headers.get("location")).toBe("/records/1");
+    expect((result as Response).headers.get("set-cookie")).toBeTruthy();
+  });
+});
+
+describe("the first-run page", () => {
+  test("it is closed once the household exists", async () => {
+    const { loader } = await import("./routes/setup");
+
+    await expect(loader()).rejects.toSatisfy(
+      (thrown) =>
+        thrown instanceof Response &&
+        thrown.headers.get("location") === "/sign-in",
+    );
+  });
+});

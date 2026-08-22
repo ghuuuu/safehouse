@@ -33,7 +33,7 @@ function authDb() {
 }
 
 /** True when the vault has no accounts at all — the state a fresh install is in. */
-async function noUsersYet(): Promise<boolean> {
+export async function noUsersYet(): Promise<boolean> {
   const [row] = await authDb().select({ n: count() }).from(schema.users);
   return (row?.n ?? 0) === 0;
 }
@@ -71,6 +71,25 @@ export const auth = betterAuth({
     // Nothing is emailed yet (D8), so there is no reset link to send. Until
     // there is, the admin resets a password.
     requireEmailVerification: false,
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        /**
+         * The first account ever created is the administrator.
+         *
+         * It has to be decided here rather than taken from the form, because
+         * `role` is `input: false` — a sign-up request cannot name its own role
+         * and must not be able to. "First" is a fact about the database, so the
+         * database is what answers it, and it can only be true once.
+         */
+        before: async (user) => {
+          if (!(await noUsersYet())) return;
+          return { data: { ...user, role: "admin" } };
+        },
+      },
+    },
   },
 
   hooks: {
