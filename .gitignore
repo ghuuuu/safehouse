@@ -1,0 +1,93 @@
+# ---------------------------------------------------------------
+# SAFEHOUSE — .gitignore
+#
+# This project handles passports, wills, and medical records.
+# Anything committed to git is effectively permanent and very hard
+# to remove. Read this file before you run `git add .`.
+# ---------------------------------------------------------------
+
+
+# === NEVER COMMIT: secrets ======================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+*.credentials.json
+
+# Encryption keys for document storage.
+# If these land in git, every stored document is compromised.
+keys/
+*.age
+*.gpg
+
+
+# === NEVER COMMIT: real documents ===============================
+# Uploaded files, whether real or test. If a real passport scan
+# ever lands in one of these folders, git must not be watching.
+uploads/
+storage/
+documents/
+vault-data/
+/data/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.tiff
+
+# Exception: intentional project assets (logos, icons, design refs)
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.svg
+!docs/assets/**
+
+
+# === NEVER COMMIT: database contents ============================
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+postgres-data/
+*.dump
+*.sql.gz
+backups/
+
+
+# === Build & dependencies =======================================
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+
+# === Logs (may contain document names or user identifiers) ======
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+
+# === Local tooling ==============================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+coverage/
+.cache/
+
+
+# === Agent working files ========================================
+graphify-out/
+.impeccable/
+!.impeccable/config.json
