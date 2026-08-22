@@ -643,15 +643,63 @@ properly.
   per-record grant already covers it.
 ---
 
+## D24 — Signing in gets its own database role, with no reach into the vault
+
+**Decision.** A third Postgres role, `safehouse_auth`, is the only thing the
+sign-in code connects as. It can read and write `users`, `sessions`, `accounts`
+and `verifications`, and it has no privilege of any kind on records, documents,
+files, or anything else. The application's own role, `safehouse_app`, is refused
+`accounts`, `sessions` and `verifications` in return.
+
+Sign-up is not a public endpoint. It answers on a fresh install, to create the
+first admin, and afterwards only when an admin is asking. Alongside that, an
+account with nobody attached to it reaches no owner at all: the household branch
+of `visible_owner` now requires a person, so the seconds between "account
+created" and "attached to a person in the tree" are not a window into the house.
+
+**Why.** Checking a password is the one operation that has to happen before
+anyone knows who is asking. Row-level security cannot express it — there is no
+current user yet to write a policy against — so the choice was to punch a hole
+in the policies for the app role, or to give that one operation a connection of
+its own. A hole in the policies is permanent and applies to every query; a
+separate role applies to one file.
+
+What it buys is a shape rather than a rule. The half of the system that talks to
+unauthenticated strangers, parses their JSON and compares their passwords is
+also the half with no way to read a will. An attacker who owns the sign-in path
+completely still has to find a second bug to reach a document.
+
+The sign-up gate is the same reasoning one level up. As shipped by the library
+the endpoint is public, and for a household vault a stranger with an account is
+a stranger inside the building. Two locks, because the first one is a
+configuration flag and configuration flags get flipped.
+
+**Consequences.**
+- Three roles now, with three passwords: owner (migrations only), app, auth.
+  `npm run db:setup` creates the two restricted ones; `.env.example` lists them.
+- Adding a table means deciding, in writing, whether the auth role gets it. The
+  migration starts with `revoke all ... from safehouse_auth`, so the default is
+  no.
+- A password hash cannot come back through an ordinary application query, even
+  the admin's, because the app role cannot read `accounts` at all.
+- Creating the first admin is a first-run job, not a form anyone can reach. If
+  every admin account is lost, the recovery is a command on the server.
+- The permission views remain readable by the app role, because Postgres
+  requires SELECT on a table a policy refers to. That is a smaller surface than
+  it sounds — the views hold ids, not documents — but it is not nothing, and it
+  is written down here rather than left to be discovered.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 and D23 record what building
-the schema forced into the open.
+None. D9–D21 closed the list that stood here; D22, D23 and D24 record what
+building the schema and the sign-in path forced into the open.
 
 Worth revisiting deliberately rather than by drift:
 
-- **The auth library** (D10) — verify it is still the right choice at scaffold
-  time rather than trusting this document.
+- **Emailing anybody** (D8) — with no mail, a forgotten password is an admin
+  job. Revisit when that becomes a nuisance rather than a rarity.
 - **Key custody** (D12) — passphrase-unlock is designed for and not built. Decide
   again once real documents are in and the operational rhythm is known.
 - **Readable identifiers** (D14) — an accepted risk with a documented alternative,

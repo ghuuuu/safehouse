@@ -97,20 +97,113 @@ export const businesses = pgTable("businesses", {
   formedOn: date("formed_on"),
 });
 
-/** Everything that can sign in. Not every user is a person (D15). */
+/**
+ * Everything that can sign in. Not every user is a person (D15).
+ *
+ * This is also the auth library's `user` model — one identity, one row, rather
+ * than two tables that can disagree about who exists. The library owns `email`,
+ * `emailVerified`, `name`, `image` and the timestamps; Safehouse owns `role`,
+ * `personOwnerId` and `disabledAt`, and the library is configured not to accept
+ * those from a request (D24).
+ */
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
   name: text("name").notNull(),
-  role: userRole("role").notNull(),
+  /** Required by the auth library. Unused: a vault has no need of avatars. */
+  image: text("image"),
+  role: userRole("role").notNull().default("individual"),
   personOwnerId: uuid("person_owner_id").references(() => owners.id, {
     onDelete: "restrict",
   }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
 });
+
+/**
+ * Sessions live in Postgres, not in a signed cookie (D10). Signing somebody out
+ * has to mean it: deleting the row ends the session on the next request, which
+ * a self-contained cookie could not promise.
+ */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+/** Credentials. The password hash lives here, and only the auth role can read it. */
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    issuer: text("issuer").notNull(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("accounts_issuer_account_unique").on(t.issuer, t.accountId),
+    index("accounts_user_idx").on(t.userId),
+  ],
+);
+
+/** Short-lived tokens: email verification, password reset. */
+export const verifications = pgTable(
+  "verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("verifications_identifier_idx").on(t.identifier)],
+);
 
 /**
  * Tree edges. `parent_of` runs from parent to child; `spouse_of` is symmetric

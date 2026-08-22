@@ -93,6 +93,10 @@ join effective_parent p on p.child_owner_id = s.spouse_owner_id;
 
 -- Whose papers a user can reach at all (D16). Which of those papers they can
 -- then see is the next view down.
+--
+-- SUPERSEDED: 0003_identity_boundary.sql replaces this view. Read that one for
+-- the household branch as it stands. Applied migrations are not edited, so this
+-- copy stays as it was written.
 create view visible_owner as
 -- The admin runs the household and sees every owner.
 select a.id as user_id, o.id as owner_id

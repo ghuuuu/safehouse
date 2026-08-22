@@ -37,7 +37,9 @@ before proposing a change, don't re-derive it.
   expresses a permission rule. The app connects as `safehouse_app`, a role that
   cannot bypass row-level security (D22); the owner role is for migrations only
 - Auth: maintained auth library inside the app, sessions in Postgres, no
-  identity server (D10)
+  identity server (D10). It connects as `safehouse_auth`, a third role that can
+  read a password hash and cannot read a single document (D24). Sign-up is not
+  public: first run, or an admin
 - File storage: local disk, envelope-encrypted per file, key read from a mounted
   key file at boot (D12)
 - Deployment: Docker Compose, self-hosted
@@ -87,6 +89,9 @@ worth reading.
 - Do not hand-roll authentication, session handling, or cryptography.
 - Every new surface that lists documents must be checked against the permission
   predicate. When adding one, say explicitly how it enforces access.
+- Read the vault through `withVault` in `app/session.server.ts`. It is the only
+  thing that turns a cookie into a named transaction; a query made any other way
+  has no user set and comes back empty.
 - Write the test for a permission rule before the rule.
 
 ## Working style

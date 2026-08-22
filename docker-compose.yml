@@ -41,6 +41,11 @@ services:
       # for a connection that bypasses row-level security if it does not have
       # one (D11). Migrations are run from the host with DATABASE_URL.
       APP_DATABASE_URL: postgres://safehouse_app:${APP_DB_PASSWORD:-safehouse-app-dev}@db:5432/safehouse
+      # The sign-in code's own role. It can write accounts and sessions and can
+      # read nothing else — no records, no documents, no files (D24).
+      AUTH_DATABASE_URL: postgres://safehouse_auth:${AUTH_DB_PASSWORD:-safehouse-auth-dev}@db:5432/safehouse
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     depends_on:

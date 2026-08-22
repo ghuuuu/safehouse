@@ -28,6 +28,14 @@ export function getDb(): PostgresJsDatabase {
 }
 
 /**
+ * A transaction that has said who is asking. The type comes from drizzle rather
+ * than being written out, so it cannot drift from what `transaction` hands over.
+ */
+export type VaultTransaction = Parameters<
+  Parameters<PostgresJsDatabase["transaction"]>[0]
+>[0];
+
+/**
  * Runs everything inside one transaction, on behalf of one signed-in user.
  *
  * This is how a request tells the database who is asking. Nothing outside this
@@ -41,12 +49,14 @@ export function getDb(): PostgresJsDatabase {
  */
 export async function asUser<T>(
   userId: string,
-  work: (db: PostgresJsDatabase) => Promise<T>,
+  work: (db: VaultTransaction) => Promise<T>,
 ): Promise<T> {
-  return client().begin(async (tx) => {
-    await tx`select set_config('safehouse.user_id', ${userId}, true)`;
-    return work(drizzle(tx as unknown as postgres.Sql));
-  }) as Promise<T>;
+  return getDb().transaction(async (tx) => {
+    await tx.execute(
+      sql`select set_config('safehouse.user_id', ${userId}, true)`,
+    );
+    return work(tx);
+  });
 }
 
 export type DatabaseStatus = { ok: true } | { ok: false; error: string };

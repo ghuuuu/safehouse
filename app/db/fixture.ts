@@ -49,6 +49,12 @@ export const USER = {
   lapsed: id(108),
   /** Emergency contact whose window the admin revoked. */
   pulled: id(109),
+  /**
+   * An account and nothing more: no person, not disabled, never given a grant.
+   * The state a newly created account is in before the admin attaches it to
+   * somebody in the tree. It must reach nothing at all (D24).
+   */
+  stranger: id(110),
 } as const;
 
 export const RECORD = {
@@ -135,7 +141,8 @@ export async function insertFixture(sql: Sql): Promise<void> {
       (${USER.tenant}, 'tenant@example.invalid', 'Former Lodger', 'individual', null, now()),
       (${USER.medic}, 'medic@example.invalid', 'Emergency Contact', 'emergency', null, null),
       (${USER.lapsed}, 'lapsed@example.invalid', 'Lapsed Contact', 'emergency', null, null),
-      (${USER.pulled}, 'pulled@example.invalid', 'Revoked Contact', 'emergency', null, null)
+      (${USER.pulled}, 'pulled@example.invalid', 'Revoked Contact', 'emergency', null, null),
+      (${USER.stranger}, 'stranger@example.invalid', 'Unattached Account', 'individual', null, null)
   `;
 
   // parent_of runs from parent to child; spouse_of is stored once (D16).
