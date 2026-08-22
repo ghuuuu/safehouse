@@ -26,12 +26,23 @@ the unmasked value must not be in the API response.
 
 ## Stack
 
-_To be confirmed in the architecture planning session — do not assume._
+Settled in `docs/DECISIONS.md` D9–D12. The reasoning lives there — read it
+before proposing a change, don't re-derive it.
 
-- Runtime: TBD
-- Database: Postgres
-- File storage: local disk, encrypted at rest
+- Runtime: TypeScript throughout, React Router v7 in framework mode, one Node
+  container
+- Database: Postgres. Permission rules are SQL views with row-level security
+  underneath them (D11), not application code
+- Data access: Drizzle for schema and migrations; raw SQL for anything that
+  expresses a permission rule
+- Auth: maintained auth library inside the app, sessions in Postgres, no
+  identity server (D10)
+- File storage: local disk, envelope-encrypted per file, key read from a mounted
+  key file at boot (D12)
 - Deployment: Docker Compose, self-hosted
+
+No Redis, no worker, no second service unless something genuinely cannot work
+without it.
 
 ## Commands
 
@@ -48,10 +59,6 @@ _To be filled in once the project is scaffolded._
 
 ## Boundaries
 
-- `reference/prototype/` — **read-only.** This is the old in-memory prototype,
-  kept for behaviour and data-shape reference only. Do not copy its structure,
-  its state management, or its client-side permission filtering. It was a
-  session-only mockup; this project is not.
 - Never write real personal data into seed files, tests, or fixtures. All seed
   data is fictional. No real passport numbers, ever — not even your own.
 - Never log document contents, file names, or record field values.

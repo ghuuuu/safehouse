@@ -117,6 +117,19 @@ A break-glass contact. Sees nothing until activated. On activation, gets a
 time-limited window into critical categories only (medical, wills, POA), and
 the admin is alerted.
 
+### Private documents
+
+The family circle is the default, but any document can be marked **private** —
+visible only to its owner and the admin, excluded from the circle and from
+third-party category grants. It exists for the document a parent shouldn't see
+merely because the tree says parent.
+
+Two honest caveats the interface must state rather than imply away: private
+means private *from family*, not from the admin, who runs the server; and an
+active break-glass window does reach private documents in critical categories,
+because a hidden advance directive defeats the point of the feature. See
+`DECISIONS.md` D17.
+
 ### Resolution
 
 Permission resolution is a **single predicate** — *can this user see this
@@ -152,33 +165,45 @@ Three modal flows sit on top:
 
 ### Access console
 
-Currently exists in two directions. **Both ship in the prototype; one should be
-chosen.** See open questions below.
+Two views, with different jobs — see `DECISIONS.md` D21.
 
-- **Matrix** — users as rows, owners and categories as columns, one cell per intersection
-- **Per-user detail panel** — pick a person, see their role, derived family circle, grant toggles, and document reach as a filled bar
-
----
-
-## Open product questions
-
-1. **Which Access console direction to keep.** Recommendation: per-user panel as
-   the default (it's for *doing*), matrix as a secondary audit view (it's for
-   *checking*). Cheap to reverse either way.
-2. **Emergency window duration** — fixed 24 hours, or admin-configurable?
+- **Per-user detail panel** — the default, and the only place grants are edited.
+  Pick a person, see their role, derived family circle, grant toggles, and
+  document reach as a filled bar.
+- **Matrix** — a read-only audit view. Users as rows, owners and categories as
+  columns, one cell per intersection. Clicking a cell opens that user's panel.
 
 ---
 
-## Prototype status (superseded)
+## Resolved product questions
 
-The original prototype implemented all of the above interactively, driven by
-in-memory seed data: one household of eleven people, one business, ~36 documents
-including superseded versions, six app users across the four roles, and an
-activity feed.
+1. **Access console direction** — per-user panel primary, matrix as read-only
+   audit. See D21.
+2. **Emergency window duration** — 24 hours by default, admin-configurable up to
+   a ceiling fixed in code, with each activation carrying its own expiry. See
+   D19.
 
-Grant toggles, break-glass activation, role changes, and view-as were live but
-**session-only** — nothing persisted, and there was no backend, auth, file
-storage, or invite delivery.
+---
 
-That prototype is kept in `reference/prototype/` for behaviour reference only.
-This project is a rebuild, not a continuation.
+## Seed data
+
+Development and demonstration run on a fictional household, built fresh. Nothing
+here has ever existed and nothing real replaces it — see `DECISIONS.md` D7.
+
+The shape to build, sized so that every rule in this document has something to
+act on:
+
+- **Eleven people** across three generations, including at least one marriage
+  that has ended, one adoptive or step relationship, and one deceased person —
+  so the tree rules in D16 are exercised rather than assumed.
+- **One business** (Hale Consulting LLC) with its own permits and contracts.
+- **The household itself** as an owner, holding the deed, the marriage
+  certificate, and the home insurance policy.
+- **Roughly 36 documents** across all six categories, including at least one
+  record with a superseded version behind it, several with expiry dates in the
+  next 90 days, and at least one marked private.
+- **Six users** covering all four roles: an admin, several individuals, a
+  third-party bookkeeper, a third-party attorney, and an emergency contact.
+
+This is also the fixture the permission tests run against, so it is a test
+asset rather than a demo convenience. Changing it changes what the tests prove.

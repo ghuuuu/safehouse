@@ -15,7 +15,6 @@ Pre-development. Documentation and architecture only — no application code yet
 - [`docs/PRODUCT.md`](docs/PRODUCT.md) — what it is and how it behaves
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — architecture decisions and reasoning
 - [`CLAUDE.md`](CLAUDE.md) — working agreement for AI-assisted development
-- `reference/prototype/` — superseded prototype, kept for reference only
 
 ## Before writing any code
 

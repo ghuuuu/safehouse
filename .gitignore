@@ -91,3 +91,6 @@ coverage/
 graphify-out/
 .impeccable/
 !.impeccable/config.json
+.serena/
+.claude/settings.local.json
+.claude/.headroom_wrap_marker.json
