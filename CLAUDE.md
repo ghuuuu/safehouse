@@ -34,7 +34,8 @@ before proposing a change, don't re-derive it.
 - Database: Postgres. Permission rules are SQL views with row-level security
   underneath them (D11), not application code
 - Data access: Drizzle for schema and migrations; raw SQL for anything that
-  expresses a permission rule
+  expresses a permission rule. The app connects as `safehouse_app`, a role that
+  cannot bypass row-level security (D22); the owner role is for migrations only
 - Auth: maintained auth library inside the app, sessions in Postgres, no
   identity server (D10)
 - File storage: local disk, envelope-encrypted per file, key read from a mounted
@@ -55,8 +56,16 @@ without it.
 # typecheck:  npm run typecheck
 # whole app:  docker compose up --build  → http://localhost:3000
 # migrations: npm run db:generate  writes a migration from app/db/schema.ts
-#             npm run db:migrate   applies pending migrations
+#             npm run db:migrate   creates the app role, applies migrations
+#             npm run db:setup     the app role on its own (db:migrate runs it)
 ```
+
+First run, and after any schema change: `docker compose up -d db` then
+`npm run db:migrate`. The app container has no owner credentials and cannot
+migrate itself, on purpose (D22).
+
+`npm test` needs the database running. It builds `safehouse_test` from the
+migrations and the fixture in `app/db/fixture.ts` on every run.
 
 `npm run dev` prints future-flag warnings about React Router v8 and one Vite
 deprecation notice. Those are expected — see D9. Anything else in that output is

@@ -578,10 +578,75 @@ is a small mistake.
 
 ---
 
+## D22 — The application connects as a role that cannot bypass permissions
+
+**Decided.** Implements D11.
+
+There are two database roles. `safehouse` owns the tables and runs migrations;
+it bypasses row-level security, because it has to in order to create it.
+`safehouse_app` owns nothing, and is what the running application connects as,
+so every policy applies to it. The owner password is not present in the
+application container at all.
+
+Each request sets `safehouse.user_id` for the duration of one transaction, and
+every policy is written against `current_app_user()`.
+
+**Why.** Row-level security does nothing for a connection that owns the tables —
+Postgres exempts the owner, and the postgres image's default user is a
+superuser besides. Connecting as the owner and remembering to switch roles per
+request would have worked too, and was rejected: if the switch is ever missed,
+the query runs with everything visible. With a separate role, a missed step
+leaves `current_app_user()` null, no policy matches, and the query returns
+nothing.
+
+That asymmetry is the entire argument. In a project where no human reads the
+diff, the mistakes have to land on the side where they show up as a blank page.
+
+**Consequences.**
+- Two credentials in `.env`, and a first-run step: `npm run db:migrate` creates
+  the role before applying migrations.
+- Only `select` is granted. Writing is not implemented, and a table with no
+  write policy refuses writes rather than allowing them.
+- A table added by a later migration is readable but returns nothing until it is
+  given policies. A test asserts every table in `public` has row-level security
+  switched on, so the omission fails in the suite rather than in the vault.
+- Anything that must legitimately see across users — seeding, backup, an admin
+  repair — runs as the owner, deliberately and by hand.
+
+---
+
+## D23 — The household's own papers are shared; a business is reached by grant
+
+**Decided.**
+
+Records owned by the `household` owner — the deed, the marriage certificate,
+the home insurance — are visible to every individual in the household. Records
+owned by a `business` owner are visible only to the admin and to whoever is
+granted that owner by name, including the family member who runs it.
+
+**Why.** The household is the deployment (D2), and its shared paperwork is
+shared by definition; hiding the deed from the spouse who lives behind it would
+be a rule nobody asked for. A business is the opposite case: nothing in the
+family tree says who runs it, and inferring it from a marriage would hand a
+spouse the company's tax returns by accident. One grant, made once, says it
+properly.
+
+**Consequences.**
+- `visible_owner` has an explicit household branch. Narrowing it later is an
+  edit to one view.
+- Setting up a business is a two-step job: create the owner, then grant it to
+  whoever should see it. The interface should say so at the point of creation,
+  because the failure mode is a business whose papers nobody but the admin can
+  find.
+- A private record on a business owner is reachable only by the admin, since a
+  business has no person to be its owner. If that becomes a real need, the
+  per-record grant already covers it.
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; the schema design they describe is
-in the plan for the scaffolding session.
+None. D9–D21 closed the list that stood here; D22 and D23 record what building
+the schema forced into the open.
 
 Worth revisiting deliberately rather than by drift:
 

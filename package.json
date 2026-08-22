@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:setup": "node scripts/db-setup.mjs",
+    "db:migrate": "npm run db:setup && drizzle-kit migrate"
   },
   "dependencies": {
     "@react-router/node": "^7.18.2",

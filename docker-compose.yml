@@ -36,7 +36,11 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://safehouse:${POSTGRES_PASSWORD:-safehouse-dev}@db:5432/safehouse
+      # The application gets the restricted role only. The owner password is
+      # deliberately absent from this container: a bug in the app cannot reach
+      # for a connection that bypasses row-level security if it does not have
+      # one (D11). Migrations are run from the host with DATABASE_URL.
+      APP_DATABASE_URL: postgres://safehouse_app:${APP_DB_PASSWORD:-safehouse-app-dev}@db:5432/safehouse
     ports:
       - "3000:3000"
     depends_on:

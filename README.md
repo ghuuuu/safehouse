@@ -27,6 +27,8 @@ Requires Docker and Node 24 or newer.
 
 ```sh
 cp .env.example .env          # local settings; never commit .env
+docker compose up -d db       # database first
+npm install && npm run db:migrate
 docker compose up --build     # app + database
 ```
 
@@ -38,6 +40,7 @@ reachable. Stop it with `docker compose down`.
 ```sh
 docker compose up -d db       # database only
 npm install
+npm run db:migrate            # after any schema change
 npm run dev                   # http://localhost:5173
 ```
 
@@ -46,9 +49,16 @@ commit. The full command list is in [`CLAUDE.md`](CLAUDE.md).
 
 ### What exists so far
 
-The scaffold only: a page that proves the app can reach Postgres. No accounts,
-no documents, no vault. Database tables arrive with the permission tests that
-guard them.
+The schema and the permission rules, and nothing above them yet.
+
+Every table exists, and so does the layer that decides who may read each row:
+family circle, private records, third-party grants, and time-limited emergency
+access are all enforced inside Postgres by row-level security, not by
+application code. `app/db/permissions.test.ts` states those rules in English and
+checks them against a real database as the real restricted role.
+
+There is still no sign-in, no upload and no vault interface. The page at
+<http://localhost:3000> reports whether the database is reachable.
 
 ## Security
 

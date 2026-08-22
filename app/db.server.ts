@@ -1,21 +1,52 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { requireEnv } from "./config.server";
 
-let cached: ReturnType<typeof drizzle> | undefined;
+let cached: postgres.Sql | undefined;
 
 /**
- * The database handle, created on first use so that importing this module —
- * in a test, for instance — does not require a live connection.
+ * The connection the application uses.
+ *
+ * `APP_DATABASE_URL` is the restricted role: it owns nothing, so every
+ * row-level security policy applies to it (D11). The owner connection, which
+ * bypasses those policies, is only ever used by migrations and by scripts run
+ * by hand — it is not even present in the app container.
+ *
+ * Created on first use, so importing this module does not require a live
+ * database.
  */
-export function getDb() {
-  if (!cached) {
-    cached = drizzle(postgres(requireEnv("DATABASE_URL"), { max: 10 }));
-  }
-
+function client(): postgres.Sql {
+  cached ??= postgres(requireEnv("APP_DATABASE_URL"), { max: 10 });
   return cached;
+}
+
+export function getDb(): PostgresJsDatabase {
+  return drizzle(client());
+}
+
+/**
+ * Runs everything inside one transaction, on behalf of one signed-in user.
+ *
+ * This is how a request tells the database who is asking. Nothing outside this
+ * function should query the vault, because a query made without it has no user
+ * set, matches no policy, and comes back empty — which is the failure this
+ * whole arrangement exists to produce. An empty page is recoverable; the other
+ * kind of mistake is not.
+ *
+ * The setting is transaction-scoped (the `true` argument), so it cannot leak
+ * into the next request to borrow this pooled connection.
+ */
+export async function asUser<T>(
+  userId: string,
+  work: (db: PostgresJsDatabase) => Promise<T>,
+): Promise<T> {
+  return client().begin(async (tx) => {
+    await tx`select set_config('safehouse.user_id', ${userId}, true)`;
+    return work(drizzle(tx as unknown as postgres.Sql));
+  }) as Promise<T>;
 }
 
 export type DatabaseStatus = { ok: true } | { ok: false; error: string };
