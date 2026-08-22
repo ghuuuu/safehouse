@@ -17,6 +17,7 @@ import {
   asUser,
   closeTestDatabase,
   prepareTestDatabase,
+  refusal,
 } from "./test-harness";
 
 beforeAll(async () => {
@@ -26,19 +27,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await closeTestDatabase();
 });
-
-/** Runs a query and returns the Postgres error, or null if it succeeded. */
-async function refusal(
-  run: () => Promise<unknown>,
-): Promise<{ code: string; message: string } | null> {
-  try {
-    await run();
-    return null;
-  } catch (error) {
-    const e = error as { code?: string; message?: string };
-    return { code: e.code ?? "", message: e.message ?? String(error) };
-  }
-}
 
 describe("the sign-in role cannot read the vault", () => {
   const vaultTables = [
@@ -71,8 +59,10 @@ describe("the sign-in role cannot read the vault", () => {
   });
 
   test("it cannot read the permission views either", async () => {
+    // Named for what they are since 0004: the views live in `perm`, and no
+    // role the application connects as has USAGE on that schema.
     const error = await refusal(() =>
-      asAuthRole((sql) => sql`select * from visible_record limit 1`),
+      asAuthRole((sql) => sql`select * from perm.visible_record limit 1`),
     );
 
     expect(error?.code).toBe("42501");

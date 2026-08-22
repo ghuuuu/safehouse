@@ -55,8 +55,10 @@ The schema, the permission rules, and signing in.
 Every table exists, and so does the layer that decides who may read each row:
 family circle, private records, third-party grants, and time-limited emergency
 access are all enforced inside Postgres by row-level security, not by
-application code. `app/db/permissions.test.ts` states those rules in English and
-checks them against a real database as the real restricted role.
+application code. The rules themselves sit in a schema the application cannot
+read, so a bug in it cannot ask who is entitled to what (D25).
+`app/db/permissions.test.ts` states those rules in English and checks them
+against a real database as the real restricted role.
 
 Sign-in works. The first time you open the app it offers to create the
 administrator; after that, accounts are made by the administrator and the public

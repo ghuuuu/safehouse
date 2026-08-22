@@ -14,6 +14,11 @@
 --   * The views are owned by the migrating role, so they read the base tables
 --     without tripping over the policies that are defined in terms of them.
 --
+-- SUPERSEDED IN PART: 0004_permission_functions.sql moves every view below into
+-- the `perm` schema and rewrites the policies to call functions rather than name
+-- a view. The rules are unchanged and this file is still where you read them.
+-- Applied migrations are not edited, so the statements stay as they were run.
+--
 -- Only SELECT is granted. Writing is not implemented yet, and a table with no
 -- write policy rejects writes — which is the right way round to be wrong.
 
@@ -331,10 +336,15 @@ create policy settings_read on settings for select to safehouse_app
 using (current_app_user() is not null);
 --> statement-breakpoint
 
+-- SUPERSEDED: this line is what let the app role read the permission views —
+-- it covers them too. 0004 moves them out of `public` and revokes it. Copying
+-- this statement into a new migration is safe now, and was not before (D25).
 grant select on all tables in schema public to safehouse_app;
 --> statement-breakpoint
 
 -- Tables added by a later migration are readable but, having no policy, return
 -- nothing until one is written. A test asserts that every table has row-level
 -- security switched on.
+-- SUPERSEDED: written without an `in schema` clause, this applies to every
+-- schema there will ever be, including `perm`. 0004 re-scopes it to `public`.
 alter default privileges for role safehouse grant select on tables to safehouse_app;

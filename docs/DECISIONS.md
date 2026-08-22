@@ -401,9 +401,9 @@ is stored: `parent_of` and `spouse_of`. Siblings are derived from a shared
 parent. Every edge carries `started_on` and a nullable `ended_on`, and parent
 edges carry a type — biological, adoptive, step, or guardian.
 
-The derived family circle is a single named SQL view, `visible_owner(user_id,
-owner_id)`, computed live. Every query joins it; nothing recomputes it in
-application code.
+The derived family circle is a single named SQL view, `perm.visible_owner(user_id,
+owner_id)`, computed live. Every rule is written against it and nothing
+recomputes it in application code — see D25 for how a query reaches it.
 
 **Why.** Real families divorce, remarry, adopt and take on guardianship, and a
 tree that cannot represent that is a tree the household will quietly stop
@@ -632,8 +632,8 @@ spouse the company's tax returns by accident. One grant, made once, says it
 properly.
 
 **Consequences.**
-- `visible_owner` has an explicit household branch. Narrowing it later is an
-  edit to one view.
+- `perm.visible_owner` has an explicit household branch. Narrowing it later is
+  an edit to one view.
 - Setting up a business is a two-step job: create the owner, then grant it to
   whoever should see it. The interface should say so at the point of creation,
   because the failure mode is a business whose papers nobody but the admin can
@@ -654,7 +654,7 @@ files, or anything else. The application's own role, `safehouse_app`, is refused
 Sign-up is not a public endpoint. It answers on a fresh install, to create the
 first admin, and afterwards only when an admin is asking. Alongside that, an
 account with nobody attached to it reaches no owner at all: the household branch
-of `visible_owner` now requires a person, so the seconds between "account
+of `perm.visible_owner` now requires a person, so the seconds between "account
 created" and "attached to a person in the tree" are not a window into the house.
 
 **Why.** Checking a password is the one operation that has to happen before
@@ -684,17 +684,83 @@ configuration flag and configuration flags get flipped.
   the admin's, because the app role cannot read `accounts` at all.
 - Creating the first admin is a first-run job, not a form anyone can reach. If
   every admin account is lost, the recovery is a command on the server.
-- The permission views remain readable by the app role, because Postgres
-  requires SELECT on a table a policy refers to. That is a smaller surface than
-  it sounds — the views hold ids, not documents — but it is not nothing, and it
-  is written down here rather than left to be discovered.
+- The permission views remained readable by the app role, because Postgres
+  requires SELECT on a table a policy refers to. The views hold ids, not
+  documents, so it was a smaller surface than it sounds — but it was not
+  nothing, and writing it down here rather than leaving it to be discovered is
+  what led to D25, which closes it.
+
+---
+
+## D25 — The rules are in a schema the application cannot reach
+
+**Decision.** The nine permission views live in a schema called `perm`, and
+neither `safehouse_app` nor `safehouse_auth` has USAGE on it or SELECT on
+anything in it. The policies no longer name a view. They call five functions —
+`perm.visible_owner_ids()`, `perm.visible_record_ids()`,
+`perm.visible_document_ids()`, `perm.visible_file_ids()` and
+`perm.current_user_is_admin()` — which are `security definer`, take no
+arguments, and answer only about whoever the current transaction says is asking.
+
+**Why.** D11 put the rules in views that read the base tables with row-level
+security bypassed; that is what stops a policy defined in terms of a view from
+recursing into itself. But Postgres insists that whoever runs a query holds
+SELECT on every relation the policy expression mentions, so the app role had to
+be granted SELECT on those views — and could then simply read them. `app_user`
+is every account and its role. `visible_record` is the entire who-can-see-what
+graph. Not a document, not a passport number, but the shape of the household
+and who is entitled to what, available to any bug that could reach a query.
+
+Two locks rather than one, because the household is meant to survive a session
+that does not read the diff. Moving the views out of `public` means no
+schema-wide grant on `public` can ever reach them again — and the statement
+that caused this, `grant select on all tables in schema public`, is exactly the
+line a future migration will copy when it adds a table. Revoking SELECT outright
+means that even a well-meant `grant usage on schema perm`, typed to make a
+permission-denied error go away, does not open anything.
+
+The functions are where a mistake would hurt, so they are pinned in three ways.
+They take no arguments: one that accepted a user id could be called in a loop
+and would hand back the whole graph, which is the leak again with extra steps.
+EXECUTE is revoked from PUBLIC, because Postgres grants it there by default and
+that would give the rules to the sign-in role D24 spent its whole existence
+keeping out. And every name in every body is schema-qualified, under a pinned
+`search_path`, because a function body is re-resolved on each call against the
+caller's path — a temporary table named `visible_record` would otherwise
+substitute the caller's own answer for the database's, which would be worse
+than the hole this closes. The app role is refused temporary tables as well.
+
+**Consequences.**
+- Opening a document still works exactly as before. The rules did not change;
+  only the route a policy takes to reach them.
+- A permission rule is still one view, edited in one place. Reading
+  `drizzle/0001_permission_layer.sql` top to bottom is still how you learn what
+  Safehouse allows.
+- Nine assertions in `permissions.test.ts` are negative ones: each view is
+  refused by name, the app role holds SELECT on no view anywhere, neither role
+  has USAGE on `perm`, no definer function takes an argument or is callable by
+  anyone else. Six mutations of the migration were checked against them, and
+  each was caught by the test meant to catch it.
+- The migration ends by asserting its own result and raising if it is wrong.
+  Every step in it is silent when it half-works: a policy still naming a view, a
+  revoke that missed, a default privilege left global. A migration that reports
+  success and leaves the leak open is the failure this project cannot afford.
+- What this does not fix: `safehouse.user_id` is an ordinary setting and any
+  role may set it. Anything that can run arbitrary SQL as the app role can still
+  name a user id and read that user's vault. What changed is that it must now
+  already know an id — `users_read` gives out only your own — instead of reading
+  the roster. Making the actor unforgeable is a larger change and should not be
+  smuggled in here.
+- Adding a tenth permission view means putting it in `perm` and giving it a
+  function. The default privileges that would have made it readable are now
+  scoped to `public`, and the test suite says so.
 
 ---
 
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22, D23 and D24 record what
-building the schema and the sign-in path forced into the open.
+None. D9–D21 closed the list that stood here; D22 to D25 record what building
+the schema, the sign-in path and the permission layer forced into the open.
 
 Worth revisiting deliberately rather than by drift:
 

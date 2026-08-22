@@ -74,6 +74,10 @@ try {
     );
 
     await sql.unsafe(`grant connect on database "${database}" to ${role}`);
+    // `public` only. The `perm` schema holds the permission rules themselves,
+    // and neither of these roles may reach it (D25) — a policy gets there
+    // through a security definer function instead. Adding it here would undo
+    // that in one line, and this is the obvious place somebody would try.
     await sql.unsafe(`grant usage on schema public to ${role}`);
   }
 

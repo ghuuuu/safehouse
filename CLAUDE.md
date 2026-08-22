@@ -32,7 +32,9 @@ before proposing a change, don't re-derive it.
 - Runtime: TypeScript throughout, React Router v7 in framework mode, one Node
   container
 - Database: Postgres. Permission rules are SQL views with row-level security
-  underneath them (D11), not application code
+  underneath them (D11), not application code. The views live in the `perm`
+  schema, which the app role cannot reach; policies call `security definer`
+  functions over them (D25)
 - Data access: Drizzle for schema and migrations; raw SQL for anything that
   expresses a permission rule. The app connects as `safehouse_app`, a role that
   cannot bypass row-level security (D22); the owner role is for migrations only
@@ -89,6 +91,9 @@ worth reading.
 - Do not hand-roll authentication, session handling, or cryptography.
 - Every new surface that lists documents must be checked against the permission
   predicate. When adding one, say explicitly how it enforces access.
+- A new permission view goes in `perm` and gets a zero-argument `security
+  definer` function for the policies to call (D25). Never grant the app role
+  USAGE on `perm`, and never give one of those functions a user-id parameter.
 - Read the vault through `withVault` in `app/session.server.ts`. It is the only
   thing that turns a cookie into a named transaction; a query made any other way
   has no user set and comes back empty.

@@ -77,6 +77,12 @@ export async function buildTestDatabase(): Promise<void> {
   await ownerSql.unsafe(`
     drop schema if exists drizzle cascade;
     drop schema if exists public cascade;
+    -- The permission views and the functions that read them (D25). Dropping
+    -- public alone leaves this schema standing with its grants intact, and a
+    -- migration that then creates it fails on the second run. Repairing that
+    -- with an if-not-exists would quietly inherit whatever privileges a
+    -- previous run left behind, which is the leak this closed.
+    drop schema if exists perm cascade;
     create schema public;
     grant connect on database "${TEST_DATABASE}" to safehouse_app;
     grant connect on database "${TEST_DATABASE}" to safehouse_auth;
@@ -163,4 +169,23 @@ export async function asAuthRole<T>(
   return authSql.begin((tx) =>
     query(tx as unknown as postgres.Sql),
   ) as Promise<T>;
+}
+
+/**
+ * Runs a query and returns the Postgres error, or null if it succeeded.
+ *
+ * Several of the rules here are negative — this role may not read that table —
+ * and the difference between "refused" and "came back empty" is the whole
+ * point, so the tests assert on the SQLSTATE rather than on a row count.
+ */
+export async function refusal(
+  run: () => Promise<unknown>,
+): Promise<{ code: string; message: string } | null> {
+  try {
+    await run();
+    return null;
+  } catch (error) {
+    const e = error as { code?: string; message?: string };
+    return { code: e.code ?? "", message: e.message ?? String(error) };
+  }
 }
