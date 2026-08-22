@@ -46,14 +46,21 @@ without it.
 
 ## Commands
 
-_To be filled in once the project is scaffolded._
+```
+# dev:        npm run dev         → http://localhost:5173
+#             needs the database:  docker compose up -d db
+# build:      npm run build
+# test:       npm test            (npm run test:watch while working)
+# lint:       npm run lint
+# typecheck:  npm run typecheck
+# whole app:  docker compose up --build  → http://localhost:3000
+# migrations: npm run db:generate  writes a migration from app/db/schema.ts
+#             npm run db:migrate   applies pending migrations
+```
 
-```
-# dev:
-# build:
-# test:
-# lint:
-```
+`npm run dev` prints future-flag warnings about React Router v8 and one Vite
+deprecation notice. Those are expected — see D9. Anything else in that output is
+worth reading.
 
 ---
 

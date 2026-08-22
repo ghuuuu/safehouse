@@ -23,7 +23,32 @@ always.** Most of the architecture follows from that one rule.
 
 ## Getting started
 
-_To be written once the stack is chosen._
+Requires Docker and Node 24 or newer.
+
+```sh
+cp .env.example .env          # local settings; never commit .env
+docker compose up --build     # app + database
+```
+
+Then open <http://localhost:3000>. The page reports whether the database is
+reachable. Stop it with `docker compose down`.
+
+### Working on it
+
+```sh
+docker compose up -d db       # database only
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+`npm test`, `npm run lint` and `npm run typecheck` must all pass before a
+commit. The full command list is in [`CLAUDE.md`](CLAUDE.md).
+
+### What exists so far
+
+The scaffold only: a page that proves the app can reach Postgres. No accounts,
+no documents, no vault. Database tables arrive with the permission tests that
+guard them.
 
 ## Security
 

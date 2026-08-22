@@ -94,3 +94,6 @@ graphify-out/
 .serena/
 .claude/settings.local.json
 .claude/.headroom_wrap_marker.json
+
+# React Router build output
+/.react-router/

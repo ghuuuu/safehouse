@@ -1,0 +1,47 @@
+# Safehouse — one app container, one database container, nothing else.
+#
+#   docker compose up --build
+#
+# See DECISIONS.md D3 (self-hosted, Docker Compose) and D9 (no second service
+# unless something genuinely cannot work without it).
+
+name: safehouse
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: safehouse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-safehouse-dev}
+      POSTGRES_DB: safehouse
+    volumes:
+      # Postgres 18+ images expect the mount at /var/lib/postgresql, not at
+      # .../data — the older path makes the container refuse to start.
+      - db-data:/var/lib/postgresql
+    ports:
+      # Loopback only, so `npm run dev` on this machine can reach the database.
+      # DELETE THIS BLOCK WHEN DEPLOYING TO A SERVER — D14 accepts readable
+      # identifiers in the database on the condition that Postgres is never
+      # reachable from outside the container network.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safehouse -d safehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://safehouse:${POSTGRES_PASSWORD:-safehouse-dev}@db:5432/safehouse
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
