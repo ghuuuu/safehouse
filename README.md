@@ -33,7 +33,7 @@ npm install && npm run db:migrate
 docker compose up --build     # app + database
 ```
 
-Then open <http://localhost:3000>. The page reports whether the database is
+Then open <http://localhost:4020>. The page reports whether the database is
 reachable. Stop it with `docker compose down`.
 
 ### Working on it
@@ -42,7 +42,7 @@ reachable. Stop it with `docker compose down`.
 docker compose up -d db       # database only
 npm install
 npm run db:migrate            # after any schema change
-npm run dev                   # http://localhost:5173
+npm run dev                   # http://localhost:4021
 ```
 
 `npm test`, `npm run lint` and `npm run typecheck` must all pass before a

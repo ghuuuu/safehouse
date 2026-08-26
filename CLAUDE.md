@@ -52,13 +52,13 @@ without it.
 ## Commands
 
 ```
-# dev:        npm run dev         → http://localhost:5173
+# dev:        npm run dev         → http://localhost:4021
 #             needs the database:  docker compose up -d db
 # build:      npm run build
 # test:       npm test            (npm run test:watch while working)
 # lint:       npm run lint
 # typecheck:  npm run typecheck
-# whole app:  docker compose up --build  → http://localhost:3000
+# whole app:  docker compose up --build  → http://localhost:4020
 # migrations: npm run db:generate  writes a migration from app/db/schema.ts
 #             npm run db:migrate   creates the app role, applies migrations
 #             npm run db:setup     the app role on its own (db:migrate runs it)

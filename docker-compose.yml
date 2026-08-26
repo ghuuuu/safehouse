@@ -24,7 +24,7 @@ services:
       # DELETE THIS BLOCK WHEN DEPLOYING TO A SERVER — D14 accepts readable
       # identifiers in the database on the condition that Postgres is never
       # reachable from outside the container network.
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5435:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U safehouse -d safehouse"]
       interval: 5s
@@ -45,9 +45,9 @@ services:
       # read nothing else — no records, no documents, no files (D24).
       AUTH_DATABASE_URL: postgres://safehouse_auth:${AUTH_DB_PASSWORD:-safehouse-auth-dev}@db:5432/safehouse
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:4020}
     ports:
-      - "3000:3000"
+      - "4020:3000"
     depends_on:
       db:
         condition: service_healthy

@@ -64,7 +64,7 @@ afterAll(async () => {
 
 function post(path: string, body: unknown, headers: HeadersInit = {}) {
   return auth.handler(
-    new Request(`http://localhost:5173/api/auth${path}`, {
+    new Request(`http://localhost:4021/api/auth${path}`, {
       method: "POST",
       headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(body),
@@ -117,7 +117,7 @@ describe("signing in", () => {
   test("it names the right user", async () => {
     const cookie = await signIn("maya@example.invalid");
 
-    const request = new Request("http://localhost:5173/", {
+    const request = new Request("http://localhost:4021/", {
       headers: { cookie },
     });
     const user = await getSignedInUser(request);
@@ -142,7 +142,7 @@ describe("signing in", () => {
     const cookie = await signIn("tenant@example.invalid");
 
     const user = await getSignedInUser(
-      new Request("http://localhost:5173/", { headers: { cookie } }),
+      new Request("http://localhost:4021/", { headers: { cookie } }),
     );
 
     expect(user).toBeNull();
@@ -155,7 +155,7 @@ describe("the cookie decides what the vault shows", () => {
     // transaction setting that names them, and the policies in
     // 0001_permission_layer.sql. Maya can see her own passport record.
     const cookie = await signIn("maya@example.invalid");
-    const request = new Request("http://localhost:5173/", {
+    const request = new Request("http://localhost:4021/", {
       headers: { cookie },
     });
 
@@ -176,7 +176,7 @@ describe("the cookie decides what the vault shows", () => {
   test("no cookie means no vault, not an empty one", async () => {
     // A redirect, thrown rather than returned, so a loader that ignores the
     // result still cannot carry on unauthenticated.
-    const request = new Request("http://localhost:5173/records");
+    const request = new Request("http://localhost:4021/records");
 
     await expect(withVault(request, async () => "reached")).rejects.toSatisfy(
       (thrown) => thrown instanceof Response && thrown.status === 302,
@@ -190,14 +190,14 @@ describe("the sign-in page", () => {
     const body = new URLSearchParams(fields);
 
     return action({
-      request: new Request("http://localhost:5173/sign-in", {
+      request: new Request("http://localhost:4021/sign-in", {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body,
       }),
       params: {},
       context: {} as never,
-      url: new URL("http://localhost:5173/sign-in"),
+      url: new URL("http://localhost:4021/sign-in"),
       pattern: "/sign-in",
     });
   };
