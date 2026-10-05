@@ -141,6 +141,40 @@ export async function asUser<T>(
   }) as Promise<T>;
 }
 
+class Rollback<T> extends Error {
+  constructor(readonly value: T) {
+    super("rolling back a write test");
+  }
+}
+
+/**
+ * Like `asUser`, but the transaction is always rolled back.
+ *
+ * Every test file in a run shares one database, so a test that inserts a
+ * document and commits it changes what a later file sees — and the exact-list
+ * assertions elsewhere would start failing for reasons that have nothing to do
+ * with the rule they test. Write tests get to prove the policy and leave
+ * nothing behind.
+ */
+export async function asUserRollingBack<T>(
+  userId: string | null,
+  query: (sql: postgres.Sql) => Promise<T>,
+): Promise<T> {
+  if (!appSql) throw new Error("prepareTestDatabase() has not run");
+
+  try {
+    await appSql.begin(async (tx) => {
+      await tx`select set_config('safehouse.user_id', ${userId ?? ""}, true)`;
+      throw new Rollback(await query(tx as unknown as postgres.Sql));
+    });
+  } catch (error) {
+    if (error instanceof Rollback) return error.value as T;
+    throw error;
+  }
+
+  throw new Error("unreachable: the rollback sentinel was swallowed");
+}
+
 /**
  * A transaction that never says who is asking at all — the shape of a request
  * that skipped the helper entirely, on a pooled connection that has already
