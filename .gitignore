@@ -88,6 +88,9 @@ coverage/
 
 
 # === Agent working files ========================================
+# Plans and checklists for work in progress. Anything worth keeping from one
+# ends up in docs/specs/ when the work lands; the scaffolding does not.
+tasks/
 graphify-out/
 .impeccable/
 !.impeccable/config.json
