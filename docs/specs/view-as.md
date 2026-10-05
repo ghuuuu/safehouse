@@ -1,7 +1,9 @@
 # Spec: View-as mode
 
-Status: **implemented, uncommitted** — tests, typecheck and lint green;
-authenticated browser pass not yet done (see Verification below)
+Status: **closed** — landed in eight commits; every success criterion met and
+seen in a browser (see Verification below). Two open questions remain, both
+product decisions rather than implementation ones, and neither blocks anything
+already built.
 Relates to: PRODUCT.md "Resolution"; DECISIONS.md D1, D11, D21, D22, D25
 
 ## Objective
@@ -128,16 +130,29 @@ npm run lint
 
 ## Project structure
 
+As built. This section originally put `withVaultAs` on `app/session.server.ts`;
+the code went elsewhere and the code was right, so the spec moved.
+
 ```
-app/session.server.ts         withVaultAs, ViewContext  (modified)
-app/routes/vault.tsx          the list + banner         (new)
-app/routes.ts                 route registration        (modified)
-app/view-as.server.ts         the gate, in one place    (new)
-app/view-as.server.test.ts    the gate's tests          (new)
+app/view-as.server.ts         the gate, the roster, both vaults  (new)
+app/view-as.server.test.ts    the gate's tests, no database      (new)
+app/vault.server.ts           VAULT_LIST_SQL, written once       (new)
+app/db/view-as.test.ts        the list and the roster, in Postgres (new)
+app/db/matrix.test.ts         the whole matrix, rendered         (new)
+app/db/matrix.txt             the whole matrix, committed        (new)
+app/routes/vault.tsx          the list, the picker, the banner   (new)
+app/routes.ts                 route registration                 (modified)
+app/auth.server.test.ts       the demoted-admin test             (modified)
+vitest.config.ts              serial files, for that test        (modified)
+scripts/seed-dev.mjs          a dev vault that can be signed into (new)
 docs/specs/view-as.md         this file
 ```
 
-The gate gets its own module rather than living in the route, so that its tests
+`app/session.server.ts` is **unmodified**, and that is the point of the
+arrangement. Impersonation lives in its own module rather than as a flag on
+`withVault`, so the function every ordinary read goes through has no idea this
+feature exists and cannot be made to borrow somebody's eyes by passing one
+extra argument. The gate lives there too rather than in the route, so its tests
 name it directly and a second impersonating surface cannot re-implement it
 slightly differently.
 
@@ -158,22 +173,30 @@ Three levels:
 1. **The gate** (`app/view-as.server.test.ts`) — a non-admin requesting `?as=`
    is refused; an admin is not; a malformed or unknown user id is refused
    rather than falling through to the actor's own view.
-2. **The predicate under impersonation** (extends `app/db/permissions.test.ts`)
-   — for each of the six fixture users, the document set returned under
-   impersonation is *identical* to the set that user gets signing in normally.
-   This is the assertion that makes view-as trustworthy: a view-as that shows
-   something other than the truth is worse than no view-as.
-3. **A full matrix snapshot** — six users by thirty-six documents, rendered as
-   a text table and committed. Every future permission change shows up as a
-   reviewable diff in one file. This is variation #3 from the ideation session,
-   kept as a test asset rather than shipped as a screen.
+2. **The predicate under impersonation** (landed as `app/db/view-as.test.ts`,
+   not as an extension of `permissions.test.ts`) — for each of the eleven
+   fixture accounts, the list the page runs returns *identically* what the
+   plainest possible `select id from documents` returns in that same user's
+   context. This is the assertion that makes view-as trustworthy: a view-as
+   that shows something other than the truth is worse than no view-as. The
+   impersonated context is not a separate code path to compare against —
+   `withViewedVault` is `asUser` with a different argument — so what needs
+   proving is that the joins in the list cannot widen or narrow the policies'
+   answer, and that is what this asserts.
+3. **A full matrix snapshot** (`app/db/matrix.test.ts`, `app/db/matrix.txt`) —
+   eleven accounts by twelve documents, rendered as a text table and committed.
+   The spec said six by thirty-six; the fixture is what it is, and open
+   question 6 is whether to grow it. Every future permission change shows up as
+   a reviewable diff in one file. This is variation #3 from the ideation
+   session, kept as a test asset rather than shipped as a screen.
 
 ## Boundaries
 
 **Always**
 
 - Resolve permissions server-side, before the response is built (CLAUDE.md).
-- Reach the vault only through `withVault` / `withVaultAs`.
+- Reach the vault only through `withVault`, or `withViewedVault` /
+  `withActorVault` on a gated `ViewContext`.
 - Write the permission test before the rule.
 
 **Ask first**
@@ -292,8 +315,14 @@ Two things the browser pass found that nothing else would have:
    assumed. The sign-in helper forwards every cookie the server set for the
    same reason: forwarding only the session token made the test pass for the
    wrong reason first time round.
-3. **Does an admin viewing as themselves count as view-as?** Proposed: no
-   banner, `isViewingAs` false, treated as the ordinary path.
+3. ~~**Does an admin viewing as themselves count as view-as?**~~ **Resolved.**
+   No. `gateViewAs` returns the ordinary path for `?as=<your own id>` and for
+   `?as=` empty, before the admin check and before the id is validated, so
+   neither becomes an impersonated transaction and neither raises a banner —
+   asserted in `app/view-as.server.test.ts` ("an admin viewing as themselves is
+   not viewing as anyone") and seen in the browser pass, where both return 200
+   and her own vault. Falling out of the gate early also means a non-admin who
+   types their own id into `?as=` is not refused for asking to be themselves.
 4. **Should a per-record grant carry the owner's name?** Found while building,
    not before. Sam is granted Rose's will by name (D17), so he sees the will —
    but `ownersVisibleTo(sam)` is `["hale"]` alone, asserted deliberately in
@@ -304,8 +333,49 @@ Two things the browser pass found that nothing else would have:
    That is faithful to the rules as written. Whether the rules are right is a
    product question: an estate attorney handed one will who cannot see whose
    estate it is may be correct privacy or may be useless. Deciding it means
-   changing `perm.visible_owner`, which is an "ask first" boundary. **Not
-   changed. Raised.**
-5. **Is 36 the right denominator?** "N of M" where M is the admin's reach reads
-   as "of everything". If an admin ever cannot see everything, the phrasing
-   needs to change. Today admins see all; D1 does not promise they always will.
+   changing `perm.visible_owner`, which is an "ask first" boundary. **Open.
+   Owner: the maintainer.** Nothing is blocked on it — the page says "owner not
+   shown to you", which is honest under either answer. The cost of leaving it
+   is that a third party cannot tell two identically-titled documents apart.
+5. **Is the admin's reach the right denominator?** **Open. Owner: the
+   maintainer.** "N of M" where M is the admin's own reach reads as "of
+   everything", and today that is true — admins see all, and the browser pass
+   shows "3 of 12" against a fixture of exactly 12. D1 does not promise it
+   stays true. If an admin ever cannot see everything, the number silently
+   starts meaning something narrower, and the phrasing has to change before
+   that happens rather than after. Counting M as the actor rather than as a raw
+   `count(*)` is already the cautious half of this; the wording is the other
+   half.
+6. **Is the fixture big enough to mean anything?** **Open. Owner: the
+   maintainer.** PRODUCT.md describes a household of eleven people and roughly
+   36 documents; the fixture has eleven accounts and twelve documents, so this
+   spec's worked example ("14 of 36") renders as "3 of 12". The rules all have
+   at least one case each, which is what the permission tests need. What a
+   small fixture cannot show is how any of this reads at scale: a vault list
+   with no grouping pressure, a picker of eleven names that would be a scroll
+   at fifty, a matrix that fits on a screen. Growing it is cheap and it churns
+   `app/db/matrix.txt` once, which is the file's job.
+
+## What comes after this
+
+Named so the next spec starts from here rather than from scratch.
+
+- **The activity log.** The successor this spec always pointed at, and the one
+  that changes the shape of the problem: it needs the first write policy in the
+  database, which is a new security surface rather than another read. When it
+  lands, `withViewedVault` needs a guard on `isViewingAs` — until then, "never
+  write while viewing as" is enforced by there being no write policy at all
+  (`0001_permission_layer.sql`), which is a stronger guarantee than a promise
+  in TypeScript but disappears the moment that file changes. Whoever adds the
+  first write policy owns adding the guard in the same commit.
+- **Denial reasons.** "You cannot see this because it is private to Ivy" needs
+  `perm` to explain rather than filter, which is a different kind of view and
+  a different risk: an explanation is itself a disclosure. Its own spec.
+- **A voice for the error boundary.** Found by the browser pass: a 403 renders
+  as "An unexpected error occurred" because the root boundary discards the
+  response body. Small, whole-app, and not a view-as change.
+- **Every next surface that lists documents** — record view, search, file
+  download — states how it enforces access, in the loader, next to the query
+  (CLAUDE.md). `app/routes/vault.tsx` is the model: no permission logic in the
+  component, the policies decide, and the only thing the loader chooses is
+  whose entitlement to use.
