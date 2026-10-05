@@ -96,7 +96,12 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
       {isViewingAs && viewedUser ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
+        // The one place in the app that paints its own background, so it is
+        // also the one place that has to name its own text colour: the body is
+        // dark when the machine is, and white-on-amber is a banner nobody can
+        // read. This one says you are not yourself right now, so it has to be
+        // the most legible thing on the page.
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           <p>
             You are seeing the vault as{" "}
             <strong className="font-medium">{viewedUser.name}</strong> (

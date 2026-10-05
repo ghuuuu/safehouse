@@ -193,38 +193,77 @@ Three levels:
 
 ## Success criteria
 
-- [ ] `GET /vault` as a signed-in user lists exactly the documents
+- [x] `GET /vault` as a signed-in user lists exactly the documents
       `perm.visible_document_ids()` returns for them, grouped by category.
-- [ ] `GET /vault?as=<id>` as an admin renders the vault as that user.
-- [ ] `GET /vault?as=<id>` as a non-admin returns 403 — not an empty list, not
+- [x] `GET /vault?as=<id>` as an admin renders the vault as that user.
+- [x] `GET /vault?as=<id>` as a non-admin returns 403 — not an empty list, not
       a redirect.
-- [ ] `GET /vault?as=<unknown-or-malformed-id>` is refused, and does not fall
+- [x] `GET /vault?as=<unknown-or-malformed-id>` is refused, and does not fall
       through to the actor's own view.
-- [ ] The banner names the viewed user, shows "N of M", and offers an exit.
-- [ ] For all six fixture users, impersonated document sets equal signed-in
-      document sets.
-- [ ] The committed matrix snapshot matches the fixture.
-- [ ] `npm test`, `npm run typecheck`, `npm run lint` pass.
+- [x] The banner names the viewed user, shows "N of M", and offers an exit.
+- [x] For all eleven fixture accounts — the criterion said six, the fixture has
+      eleven — impersonated document sets equal signed-in document sets.
+- [x] The committed matrix snapshot matches the fixture.
+- [x] `npm test`, `npm run typecheck`, `npm run lint` pass.
 
 ## Verification, as run
 
-Green:
+Automated:
 
-- `npm test` — 137 passing, 21 of them new (`app/view-as.server.test.ts`,
-  `app/db/view-as.test.ts`). `npm run typecheck`, `npm run lint`, `npm run
+- `npm test` — 139 passing, 23 of them new (`app/view-as.server.test.ts`,
+  `app/db/view-as.test.ts`, `app/db/matrix.test.ts`, and the demoted-admin test
+  in `app/auth.server.test.ts`). `npm run typecheck`, `npm run lint`, `npm run
   build` all clean.
-- `GET /vault` and `GET /vault?as=<id>` signed out both redirect to `/sign-in`
-  with `next` preserved, so signing in lands back in the borrowed view.
+- `app/db/matrix.txt` is committed and compared on every run. Breaking the
+  family privacy rule locally (dropping `not r.is_private` from
+  `0001_permission_layer.sql`) moved two names in the diff — Maya and Daniel
+  gained `ivyCounselling` and `roseWill`, 5→7 and 8→10 — which is what the file
+  is for. Reverted.
 
-Not yet verified, and not claimed:
+Authenticated browser pass, against a dev database seeded by `npm run db:seed`:
 
-- **The authenticated path in a browser.** The banner, the picker, the "N of M"
-  counts and the 403 for a non-admin have unit and database coverage but have
-  never been rendered. The dev database has no accounts; proving this end to
-  end needs a household seeded through `/setup`.
-- The matrix snapshot from the testing strategy is **not** built. The parity
-  assertions cover the same ground per-user; the committed diffable table does
-  not exist yet.
+| request | signed in as | answer |
+| --- | --- | --- |
+| `/vault` | admin (Priya) | 200, 12 documents, grouped by category |
+| `/vault?as=<sam>` | admin | 200, Sam's 3 documents and the banner |
+| `/vault?as=` | admin | 200, her own vault, no banner |
+| `/vault?as=<her own id>` | admin | 200, her own vault, no banner |
+| `/vault?as=not-a-uuid` | admin | 400 |
+| `/vault?as=<unknown uuid>` | admin | 404 |
+| `/vault` | individual (Maya) | 200, 5 documents, no picker rendered |
+| `/vault?as=<priya>` | individual | 403 |
+| `/vault?as=not-a-uuid` | individual | 403, not 400 — refused for her role before the value is read |
+| `/vault?as=<sam>` | signed out | 302 to `/sign-in?next=…`, parameter preserved |
+
+Every count matches that account's row in `app/db/matrix.txt`, which is the
+point of having both.
+
+![An admin's own vault, grouped by category](../assets/view-as-admin.png)
+
+![The same vault as Sam Okafor sees it](../assets/view-as-as-sam.png)
+
+The banner names him, says 3 of 12, and offers the way back. The will is the
+per-record grant: he reaches the document without reaching its owner, so the
+row reads "owner not shown to you" rather than a blank.
+
+![An individual's vault: no picker](../assets/view-as-non-admin.png)
+
+![A non-admin hand-typing ?as= is refused](../assets/view-as-refused.png)
+
+Two things the browser pass found that nothing else would have:
+
+- **The banner was unreadable.** `bg-amber-50` with no text colour, in an app
+  whose body is `dark:bg-gray-950` — pale yellow behind white text, in the one
+  element on the page whose entire job is to say "you are not yourself right
+  now". It was also the only element in the app painting its own background,
+  which is why nothing else showed the problem. Fixed where it was found: the
+  banner now names its own foreground and has a dark-scheme pair.
+- **A refusal renders as "An unexpected error occurred".** The status is right
+  (403, confirmed on the wire) and the gate's sentence is in the payload, but
+  the root error boundary throws it away, so a non-admin who edits the URL is
+  told nothing. Filed rather than fixed: the error boundary belongs to the
+  whole app, and giving it a voice is its own piece of work, not a view-as
+  change.
 
 ## Open questions
 
