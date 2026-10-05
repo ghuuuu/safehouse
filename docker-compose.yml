@@ -46,11 +46,29 @@ services:
       AUTH_DATABASE_URL: postgres://safehouse_auth:${AUTH_DB_PASSWORD:-safehouse-auth-dev}@db:5432/safehouse
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:4020}
+      # The key-encryption key arrives as a secret, mounted read-only, and is
+      # read once at boot (D12). It is never in the database and never in the
+      # documents volume, so neither of those alone is worth anything.
+      SAFEHOUSE_KEY_FILE: /run/secrets/safehouse_key
+      # Encrypted document files. Sealed before they get here.
+      SAFEHOUSE_STORAGE_DIR: /var/lib/safehouse/documents
+    secrets:
+      - safehouse_key
+    volumes:
+      - documents:/var/lib/safehouse/documents
     ports:
       - "4020:3000"
     depends_on:
       db:
         condition: service_healthy
 
+secrets:
+  safehouse_key:
+    # Generate it with `npm run key:make` before the first `docker compose up`.
+    file: ./keys/safehouse.key
+
 volumes:
   db-data:
+  # Separate from db-data on purpose: a backup of one without the other is
+  # useless, and both without the key file are useless (D6, D12).
+  documents:

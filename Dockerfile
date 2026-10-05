@@ -19,5 +19,13 @@ COPY ./package.json package-lock.json /app/
 COPY --from=production-dependencies-env /app/node_modules /app/node_modules
 COPY --from=build-env /app/build /app/build
 WORKDIR /app
+
+# The document store, created in the image so the named volume mounted over it
+# inherits this ownership on first use. A vault that writes its documents as
+# root is one container escape away from being a worse problem than it needs to
+# be, and the application writes nowhere else.
+RUN mkdir -p /var/lib/safehouse/documents && chown -R node:node /var/lib/safehouse
+USER node
+
 EXPOSE 3000
 CMD ["npm", "run", "start"]
