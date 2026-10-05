@@ -62,11 +62,19 @@ without it.
 # migrations: npm run db:generate  writes a migration from app/db/schema.ts
 #             npm run db:migrate   creates the app role, applies migrations
 #             npm run db:setup     the app role on its own (db:migrate runs it)
+# dev data:   npm run db:seed      the fixture household, and a way back in
 ```
 
 First run, and after any schema change: `docker compose up -d db` then
 `npm run db:migrate`. The app container has no owner credentials and cannot
 migrate itself, on purpose (D22).
+
+`npm run db:seed` fills an empty dev database with the fictional fixture
+household and gives `priya@example.invalid` (admin) and `maya@example.invalid`
+the dev password printed by the script. Both halves matter: seeding closes
+`/setup`, so a seeded database without a credential row has no way in at all.
+It refuses a database that is not on this machine, and one that already has
+accounts.
 
 `npm test` needs the database running. It builds `safehouse_test` from the
 migrations and the fixture in `app/db/fixture.ts` on every run.

@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:setup": "node scripts/db-setup.mjs",
-    "db:migrate": "npm run db:setup && drizzle-kit migrate"
+    "db:migrate": "npm run db:setup && drizzle-kit migrate",
+    "db:seed": "node scripts/seed-dev.mjs"
   },
   "dependencies": {
     "@react-router/node": "^7.18.2",
