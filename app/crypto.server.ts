@@ -56,7 +56,7 @@ function aad(fileId: string): Buffer {
 }
 
 function wrapDek(dek: Buffer, fileId: string, provider: KeyProvider): Buffer {
-  const nonce = Buffer.alloc(NONCE_BYTES, 7);
+  const nonce = randomBytes(NONCE_BYTES);
   const cipher = createCipheriv(CIPHER, provider.kek(), nonce);
   cipher.setAAD(aad(fileId));
 

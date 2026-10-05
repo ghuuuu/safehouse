@@ -57,6 +57,48 @@ describe("the round trip", () => {
     expect(first.stored.equals(second.stored)).toBe(false);
     expect(first.wrappedDek.equals(second.wrappedDek)).toBe(false);
   });
+
+  test("and no key-wrapping nonce either", () => {
+    // Asserted separately because the wrapped key differs between two seals
+    // whatever the nonce does — the data key inside it is fresh each time — so
+    // comparing whole wrapped keys cannot see this. Every file's key is
+    // wrapped under the *same* KEK, which makes a repeated nonce there the
+    // worst kind this scheme can have: two files are enough to recover the
+    // keystream and unwrap both.
+    //
+    // A constant nonce here passed every other test in this file.
+    const nonceOf = (sealed: { wrappedDek: Buffer }) =>
+      sealed.wrappedDek.subarray(5, 17);
+
+    const seen = new Set(
+      Array.from({ length: 16 }, () =>
+        nonceOf(sealFile(PLAINTEXT, FILE_ID, KEK)).toString("hex"),
+      ),
+    );
+
+    expect(seen.size).toBe(16);
+  });
+
+  test("the file nonce is not reused across files either", () => {
+    const seen = new Set(
+      Array.from({ length: 16 }, () =>
+        sealFile(PLAINTEXT, FILE_ID, KEK).nonce.toString("hex"),
+      ),
+    );
+
+    expect(seen.size).toBe(16);
+  });
+
+  test("the data key is fresh for every file", () => {
+    // A constant data key would leave every file encrypted under one key, and
+    // the ciphertexts of two identical files identical. Checked through the
+    // ciphertext, because the key itself never leaves this module.
+    const a = sealFile(PLAINTEXT, FILE_ID, KEK);
+    const b = sealFile(PLAINTEXT, FILE_ID, KEK);
+
+    expect(a.stored.equals(b.stored)).toBe(false);
+    expect(openFile(a, FILE_ID, KEK).equals(openFile(b, FILE_ID, KEK))).toBe(true);
+  });
 });
 
 describe("what the disk holds", () => {
