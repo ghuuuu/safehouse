@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { count } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -36,6 +36,37 @@ function authDb() {
 export async function noUsersYet(): Promise<boolean> {
   const [row] = await authDb().select({ n: count() }).from(schema.users);
   return (row?.n ?? 0) === 0;
+}
+
+/**
+ * Check a password without issuing a session.
+ *
+ * For step-up: downloading a file re-asks for the password of the account
+ * already signed in, so a borrowed laptop with a live session cannot pull
+ * documents out of the vault. Signing in again would work too and would also
+ * mint a second session, which is a worse answer to "prove it is still you".
+ *
+ * The hash is read over the auth connection, the only one that can see it
+ * (D24), and compared by the library rather than by anything here.
+ */
+export async function passwordMatches(
+  userId: string,
+  password: string,
+): Promise<boolean> {
+  const [account] = await authDb()
+    .select({ password: schema.accounts.password })
+    .from(schema.accounts)
+    .where(
+      and(
+        eq(schema.accounts.userId, userId),
+        eq(schema.accounts.providerId, "credential"),
+      ),
+    );
+
+  if (!account?.password) return false;
+
+  const context = await auth.$context;
+  return context.password.verify({ hash: account.password, password });
 }
 
 export const auth = betterAuth({

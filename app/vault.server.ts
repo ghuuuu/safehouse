@@ -32,7 +32,18 @@ export const VAULT_LIST_SQL = `
     o.display_name as "ownerName",
     d.version_no as "versionNo",
     d.is_current as "isCurrent",
-    d.expires_on as "expiresOn"
+    d.expires_on as "expiresOn",
+    -- Correlated rather than joined, because a document with two pages would
+    -- otherwise appear in this list twice. Both subqueries read through
+    -- document_files_read, so a page the viewer may not see is neither
+    -- linked nor counted.
+    (
+      select f.id from document_files f
+      where f.document_id = d.id order by f.page_no limit 1
+    ) as "fileId",
+    (
+      select count(*)::int from document_files f where f.document_id = d.id
+    ) as "fileCount"
   from documents d
   join records r on r.id = d.record_id
   left join owners o on o.id = r.owner_id

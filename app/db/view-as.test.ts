@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { ROSTER_SQL } from "../view-as.server";
 import { VAULT_LIST_SQL } from "../vault.server";
-import { DOCUMENT, USER } from "./fixture";
+import { DOCUMENT, FILE, USER } from "./fixture";
 import { asUser, closeTestDatabase, prepareTestDatabase } from "./test-harness";
 
 beforeAll(async () => {
@@ -125,6 +125,24 @@ describe("the list the vault page runs", () => {
 
     expect(values.some((value) => value.includes("FIXTURE-PP"))).toBe(false);
   });
+
+  test("a document links to its first page, and counts the pages it has", async () => {
+    // The deed is the only two-page document in the fixture. A join instead of
+    // these subqueries would list it twice; a viewer who cannot see a page
+    // must not be told it is there.
+    const rows = await asUser(USER.priya, (sql) => sql.unsafe(VAULT_LIST_SQL));
+    const deed = rows.filter((row) => row.id === DOCUMENT.householdDeed);
+    const decree = rows.find((row) => row.id === DOCUMENT.danielDivorceDecree);
+
+    expect(deed).toHaveLength(1);
+    expect(deed[0].fileCount).toBe(2);
+    expect(deed[0].fileId).toBe(FILE.householdDeed);
+
+    // Reachable, with nothing scanned behind it yet.
+    expect(decree?.fileCount).toBe(0);
+    expect(decree?.fileId).toBeNull();
+  });
+
 });
 
 describe("the roster the picker offers", () => {

@@ -23,6 +23,9 @@ type DocumentRow = {
   isCurrent: boolean;
   isPrivate: boolean;
   expiresOn: string | null;
+  /** The first page, or null when the viewer reaches the document but no file. */
+  fileId: string | null;
+  fileCount: number;
 };
 
 /**
@@ -188,7 +191,16 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                     )}
                   </span>
                 </span>
-                <span className="flex gap-2 text-xs text-gray-500">
+                <span className="flex items-baseline gap-2 text-xs text-gray-500">
+                  {document.fileId ? (
+                    <Link
+                      className="underline"
+                      to={`/file/${document.fileId}`}
+                      reloadDocument
+                    >
+                      open{document.fileCount > 1 ? ` (${document.fileCount} pages)` : ""}
+                    </Link>
+                  ) : null}
                   {document.isPrivate ? <span>private</span> : null}
                   {document.isCurrent ? null : (
                     <span>superseded (v{document.versionNo})</span>
