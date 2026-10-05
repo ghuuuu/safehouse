@@ -7,6 +7,7 @@ dropped them in. Self-hosted, one household per deployment.
 Full product spec: `docs/PRODUCT.md`
 Architecture decisions and their reasoning: `docs/DECISIONS.md`
 Read both before proposing structural changes.
+What is left to build and in what order: `docs/ROADMAP.md`
 
 ---
 
