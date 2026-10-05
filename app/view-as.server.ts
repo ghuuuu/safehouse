@@ -135,17 +135,24 @@ export async function resolveViewContext(
 /**
  * Read the vault as the viewed user — the impersonated context.
  *
- * Read-only by construction for now: no table in this database has a write
- * policy (`0001_permission_layer.sql`), so a write attempted here is refused
- * by Postgres rather than by a promise made in TypeScript. When the first
- * write policy lands, this function needs a guard on `isViewingAs` and the
- * spec says so.
+ * The transaction is declared read-only to Postgres, so a write attempted
+ * through borrowed eyes is refused by the database rather than by a promise
+ * made in TypeScript. That promise used to be kept by there being no write
+ * policy anywhere; `0005_write_policies.sql` ended that, and this is the guard
+ * the view-as spec said the first write policy would owe.
+ *
+ * It is set even when nobody is being impersonated, because a function that
+ * guards only the dangerous case has to be sure which case it is in, and this
+ * one never writes either way.
  */
 export async function withViewedVault<T>(
   context: ViewContext,
   work: (db: VaultTransaction) => Promise<T>,
 ): Promise<T> {
-  return asUser(context.viewedUserId, work);
+  return asUser(context.viewedUserId, async (db) => {
+    await db.execute(sql`set transaction read only`);
+    return work(db);
+  });
 }
 
 /**

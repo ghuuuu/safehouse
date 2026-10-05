@@ -6,6 +6,8 @@ export default [
   route("setup", "routes/setup.tsx"),
   // The vault, optionally through somebody else's eyes: /vault?as=<userId>.
   route("vault", "routes/vault.tsx"),
+  // Filing a document: the only surface that writes to the vault.
+  route("upload", "routes/upload.tsx"),
   route("sign-in", "routes/sign-in.tsx"),
   route("sign-out", "routes/sign-out.tsx"),
   // Sign-in, sign-out and session, served by the auth library (D10).

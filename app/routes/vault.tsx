@@ -203,9 +203,19 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
         </section>
       ))}
 
-      <Link className="text-sm text-gray-500 underline" to="/">
-        Back to the dashboard
-      </Link>
+      <div className="flex gap-4 text-sm">
+        {isViewingAs ? null : (
+          // Hidden while viewing as somebody else, because the transaction that
+          // would file it is read-only: offering the link would be offering a
+          // button that cannot work.
+          <Link className="text-gray-500 underline" to="/upload">
+            File a document
+          </Link>
+        )}
+        <Link className="text-gray-500 underline" to="/">
+          Back to the dashboard
+        </Link>
+      </div>
     </main>
   );
 }

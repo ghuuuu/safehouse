@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { sql } from "drizzle-orm";
 
-import { RECORD, USER } from "./db/fixture";
+import { OWNER, RECORD, USER } from "./db/fixture";
 import {
   closeTestDatabase,
   owner,
@@ -38,9 +38,12 @@ process.env.APP_DATABASE_URL = testUrl(
 
 const { auth } = await import("./auth.server");
 const { getSignedInUser, withVault } = await import("./session.server");
-const { resolveViewContext } = await import("./view-as.server");
+const { resolveViewContext, withViewedVault } = await import("./view-as.server");
 
 const PASSWORD = "correct-horse-battery-staple";
+
+/** A row this file writes and removes; outside every fixture id range. */
+const SCRATCH_RECORD = "00000000-0000-4000-8000-000000000950";
 
 beforeAll(async () => {
   await prepareTestDatabase();
@@ -230,6 +233,63 @@ describe("what the session says about a role", () => {
     } finally {
       await owner()`update users set role = 'admin' where id = ${USER.priya}`;
     }
+  });
+});
+
+describe("borrowed eyes cannot write", () => {
+  test("a write through an impersonated transaction is refused by Postgres", async () => {
+    // Until 0005 there were no write policies at all, so "never write while
+    // viewing as" was true by construction. Now that the application can
+    // insert, the transaction itself is declared read-only — the refusal comes
+    // from the database, not from a promise in TypeScript that a later
+    // refactor could drop.
+    const cookie = await signIn("priya@example.invalid");
+    const view = await resolveViewContext(
+      new Request(`http://localhost:4021/vault?as=${USER.maya}`, {
+        headers: { cookie },
+      }),
+    );
+
+    expect(view.isViewingAs).toBe(true);
+
+    // 25006 is `read_only_sql_transaction`. Asserted on the SQLSTATE rather
+    // than the message because drizzle wraps the text, and the difference
+    // between "refused for being read-only" and "refused by a policy" is the
+    // whole point of this test.
+    await expect(
+      withViewedVault(view, (db) =>
+        db.execute(
+          sql`insert into records (owner_id, category, kind, title)
+              values (${OWNER.maya}, 'general', 'note', 'Filed by somebody else')`,
+        ),
+      ),
+    ).rejects.toSatisfy(
+      (thrown) => (thrown as { cause?: { code?: string } })?.cause?.code === "25006",
+    );
+  });
+
+  test("the same write succeeds as the admin in their own eyes", async () => {
+    // The guard has to be about impersonation, not about the admin being
+    // unable to file anything.
+    const cookie = await signIn("priya@example.invalid");
+
+    const filed = await withVault(
+      new Request("http://localhost:4021/vault", { headers: { cookie } }),
+      async (db) => {
+        await db.execute(
+          sql`insert into records (id, owner_id, category, kind, title)
+              values (${SCRATCH_RECORD}, ${OWNER.maya}, 'general', 'note', 'Filed by the admin')`,
+        );
+        const rows = await db.execute<{ id: string }>(
+          sql`select id from records where id = ${SCRATCH_RECORD}`,
+        );
+        return rows.length;
+      },
+    );
+
+    expect(filed).toBe(1);
+
+    await owner()`delete from records where id = ${SCRATCH_RECORD}`;
   });
 });
 
