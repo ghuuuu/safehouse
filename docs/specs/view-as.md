@@ -237,9 +237,22 @@ Not yet verified, and not claimed:
    transaction. Inside impersonation `perm.current_user_is_admin()` is false
    and the roster collapses to the viewed user alone. It fails closed, but it
    fails confusingly, so it gets a test.
-2. **Is `role` on the session trustworthy for the gate?** It comes from the
-   auth library's user object via `getSignedInUser`. If it is stale relative to
-   the database, the gate is stale. Worth one test.
+2. ~~**Is `role` on the session trustworthy for the gate?**~~ **Resolved.** Yes,
+   as the auth library is configured. `getSignedInUser` calls better-auth's
+   `getSession`, which reads the session row and joins the user on every
+   request; no `session.cookieCache` is configured, so no copy of the role
+   exists anywhere to go stale. An admin demoted in the database is refused on
+   the very next request — same cookie, same session row, 403 — asserted in
+   `auth.server.test.ts` ("an admin demoted mid-session can no longer borrow
+   anybody's eyes"). The gate needed no change.
+
+   That test is also the guard on the configuration, because the answer is a
+   configuration and not a law. Enabling `session.cookieCache` would let the
+   gate decide from a cached role for as long as the cache lives; with it
+   enabled the test fails, which was checked by enabling it rather than
+   assumed. The sign-in helper forwards every cookie the server set for the
+   same reason: forwarding only the session token made the test pass for the
+   wrong reason first time round.
 3. **Does an admin viewing as themselves count as view-as?** Proposed: no
    banner, `isViewingAs` false, treated as the ordinary path.
 4. **Should a per-record grant carry the owner's name?** Found while building,

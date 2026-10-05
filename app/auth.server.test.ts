@@ -38,6 +38,7 @@ process.env.APP_DATABASE_URL = testUrl(
 
 const { auth } = await import("./auth.server");
 const { getSignedInUser, withVault } = await import("./session.server");
+const { resolveViewContext } = await import("./view-as.server");
 
 const PASSWORD = "correct-horse-battery-staple";
 
@@ -48,7 +49,7 @@ beforeAll(async () => {
   const context = await auth.$context;
   const hash = await context.password.hash(PASSWORD);
 
-  for (const userId of [USER.maya, USER.tenant]) {
+  for (const userId of [USER.priya, USER.maya, USER.tenant]) {
     await owner()`
       insert into accounts (user_id, issuer, account_id, provider_id, password)
       values (${userId}, 'local:credential', ${userId}, 'credential', ${hash})
@@ -72,14 +73,21 @@ function post(path: string, body: unknown, headers: HeadersInit = {}) {
   );
 }
 
-/** Signs in and returns the cookie a browser would send back. */
+/**
+ * Signs in and returns the cookies a browser would send back — all of them.
+ *
+ * Every one, not just the session token, because the library can be configured
+ * to put a cached copy of the user in a second cookie. A helper that quietly
+ * dropped it would make the staleness test below pass for the wrong reason: it
+ * would be testing a browser that forgets half of what it was given.
+ */
 async function signIn(email: string): Promise<string> {
   const response = await post("/sign-in/email", { email, password: PASSWORD });
   expect(response.status, await response.clone().text()).toBe(200);
 
-  const cookie = response.headers.get("set-cookie");
-  expect(cookie).toBeTruthy();
-  return cookie!.split(";")[0];
+  const cookies = response.headers.getSetCookie();
+  expect(cookies.length).toBeGreaterThan(0);
+  return cookies.map((cookie) => cookie.split(";")[0]).join("; ");
 }
 
 describe("who may create an account", () => {
@@ -181,6 +189,47 @@ describe("the cookie decides what the vault shows", () => {
     await expect(withVault(request, async () => "reached")).rejects.toSatisfy(
       (thrown) => thrown instanceof Response && thrown.status === 302,
     );
+  });
+});
+
+describe("what the session says about a role", () => {
+  test("an admin demoted mid-session can no longer borrow anybody's eyes", async () => {
+    // The gate in view-as.server.ts reads `actor.role` from the session rather
+    // than from a vault query, because the question has to be asked while the
+    // actor is still themselves. That is only sound if the session's copy of
+    // the role is not a copy at all. This is the test that says which it is.
+    //
+    // It is: better-auth has no session cookie cache configured, so
+    // getSession reads the session row and joins the user on every request,
+    // and a role changed in the database is in force on the next one. If
+    // anybody ever enables `session.cookieCache`, this test fails — and it
+    // should, because the gate would then be deciding from a stale copy for
+    // the life of the cache.
+    const cookie = await signIn("priya@example.invalid");
+    const borrowMayasEyes = () =>
+      resolveViewContext(
+        new Request(`http://localhost:4021/vault?as=${USER.maya}`, {
+          headers: { cookie },
+        }),
+      );
+
+    const asAdmin = await borrowMayasEyes();
+    expect(asAdmin.isViewingAs).toBe(true);
+    expect(asAdmin.viewedUserId).toBe(USER.maya);
+
+    try {
+      await owner()`
+        update users set role = 'individual' where id = ${USER.priya}
+      `;
+
+      // Same cookie, same session row, same request. The refusal comes from
+      // the database's answer to "what is she now", not from signing out.
+      await expect(borrowMayasEyes()).rejects.toSatisfy(
+        (thrown) => thrown instanceof Response && thrown.status === 403,
+      );
+    } finally {
+      await owner()`update users set role = 'admin' where id = ${USER.priya}`;
+    }
   });
 });
 
