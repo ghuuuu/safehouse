@@ -68,9 +68,15 @@ describe("the list the vault page runs", () => {
     // Spelled out rather than compared to another query, so that a change
     // which broke both in the same direction still fails here.
     expect(await listedTo(USER.sam)).toEqual([
+      "haleClientContract",
+      "haleInsurancePolicy",
+      "haleLeaseContract",
       "halePermit",
+      "halePermitOld",
+      "haleRegistration",
       "haleTaxReturn",
       "roseWill",
+      "roseWillOld",
     ]);
   });
 

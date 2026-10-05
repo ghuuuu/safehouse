@@ -73,7 +73,7 @@ function insertFile(sql: Sql, documentId: string) {
     insert into document_files
       (id, document_id, page_no, storage_key, sha256, byte_size, mime, wrapped_dek, nonce)
     values (
-      ${NEW.file}, ${documentId}, 1, 'test/written-by-a-test',
+      ${NEW.file}, ${documentId}, 9, 'test/written-by-a-test',
       'test-hash', 6, 'application/pdf', ${sealed}, ${sealed}
     )
   `;
@@ -249,7 +249,7 @@ describe("what stays out of reach entirely", () => {
     ["grant_categories", (sql: Sql) => sql`insert into grant_categories (user_id, category) values (${USER.sam}, 'medical')`],
     ["grant_records", (sql: Sql) => sql`insert into grant_records (user_id, record_id) values (${USER.sam}, ${RECORD.mayaPassport})`],
     ["emergency_activations", (sql: Sql) => sql`insert into emergency_activations (user_id, expires_at) values (${USER.lapsed}, now() + interval '1 day')`],
-    ["relationships", (sql: Sql) => sql`insert into relationships (from_owner_id, to_owner_id, kind) values (${OWNER.sam ?? OWNER.rose}, ${OWNER.nadia}, 'spouse_of')`],
+    ["relationships", (sql: Sql) => sql`insert into relationships (from_owner_id, to_owner_id, kind) values (${OWNER.rose}, ${OWNER.nadia}, 'spouse_of')`],
   ] as const;
 
   test.each(forbidden)(

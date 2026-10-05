@@ -9,30 +9,55 @@ policies in drizzle/0001_permission_layer.sql and the identity boundary in
 Documents, and the accounts that reach them
 -------------------------------------------
 
-mayaPassport      priya, maya, daniel, ivy, rose
-danielLicenceOld  priya, maya, daniel, ivy
-danielLicence     priya, maya, daniel, ivy
-ivyImmunisation   priya, maya, daniel, ivy, medic
-ivyCounselling    priya, ivy, medic
-roseWill          priya, rose, sam, medic
-householdDeed     priya, maya, daniel, ivy, rose, medic
-halePermit        priya, daniel, sam
-haleTaxReturn     priya, daniel, sam
-theoPassport      priya, daniel
-nadiaPassport     priya
-lenaCarePlan      priya, rose, medic
+mayaPassportOld               priya, maya, daniel, ivy, rose
+mayaPassport                  priya, maya, daniel, ivy, rose
+danielLicenceOld              priya, maya, daniel, ivy
+danielLicence                 priya, maya, daniel, ivy
+ivyImmunisation               priya, maya, daniel, ivy, medic
+ivyCounselling                priya, ivy, medic
+roseWillOld                   priya, rose, sam, medic
+roseWill                      priya, rose, sam, medic
+householdDeed                 priya, maya, daniel, ivy, rose, nina, medic
+halePermitOld                 priya, daniel, sam
+halePermit                    priya, daniel, sam
+haleTaxReturn                 priya, daniel, sam
+theoPassport                  priya, daniel
+nadiaPassport                 priya
+lenaCarePlan                  priya, rose, medic
+rosePassport                  priya, maya, daniel, rose
+danielPassport                priya, maya, daniel, ivy
+mayaDrivingLicence            priya, maya, daniel, ivy, rose
+ivyBirthCertificate           priya, maya, daniel, ivy
+householdMarriageCertificate  priya, maya, daniel, ivy, rose
+ivyInsuranceCard              priya, maya, daniel, ivy, medic
+frankVisitSummary             priya, maya, daniel, rose, medic
+haleRegistration              priya, daniel, sam
+haleClientContract            priya, daniel, sam
+haleLeaseContract             priya, daniel, sam
+haleInsurancePolicy           priya, daniel, sam
+haleBankStatement             priya
+danielTaxReturn               priya, maya, daniel, ivy
+mayaSavingsStatement          priya, maya
+householdHomeInsurance        priya, maya, daniel, ivy, rose
+rosePowerOfAttorney           priya, maya, daniel, rose, nina, medic
+danielDivorceDecree           priya, maya, daniel, ivy, nina, medic
+mayaAdvanceDirective          priya, maya, medic
+householdApplianceWarranty    priya, maya, daniel, ivy, rose
+lenaSchoolEnrolment           priya, rose
+bramTenancyDeposit            priya
 
 Accounts, and how much of the fixture they reach
 ------------------------------------------------
 
-priya     admin        12 of 12
-maya      individual   5 of 12
-daniel    individual   8 of 12
-ivy       individual   6 of 12
-rose      individual   4 of 12
-sam       third_party  3 of 12
-tenant    individual   0 of 12
-medic     emergency    5 of 12
-lapsed    emergency    0 of 12
-pulled    emergency    0 of 12
-stranger  individual   0 of 12
+priya     admin        36 of 36
+maya      individual   20 of 36
+daniel    individual   26 of 36
+ivy       individual   16 of 36
+rose      individual   14 of 36
+sam       third_party  9 of 36
+nina      third_party  3 of 36
+tenant    individual   0 of 36
+medic     emergency    11 of 36
+lapsed    emergency    0 of 36
+pulled    emergency    0 of 36
+stranger  individual   0 of 36

@@ -208,8 +208,16 @@ describe("which records a user can see", () => {
   test("a per-record grant is the only way into a private record", async () => {
     // Sam was granted Rose's will by name. It is private, and legal is not in
     // his category list — the grant overrides both, and nothing else does.
+    //
+    // The business account statement is the other half of the same rule: his
+    // grant matches its owner and its category, and `is_private` alone keeps
+    // it out. Nothing but a per-record grant crosses that line.
     expect(await recordsVisibleTo(USER.sam)).toEqual([
+      "haleClientContract",
+      "haleInsurancePolicy",
+      "haleLeaseContract",
       "halePermit",
+      "haleRegistration",
       "haleTaxReturn",
       "roseWill",
     ]);
@@ -257,7 +265,16 @@ describe("documents and files follow their record (D20)", () => {
   });
 
   test("a per-record grant carries the file with it", async () => {
-    expect(await filesVisibleTo(USER.sam)).toEqual(["roseWill"]);
+    // Both versions of the will, because the grant is to the record and a
+    // superseded version is still that record's (D20). The permit and tax
+    // return come the ordinary way, through his two category grants.
+    expect(await filesVisibleTo(USER.sam)).toEqual([
+      "halePermit",
+      "halePermitOld",
+      "haleTaxReturn",
+      "roseWill",
+      "roseWillOld",
+    ]);
   });
 
   test("a superseded version stays visible to whoever can see the record", async () => {
@@ -298,7 +315,9 @@ describe("the guardrails", () => {
       (sql) => sql`select count(*)::int as n from records`,
     );
 
-    expect(row.n).toBe(3);
+    // Seven: four business and two financial records of the company he keeps
+    // the books for, plus the one will he was handed by name.
+    expect(row.n).toBe(7);
   });
 
   test("the role the application connects as cannot bypass a policy", async () => {
