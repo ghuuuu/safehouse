@@ -241,6 +241,18 @@ deliberately corrupted strip fills none and says why; no code path in the
 extraction reaches the network, asserted rather than assumed; an unconfirmed
 value cannot reach a reminder.
 
+### Step 8b — Reading terms-bearing documents
+
+Landed with step 8. Insurance paperwork is standardised by law, so the vault
+classifies it, quotes the figures off the schedule with the insurer's own label
+and the page, and indexes the conditions by heading so a household turns to the
+right page instead of reading the booklet.
+
+It does not say what a policy means, and D28 records why that is a structural
+refusal rather than a missing feature.
+
+**Size.** M. **Depends on.** Step 8.
+
 **Size.** L. **Depends on.** Steps 6, 7. Backups first, because extraction puts
 far more of a household's identifiers into the database and D14's obligations
 get heavier, not lighter (D26).

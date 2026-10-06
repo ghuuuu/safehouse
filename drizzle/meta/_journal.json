@@ -57,6 +57,13 @@
       "when": 1787390072497,
       "tag": "0007_document_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787390132497,
+      "tag": "0008_document_extraction",
+      "breakpoints": true
     }
   ]
 }

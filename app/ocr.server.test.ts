@@ -107,7 +107,7 @@ describe("what loose text offers", () => {
   test.each([
     ["Valid until 14/03/2027", "2027-03-14"],
     ["Expiry date: 14 March 2027", "2027-03-14"],
-    ["Renewal date 14.03.2027", "2027-03-14"],
+    ["Use before 14.03.2027", "2027-03-14"],
   ])("reads %s", (text, expected) => {
     expect(proposalsFromText(text)[0]?.value).toBe(expected);
   });
@@ -130,5 +130,15 @@ describe("what loose text offers", () => {
 
   test("empty text offers nothing", () => {
     expect(proposalsFromText("")).toEqual([]);
+  });
+});
+
+describe("a renewal date is not an expiry date", () => {
+  test("it is not offered as one", () => {
+    // They usually coincide and they are not the same fact: a policy can renew
+    // automatically on a date its cover does not end on. Mapping one to the
+    // other puts a wrong date behind a reminder, quietly. The renewal date is
+    // quoted as a fact instead, with the insurer's own label (terms.server.ts).
+    expect(proposalsFromText("Renewal date 14.03.2027")).toEqual([]);
   });
 });

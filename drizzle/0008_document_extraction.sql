@@ -1,0 +1,15 @@
+-- The reader's working notes: what it recognised, what it proposed, what it
+-- quoted from the schedule, and where the conditions are. Never authoritative
+-- (D26) — a person confirms a value before anything acts on it.
+--
+-- A column on documents rather than a table, because this is written whole on
+-- each read, read one document at a time, and never queried across documents.
+-- 0007 already granted UPDATE on documents and documents_update already carries
+-- its using/with-check pair, so this needs no grant, no policy and no new test
+-- surface. The day something queries clauses across every document, promote it.
+--
+-- Deliberately not inside `details`: that is where a person's own values for a
+-- document type land, and the whole point of D26 is that a machine's notes and
+-- a human's values live in different places rather than being told apart by
+-- convention.
+alter table documents add column extraction jsonb not null default '{}'::jsonb;

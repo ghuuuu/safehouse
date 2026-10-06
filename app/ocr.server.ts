@@ -60,26 +60,107 @@ export type ReadResult = {
   text: string;
   /** Which path produced it, and why the others did not run. */
   how: string;
+  /** Present when the document was recognised as terms-bearing paperwork. */
+  terms?: import("./terms.server").Extraction;
 };
 
 /* ------------------------------------------------------------------ */
 /* 1. The free path                                                    */
 /* ------------------------------------------------------------------ */
 
+/** One line of a PDF, with enough geometry to tell a heading from a value. */
+export type TextLine = {
+  /** 1-based, because a person reading a page number counts from one. */
+  page: number;
+  y: number;
+  /** The largest font on the line, which is most of what makes a heading. */
+  size: number;
+  runs: { x: number; width: number; str: string }[];
+  text: string;
+};
+
+type Item = {
+  str: string;
+  x: number;
+  y: number;
+  width: number;
+  fontSize: number;
+};
+
 /**
- * The text a PDF already contains.
+ * The text a PDF already contains, in both shapes it is needed in.
  *
- * Returns empty for a PDF that is a photograph in a wrapper, which is the
- * signal to fall through to OCR.
+ * `pages` is what gets stored and searched; `lines` is what gets reasoned
+ * about. The division is the design rather than an accident: geometry is good
+ * at deciding whether a line is a heading and which run holds a label's value,
+ * and worse than unpdf's own extraction at producing readable prose — a
+ * hand-rolled row reassembly interleaves the columns of a two-column policy.
+ *
+ * Both come off one document proxy. pdf.js transfers its input buffer to its
+ * worker, so opening the same bytes twice throws.
+ *
+ * Empty for a PDF that is a photograph in a wrapper, which is the signal to
+ * fall through to OCR.
  */
-export async function readPdfText(bytes: Buffer): Promise<string> {
-  const { extractText, getDocumentProxy } = await import("unpdf");
+export async function readPdf(
+  bytes: Buffer,
+): Promise<{ pages: string[]; lines: TextLine[] }> {
+  const { extractText, extractTextItems, getDocumentProxy } = await import("unpdf");
 
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
-  const { text } = await extractText(pdf, { mergePages: true });
+  const { text } = await extractText(pdf, { mergePages: false });
+  const { items } = await extractTextItems(pdf);
 
-  // `mergePages` makes this a string, but the type is a union over both shapes.
-  return (Array.isArray(text) ? text.join("\n") : text).trim();
+  return {
+    pages: Array.isArray(text) ? text : [text],
+    lines: buildLines(items as Item[][]),
+  };
+}
+
+/**
+ * Items into lines.
+ *
+ * A PDF has no concept of a line — it has runs of glyphs at coordinates — so
+ * one is reconstructed by grouping runs that share a baseline. The origin is
+ * the bottom-left corner, which is why lines sort by descending y.
+ *
+ * ponytail: 1.5pt absolute tolerance for "same baseline". Derive it from item
+ * height if a document with mixed leading on one line ever turns up.
+ */
+export function buildLines(pages: Item[][]): TextLine[] {
+  const lines: TextLine[] = [];
+
+  pages.forEach((items, index) => {
+    const buckets: { y: number; items: Item[] }[] = [];
+
+    for (const item of items) {
+      if (!item.str.trim()) continue;
+
+      const bucket = buckets.find((b) => Math.abs(b.y - item.y) <= 1.5);
+      if (bucket) bucket.items.push(item);
+      else buckets.push({ y: item.y, items: [item] });
+    }
+
+    for (const bucket of buckets.sort((a, b) => b.y - a.y)) {
+      const runs = bucket.items
+        .sort((a, b) => a.x - b.x)
+        .map((item) => ({ x: item.x, width: item.width, str: item.str }));
+
+      lines.push({
+        page: index + 1,
+        y: bucket.y,
+        size: Math.max(...bucket.items.map((i) => i.fontSize ?? 0)),
+        runs,
+        text: runs
+          .map((run) => run.str)
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      });
+    }
+  });
+
+  return lines;
 }
 
 /* ------------------------------------------------------------------ */
@@ -341,7 +422,7 @@ function fromMrzDate(value: string, lean: "future" | "past"): string | null {
 
 /** Dates a document labels as its own expiry, and nothing else. */
 const EXPIRY_LABEL =
-  /(?:expir\w*|valid\s+(?:un)?til|renewal\s+date|use\s+before)\D{0,20}?(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i;
+  /(?:expir\w*|valid\s+(?:un)?til|use\s+before)\D{0,20}?(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i;
 
 /**
  * What can be guessed from loose text, which is very little on purpose.
@@ -351,7 +432,10 @@ const EXPIRY_LABEL =
  * a confident wrong renewal date is the failure this whole design is arranged
  * to avoid.
  */
-export function proposalsFromText(text: string): Proposal[] {
+export function proposalsFromText(
+  text: string,
+  source: Proposal["source"] = "page-text",
+): Proposal[] {
   const match = EXPIRY_LABEL.exec(text);
   if (!match) return [];
 
@@ -362,7 +446,7 @@ export function proposalsFromText(text: string): Proposal[] {
     {
       field: "expires_on",
       value: date,
-      source: "page-text",
+      source,
       verified: false,
       note: "Found next to the word 'expires'. Check it against the document.",
     },
@@ -414,13 +498,29 @@ export async function readDocument(
   mime: string,
 ): Promise<ReadResult> {
   if (mime === "application/pdf") {
-    const text = await readPdfText(bytes).catch(() => "");
+    const parsed = await readPdf(bytes).catch(() => null);
+    const text = (parsed?.pages ?? []).join("\n\n").trim();
 
     if (text.length > 40) {
+      const { readTerms } = await import("./terms.server");
+      const terms = readTerms(parsed!.lines);
+
+      // When the document is recognisably insurance paperwork, its own
+      // structure is a better guide than a regex over flattened text: the
+      // figures live on the schedule, and a label matched anywhere else is
+      // matched against the wrong page. Fall back only when nothing was
+      // recognised.
+      const recognised = terms.sections.some((s) => s.type !== "wording");
+
       return {
-        proposals: proposalsFromText(text),
+        proposals: recognised
+          ? terms.proposals
+          : proposalsFromText(text, "pdf-text"),
         text,
-        how: "Read from the PDF's own text. Nothing was scanned or guessed.",
+        terms,
+        how: recognised
+          ? terms.how
+          : "Read from the PDF's own text. Nothing was scanned or guessed.",
       };
     }
 

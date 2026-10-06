@@ -69,6 +69,8 @@ export type RecordView = {
     hasIdentifier: boolean;
     confirmedFields: string[];
   };
+  /** What the reader last made of this document. Never authoritative (D26). */
+  extraction: Record<string, unknown>;
   pages: Page[];
   versions: Version[];
 };
@@ -89,7 +91,8 @@ export async function findRecordView(
       d.original_location_note as "originalLocationNote",
       -- Whether, never what. The number itself never joins this payload.
       (d.identifier is not null) as "hasIdentifier",
-      d.confirmed_fields as "confirmedFields"
+      d.confirmed_fields as "confirmedFields",
+      d.extraction
     from documents d
     join records r on r.id = d.record_id
     left join owners o on o.id = r.owner_id
@@ -139,6 +142,7 @@ export async function findRecordView(
       hasIdentifier: row.hasIdentifier as boolean,
       confirmedFields: (row.confirmedFields as string[]) ?? [],
     },
+    extraction: (row.extraction as Record<string, unknown>) ?? {},
     pages: [...pages],
     versions: [...versions],
   };
@@ -278,4 +282,32 @@ export async function saveProposals(
       .filter((p) => confirmed.has(p.field))
       .map((p) => p.field),
   };
+}
+
+/**
+ * Store the reader's working notes.
+ *
+ * A proposal for a masked field keeps its provenance and loses its value. The
+ * number itself goes to `documents.identifier`, where seeing it costs a
+ * password check and a line in the log (D14); leaving a copy in a column the
+ * Record screen renders would hand it straight back past both.
+ */
+export async function saveExtraction(
+  db: VaultTransaction,
+  documentId: string,
+  extraction: { proposals: { field: string; value: string }[] } & Record<string, unknown>,
+): Promise<void> {
+  const safe = {
+    ...extraction,
+    proposals: extraction.proposals.map((proposal) =>
+      MASKED_FIELDS.includes(proposal.field as EditableField)
+        ? { ...proposal, value: undefined, masked: true }
+        : proposal,
+    ),
+  };
+
+  await db.execute(sql`
+    update documents set extraction = ${JSON.stringify(safe)}::jsonb
+    where id = ${documentId}
+  `);
 }

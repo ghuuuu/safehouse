@@ -8,6 +8,7 @@ import {
   EDITABLE_FIELDS,
   findRecordView,
   revealIdentifier,
+  saveExtraction,
   saveFields,
   saveProposals,
 } from "../record.server";
@@ -84,6 +85,10 @@ export async function action({ request, params }: Route.ActionArgs) {
       const result = await readDocument(bytes, row.mime);
       const saved = await saveProposals(db, params.documentId, result.proposals);
 
+      if (result.terms) {
+        await saveExtraction(db, params.documentId, result.terms);
+      }
+
       const kept = saved.keptBecauseConfirmed.length
         ? " Left alone what you had already confirmed."
         : "";
@@ -121,6 +126,15 @@ const DATES = new Set(["document_date", "issued_on", "expires_on"]);
 export default function RecordScreen({ loaderData, actionData }: Route.ComponentProps) {
   const { view } = loaderData;
   const reveal = useFetcher<{ revealed: string | null }>();
+
+  // The reader's notes, which are notes and not facts about the world: the
+  // vault quotes them and never asserts them (D28).
+  const extraction = view.extraction as {
+    facts?: { label: string; value: string; page: number }[];
+    signposts?: { heading: string; page: number }[];
+  };
+  const facts = extraction.facts ?? [];
+  const signposts = extraction.signposts ?? [];
 
   const values: Record<string, string | null> = {
     document_date: view.document.documentDate,
@@ -243,6 +257,56 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           </div>
         </Form>
       </section>
+
+      {facts.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+            What your insurer wrote
+          </h2>
+          <p className="text-xs text-gray-500">
+            Quoted exactly, with their own wording and the page. Nothing here is
+            added up or interpreted — where a policy states several figures, all
+            of them are shown.
+          </p>
+          <ul className="rounded-lg border border-gray-200 text-sm">
+            {facts.map((fact, index) => (
+              <li
+                key={`${fact.label}-${index}`}
+                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-3 last:border-b-0"
+              >
+                <span>
+                  <span className="text-gray-500">{fact.label}</span>{" "}
+                  <strong className="font-medium">{fact.value}</strong>
+                </span>
+                <span className="text-xs text-gray-500">page {fact.page}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {signposts.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+            Where the conditions are
+          </h2>
+          <p className="text-xs text-gray-500">
+            Headings found in the document. Safehouse does not read these for
+            you — it tells you which page to turn to.
+          </p>
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {signposts.map((signpost, index) => (
+              <li
+                key={`${signpost.heading}-${index}`}
+                className="rounded-lg border border-gray-200 px-3 py-2"
+              >
+                {signpost.heading}
+                <span className="ml-2 text-xs text-gray-500">p. {signpost.page}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {view.versions.length > 1 ? (
         <section className="flex flex-col gap-2">

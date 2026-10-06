@@ -892,9 +892,82 @@ Tesseract looks broken; a hallucinated one looks correct, and this is a vault.
   is a consequence of this choice; no free local option does either.
 ---
 
+## D28 — The vault quotes and signposts; it does not say what a policy means
+
+**Decision.** Safehouse reads terms-bearing documents three ways and refuses a
+fourth. It **classifies** them, because consumer insurance is standardised by
+law. It **quotes** the figures off the schedule verbatim, with the insurer's own
+label and the page. It **signposts** the conditions by heading, so a household
+turns to page 15 instead of reading forty pages.
+
+It will not answer "am I covered for this". Not in a smaller form, not behind
+a disclaimer, not with citations attached. No summary of terms, no
+interpretation of an exclusion, no statement that a thing is or is not covered.
+
+Two structural rules make the first three safe. Figures are matched only inside
+a page range classified as a schedule or a certificate — never the policy
+wording, and never the product information document, which is a brochure whose
+only numbers are product ceilings and which says so in its own words. And every
+match is kept: a label appearing five times produces five quotations with their
+pages rather than one chosen answer.
+
+**Why.** The booklet deliberately does not contain the numbers — insurers write
+"the maximum we will pay is the buildings sum insured as stated on your
+schedule". The conditions and the figures are two different documents bound
+into one file, and almost every real failure here comes from reading one as the
+other. Classification is cheap and close to certain because the layouts are
+legally fixed: a motor certificate carries six numbered headings in order, and
+an information document nine headings in wording fixed by regulation since
+2018.
+
+The refusal is not about hardware, and a better model next year does not change
+it. The evidence, briefly: the published insurance-adjudication benchmark finds
+models reaching correct verdicts with incorrect justifications, biased toward
+"covered" — right answer, wrong reason, which survives spot-checking and
+surfaces at claim time. Household wordings are built from exclusion,
+carve-back, re-exclusion chains, which is the structure that collapses first.
+Abstention does not improve with model scale. A policy is made entirely of hard
+negatives, because "flood" appears in the cover section, the exclusions, the
+definitions and an endorsement, lexically near-identical and semantically
+opposite. And the best-funded attempts measured — two commercial legal research
+products built by the companies that own the corpora — hallucinated on 17% and
+33% of queries against marketing that claimed none. That last figure also
+closes the cloud as an escape: the cloud is where it was measured.
+
+**The argument that holds regardless of any of that** is this project's own rule.
+D26 says a machine proposes and a person confirms. Confirming "expires
+2027-03-14" costs one glance. Confirming "flood is excluded unless a pipe
+burst" requires reading the forty pages the feature existed to save. So either
+the summary was unnecessary, or an unconfirmed machine claim is deciding
+something about a household's home — which D26 forbids. A located clause is
+confirmable; a summary is not. The refusal falls out of the rules rather than
+being imposed on top of them.
+
+**Consequences.**
+- No figure is ever read from an information document. Enforced by a page
+  allowlist rather than a convention, and the test fails if the allowlist is
+  removed.
+- Money is quoted and never computed. One real pack carried five premium
+  figures whose headline disagreed with the invoice total by a fifty-pound fee.
+  Showing an insurer's own labels is a quotation; showing one number is an
+  assertion.
+- A renewal date is not an expiry date. They usually coincide and are not the
+  same fact, so the renewal date is quoted and never proposed as cover ending.
+- Policy numbers are never validated or reformatted. There is no checksum and
+  no length rule; anchoring on the label is the only reliable thing.
+- A policy number is never quoted as a fact, because the identifier is masked
+  and a copy in a quotation would hand it back past the password check.
+- Roughly one signpost in five is junk. A wrong signpost is a wrong link, which
+  costs a moment; a wrong figure would cost more, which is why the two are held
+  to different standards.
+- If this proves too thin after living with it, the next step is an extractive
+  reader returning a highlighted span or the literal words "not stated" —
+  never a chat model, never prose, never a paragraph stating coverage.
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D27 record what building
+None. D9–D21 closed the list that stood here; D22 to D28 record what building
 the schema, the sign-in path, the permission layer and the question of reading a
 scan forced into the open.
 

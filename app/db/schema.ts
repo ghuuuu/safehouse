@@ -295,6 +295,8 @@ export const documents = pgTable(
      * least of all — is allowed to act on it.
      */
     confirmedFields: jsonb("confirmed_fields").notNull().default([]),
+    /** The reader's working notes (D26, D28). Never authoritative. */
+    extraction: jsonb("extraction").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
