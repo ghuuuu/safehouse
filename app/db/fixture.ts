@@ -395,6 +395,31 @@ export async function insertFixture(sql: Sql): Promise<void> {
       (${DOCUMENT.bramTenancyDeposit}, ${RECORD.bramTenancyDeposit}, 1, true, 'FIXTURE-REC-0001', null, '2021-05-17', null, null, null, null, '{}')
   `;
 
+  // Which expiry dates a human has actually agreed with (D26). Nothing acts on
+  // an unconfirmed one, so a fixture that confirmed nothing would make the
+  // expiry list empty and every assertion about it vacuous.
+  //
+  // Two absences are the point. The office lease (45 days out, well inside any
+  // sensible window) is deliberately left unconfirmed: it is the negative in
+  // expiry.test.ts. The superseded trading permit IS confirmed and long expired,
+  // so `is_current` is the only thing keeping it quiet.
+  await sql`
+    update documents set confirmed_fields = '["expires_on"]'::jsonb
+    where id in (
+      ${DOCUMENT.rosePassport},
+      ${DOCUMENT.danielPassport},
+      ${DOCUMENT.halePermit},
+      ${DOCUMENT.halePermitOld},
+      ${DOCUMENT.householdHomeInsurance},
+      ${DOCUMENT.householdApplianceWarranty},
+      ${DOCUMENT.mayaDrivingLicence},
+      ${DOCUMENT.ivyInsuranceCard},
+      ${DOCUMENT.haleInsurancePolicy},
+      ${DOCUMENT.danielLicence},
+      ${DOCUMENT.haleClientContract}
+    )
+  `;
+
   const blob = Buffer.from("fixture", "utf8");
 
   // One file behind every independent path to a document: the family circle, a

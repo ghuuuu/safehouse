@@ -23,16 +23,21 @@ that forces each position written next to it.
 ## Where things stand
 
 Built: the schema; the permission layer (row-level security, the `perm` schema,
-five `security definer` functions); sign-in, sign-out and first-run admin;
-the vault list; view-as; a dev seed; the committed permission matrix.
+five `security definer` functions); sign-in, sign-out and first-run admin; the
+vault list; view-as; a dev seed; the committed permission matrix. Then Act I —
+envelope encryption, the write policies, filing a document, downloading one
+behind a step-up check, the append-only activity log, and backups with a drill
+that restores one. Then the Record screen, the local reader (MRZ, PDF text
+layer, Tesseract), insurance classification and quoting, page straightening,
+and the expiry list.
 
-Not built: everything that writes. There is **no write policy for the app role
-on any vault table** — the only policies with `with check` belong to
-`safehouse_auth` on the identity tables (`0003_identity_boundary.sql`). There is
-no storage layer and no cryptography: `document_files` has `storage_key`,
-`wrapped_dek` and `nonce` columns and nothing fills them.
+Not built: people and invites, the family tree, the access console, search, the
+dashboard, bulk operations, settings, outbound notification delivery, and the
+operations docs. The notifications table has a read policy and no writer, on
+purpose (D30).
 
-In one line: **Safehouse can prove who may see what, and nothing can get in or
+In one line: **a document goes in encrypted, comes out to exactly whoever may
+see it, gets read for what it says, and the vault volunteers what is running
 out.**
 
 ## How to work through it
@@ -257,28 +262,36 @@ refusal rather than a missing feature.
 far more of a household's identifiers into the database and D14's obligations
 get heavier, not lighter (D26).
 
-### Step 9 — What expires, and saying so
+### Step 9 — What expires, and saying so — **done**
 
 The first thing the extracted data pays for. A vault that knows a passport
 expires in March and says nothing in January is a worse filing cabinet than a
 drawer.
 
-The machinery is mostly there: `documents.expires_on` has an index built for
-exactly this question, `settings.expiry_reminder_lead_days` already says sixty,
-and the `notifications` table exists with a policy over it. What is missing is
-the query, a write policy for notifications, and somewhere to show them.
+Landed as `app/expiry.server.ts` and a section on the home page. The list is
+recomputed against the database's own clock on every view — no job, no queue, no
+stored reminder. **The write policy for `notifications` was deliberately not
+built**, which is the one place this departed from the plan written here: there
+is nothing to store that is not already in the vault, and a copy of a derivable
+fact is a copy that can disagree. Rows arrive with Step 17, which needs
+something to mark as delivered. D30 records the reasoning and what it narrows in
+D13.
 
-Expiry is read by comparing the database clock inside the view (D19's pattern)
-rather than by a scheduled job — a job that fails to run is a reminder that
-never arrives, and nobody notices a thing that does not happen. In-app first,
-per D13; delivery elsewhere is Step 17.
+Only confirmed dates count (D26), and only current versions (D20). Already
+expired documents are in the list, first.
 
-Only confirmed dates count (D26).
+**Acceptance, as met.** Nine tests in `app/db/expiry.test.ts`. 58 days in and 67
+days out at the default window; 89 in and 103 out once the household's setting
+says ninety-five, which is what proves the setting is read rather than a
+constant. The office lease at 45 days is inside the window and unconfirmed, and
+does not appear. A superseded permit is confirmed and long expired, and does not
+appear. The accountant is not told about the family's passports, and every id in
+anybody's list is a document that viewer can read. Both guards were verified by
+removing them and watching the tests fail.
 
-**Acceptance.** A document expiring inside the lead window appears and one just
-outside it does not — the fixture has that pair on purpose, at 89 and 103 days.
-A document whose expiry nobody confirmed does not appear at all. No reminder
-contains a document title, a file name or a field value (D13, CLAUDE.md).
+The in-app list names record titles, because it is the vault behind the same
+policies as every other list. D13's rule governs what leaves the app, which is
+Step 17's problem.
 
 **Size.** M. **Depends on.** Step 8.
 
@@ -362,9 +375,11 @@ setting able to be raised only up to it (D19).
 
 ### Step 17 — Notifications beyond the app
 
-In-app landed in Step 9. This is the pluggable delivery half (D13). No
-notification on any channel may contain document contents, file names or field
-values: an expiry reminder says a document is expiring and says to open
+In-app expiry landed in Step 9, derived rather than stored (D30). This step is
+the pluggable delivery half (D13), and it is where the `notifications` table
+finally gets a writer — because a thing that has been sent needs a record saying
+so. No notification on any channel may contain document contents, file names or
+field values: an expiry reminder says a document is expiring and says to open
 Safehouse. Delivery failure is itself visible in the app, because a silently
 broken relay must not silently disable alerts. Break-glass activation alerts
 the admin (D19).

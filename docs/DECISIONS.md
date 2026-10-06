@@ -1020,11 +1020,56 @@ we keep.
   arrive as scanned PDFs it is probably worth more than this was.
 ---
 
+## D30 — An expiry reminder is a question, not a row
+
+**Decision.** "What is running out" is computed by asking the database, every
+time somebody looks, against the database's own clock. No scheduled job, no
+queue, no stored reminder, and no state that can go stale.
+
+**Why.** A job that fails to run is a reminder that never arrives, and nobody
+notices the absence of a thing. That is the worst available failure mode for a
+vault of expiring papers: it looks healthy right up to the morning the passport
+turns out to have lapsed. A query cannot fail quietly — if it is broken, the
+page is broken, and someone sees it. It also costs no second service, which D3
+asks for, and it was about forty lines.
+
+**This narrows D13**, which says every notification is written to the database.
+That stands for notifications that are *events* — an upload happened, somebody
+broke the glass, an access list changed. Those are not derivable and need a row
+with a read state and a delivery record. An expiry is derivable from data already
+in the vault, so storing it would mean maintaining a copy of a fact the vault
+already holds, and then explaining why the copy disagrees. Rows arrive with
+outbound delivery, which needs something to mark as sent.
+
+**Consequences.**
+- There is no notifications write policy yet, deliberately. It arrives with the
+  first notification that cannot be derived, and not before.
+- Two refusals decide the list. Only a **confirmed** date counts (D26) — the
+  reader proposes dates now, and nagging about a machine's guess teaches a
+  household to ignore the warnings, including the true ones. Only the
+  **current** version counts (D20) — a superseded passport expired years ago by
+  design.
+- Already-expired documents are in the list, first. A vault that only warns
+  about the future goes quiet exactly when it matters.
+- Nothing is dismissible, because there is nothing to dismiss. The way to stop
+  a reminder is to file the renewal, which is the behaviour worth encouraging.
+  If a household wants to silence one, that needs a stored decision, and that
+  is a row — the first honest reason to build one.
+- The in-app list shows record titles, because it *is* the vault, behind the
+  same policies as every other list. D13's rule that a notification names no
+  title governs what leaves the app: an email or a push that says "a document
+  expires in nine days, open Safehouse" and nothing more.
+- The lead window is read from `settings` inside the same transaction, so a
+  request that never said who is asking finds no setting and gets an empty list
+  — the same empty answer every other surface gives.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D29 record what building
-the schema, the sign-in path, the permission layer and the question of reading a
-scan forced into the open.
+None. D9–D21 closed the list that stood here; D22 to D30 record what building
+the schema, the sign-in path, the permission layer, reading a scan and saying
+what expires forced into the open.
 
 Worth revisiting deliberately rather than by drift:
 

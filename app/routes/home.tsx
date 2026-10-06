@@ -1,7 +1,8 @@
-import { Form } from "react-router";
+import { Form, Link } from "react-router";
 import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/home";
+import { findExpiring } from "../expiry.server";
 import { withVault } from "../session.server";
 
 export function meta() {
@@ -16,6 +17,10 @@ export function meta() {
  * policies in 0001_permission_layer.sql decide what is counted. There is no
  * filtering here to get wrong, and a signed-out request never reaches the
  * query — `withVault` throws a redirect first.
+ *
+ * The expiry list is the same story at one more remove: `findExpiring` reads
+ * `documents` through the ordinary policies, so a document this viewer cannot
+ * open cannot appear in it (D30).
  */
 export async function loader({ request }: Route.LoaderArgs) {
   return withVault(request, async (db, user) => {
@@ -30,12 +35,22 @@ export async function loader({ request }: Route.LoaderArgs) {
         (select count(*) from documents)::int as documents
     `);
 
-    return { user, counts };
+    return { user, counts, expiring: await findExpiring(db) };
   });
 }
 
+/** "in 12 days", "today", "40 days ago" — the only thing worth reading twice. */
+function when(daysLeft: number): string {
+  if (daysLeft === 0) return "expires today";
+  if (daysLeft < 0) {
+    const ago = Math.abs(daysLeft);
+    return `expired ${ago} ${ago === 1 ? "day" : "days"} ago`;
+  }
+  return `expires in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`;
+}
+
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { user, counts } = loaderData;
+  const { user, counts, expiring } = loaderData;
 
   const rows = [
     ["People and businesses", counts.owners],
@@ -51,6 +66,39 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           Signed in as {user.name} ({user.role}).
         </p>
       </div>
+
+      {expiring.soon.length > 0 && (
+        <section>
+          <h2 className="text-sm font-medium">Running out</h2>
+          <ul className="mt-2 rounded-lg border border-gray-200 text-sm">
+            {expiring.soon.map((item) => (
+              <li
+                key={item.documentId}
+                className="flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
+              >
+                <Link
+                  className="underline decoration-gray-300"
+                  to={`/record/${item.documentId}`}
+                >
+                  {item.title}
+                  {item.ownerName ? ` — ${item.ownerName}` : ""}
+                </Link>
+                <span
+                  className={
+                    item.daysLeft < 0 ? "text-red-700" : "text-gray-500"
+                  }
+                >
+                  {when(item.daysLeft)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-gray-500">
+            Dates somebody has confirmed, within the next {expiring.leadDays}{" "}
+            days. A date a reader proposed and nobody checked is not counted.
+          </p>
+        </section>
+      )}
 
       <dl className="rounded-lg border border-gray-200 text-sm">
         {rows.map(([label, value]) => (
