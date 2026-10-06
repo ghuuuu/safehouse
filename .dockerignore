@@ -1,4 +1,55 @@
+# What must never enter the build context.
+#
+# Both build stages run `COPY . /app`, so anything reachable from here lands in
+# an image layer — and layers survive the final stage not copying them forward.
+# An image exported, pushed, or handed to anybody would otherwise carry the
+# key-encryption key sitting next to the sealed documents it opens, which is
+# precisely the arrangement D12 exists to prevent.
+
+# The key. Losing it loses the vault; leaking it loses the vault to somebody
+# else (D12).
+keys
+*.key
+*.pem
+*.p12
+*.pfx
+*.age
+*.gpg
+
+# Sealed documents. The container reads these from a mounted volume at runtime,
+# never from the image.
+storage
+uploads
+documents
+vault-data
+data
+
+# Database passwords, the session signing secret, the lot.
+.env
+.env.*
+!.env.example
+
+# Backups, dumps and anything else that is a copy of the vault.
+backups
+*.dump
+*.sql.gz
+pgdata
+postgres-data
+
+# Build output and dependencies: rebuilt inside the image.
 .react-router
 build
 node_modules
+coverage
+
+# Not needed to build or run, and keeps the context small.
+.git
+.github
+.claude
+.serena
+.impeccable
+docs
+tasks
+graphify-out
 README.md
+*.log
