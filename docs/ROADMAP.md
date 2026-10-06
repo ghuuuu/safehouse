@@ -232,8 +232,9 @@ failed check digit produces "could not read this cleanly", not a number. An
 optical misread that silently becomes a renewal date is worse than no
 extraction at all.
 
-**New dependency.** A local engine, named and agreed before it is added
-(CLAUDE.md), preferring a system package in the image over a bundled one.
+**The engine is settled (D27):** Tesseract 5 as a system package, with the PDF
+text layer read before it ever runs — most of what a household files is
+generated digitally and already carries its text, exactly.
 
 **Acceptance.** A passport scan fills six fields with check digits verified; a
 deliberately corrupted strip fills none and says why; no code path in the
@@ -384,7 +385,7 @@ lost (nothing — say so, loudly, before it happens rather than after).
 | Decision | Gates | Cost of leaving it |
 |---|---|---|
 | Open question 4 — does a per-record grant carry its owner's name | Step 7 | A third party cannot tell two identically-titled documents apart |
-| Which local reading engine, and adding it as a dependency | Step 8 | Nothing proceeds; D26 settled where reading happens, not what does it |
+| ~~Which local reading engine~~ | settled | D27: Tesseract as a system package, with the PDF text layer read before it |
 | Open question 5 — is the admin's reach the right denominator | Step 12 | "N of M" quietly changes meaning the day an admin cannot see everything |
 | D14's alternative — encrypted values plus keyed fingerprints | Step 13 | Choosing it after search ships is a migration rather than a design |
 | Open question 6 — fixture size | settled | Thirty-six documents, and Rose reaches fourteen of them |

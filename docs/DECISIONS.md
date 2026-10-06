@@ -824,9 +824,77 @@ telling you the wrong thing.
 
 ---
 
+## D27 — Tesseract, and the text layer before it
+
+**Decision.** The local reader D26 calls for is Tesseract 5, installed as a
+system package in the image and driven as a subprocess. It is used at two call
+sites: a cropped machine-readable strip read with an OCR-B model, and a whole
+page read with the English model.
+
+Before either of them runs, the PDF text layer is read. Most of what a
+household files — utility bills, insurance schedules, tax returns, policies —
+is generated digitally and already contains its text, exactly, with positions.
+Reading that is instant, free and perfect, and OCR is the fallback for what was
+genuinely scanned or photographed. Treating every document as an image is the
+most expensive mistake available in this step.
+
+Four packages come with it: `unpdf` (MIT) for the text layer, `mrz` (MIT, no
+dependencies) for check-digit arithmetic that must not be hand-rolled, `sharp`
+(Apache-2.0) for decoding and cropping, and `@hyzyla/pdfium` (BSD-3) later for
+rasterising the scanned PDFs that have no text layer. No wrapper package around
+the binary: every one is abandoned, and `execFile` with a timeout is shorter
+than their documentation.
+
+**Why.** Licence first, because it is what rules most of the field out. Tesseract
+is Apache-2.0 for both the engine and the language models, uncontested for
+twenty years, and survives this being sold to another household unchanged.
+Against that: Surya, Marker and Chandra publish Apache-2.0 *code* with model
+weights under a modified OpenRAIL licence that stops at a revenue or
+funding-raised threshold — an automated licence check reports Apache-2.0 and is
+wrong. MinerU carries revenue conditions. The actively-maintained purpose-built
+MRZ readers are AGPL-3.0, which for a self-hosted application reaches the whole
+server. The most-linked OCR-B model on the internet has no licence file at all,
+which is not permission.
+
+Then operations. Tesseract is one `apk` line, needs no GPU, no Python, no second
+process and no network, and holds no memory at rest — it is a program that
+starts, reads and exits. PaddleOCR is genuinely better on photographed and
+skewed documents, and the Node runtime it needs has no musl build, so adopting
+it means leaving Alpine. That cost is not worth paying for an engine whose
+output a person confirms anyway.
+
+A local vision model was rejected for a reason unrelated to its cost: it invents
+characters, and does so more on digits than on words. A misread number from
+Tesseract looks broken; a hallucinated one looks correct, and this is a vault.
+
+**Consequences.**
+- Tesseract is a frozen engine rather than an improving one, and that is
+  accepted. Recent releases are build cleanups by essentially one maintainer.
+  It will not get better and it will not break.
+- Accuracy is mediocre on anything tilted — field recovery falls off a cliff at
+  a few degrees of rotation. The answer is the upload screen saying so while
+  the person is still holding the document, not a preprocessing pipeline.
+- The engine stays behind one module, so replacing it is one file. If Alpine is
+  ever abandoned for an unrelated reason, PaddleOCR in-process becomes a
+  straight upgrade and should be revisited that day.
+- The MRZ model is vendored into the repository rather than fetched at build.
+  Its source repository was archived in 2021; a licence cannot be withdrawn
+  from a copy already held, and a build that depends on an archived repository
+  staying up is a build that will fail one day.
+- Check digits cover the document number and the dates and nothing else. The
+  name, nationality and issuing state are excluded from them by the standard,
+  so those are never filled in silently — the one field that decides whose
+  document this is, is the one field with no way to verify itself.
+- `<` and `0` are both worth zero in that arithmetic, so a trailing filler
+  misread as a zero validates. A document number ending in zero is flagged for
+  confirmation even when its check digit passed.
+- Handwriting is out of reach, and tables come back as collapsed lines. Neither
+  is a consequence of this choice; no free local option does either.
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D26 record what building
+None. D9–D21 closed the list that stood here; D22 to D27 record what building
 the schema, the sign-in path, the permission layer and the question of reading a
 scan forced into the open.
 

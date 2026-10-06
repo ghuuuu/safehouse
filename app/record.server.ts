@@ -228,3 +228,54 @@ export async function revealIdentifier(
 
   return [...rows][0]?.identifier ?? null;
 }
+
+/**
+ * Write what the reader proposed, without claiming anybody believes it.
+ *
+ * Two rules, and the first one is the whole point of `confirmed_fields`
+ * existing. A proposal never overwrites a value a person has confirmed — the
+ * machine does not get to correct the human. And it never marks anything
+ * confirmed, so an expiry date the reader found cannot reach a reminder until
+ * somebody has looked at it (D26).
+ *
+ * It does overwrite an earlier unconfirmed proposal, because re-reading a
+ * document with a better scan should be able to improve on a bad guess.
+ */
+export async function saveProposals(
+  db: VaultTransaction,
+  documentId: string,
+  proposals: { field: string; value: string }[],
+): Promise<{ written: string[]; keptBecauseConfirmed: string[] }> {
+  const usable = proposals.filter((p) =>
+    (EDITABLE_FIELDS as readonly string[]).includes(p.field),
+  );
+
+  if (usable.length === 0) return { written: [], keptBecauseConfirmed: [] };
+
+  const rows = await db.execute<{ confirmedFields: string[] }>(
+    sql`select confirmed_fields as "confirmedFields" from documents where id = ${documentId}`,
+  );
+
+  const confirmed = new Set([...rows][0]?.confirmedFields ?? []);
+  const toWrite = usable.filter((p) => !confirmed.has(p.field));
+
+  if (toWrite.length > 0) {
+    const assignments = toWrite.map((p) => {
+      const value = DATE_FIELDS.has(p.field as EditableField)
+        ? sql`${p.value}::date`
+        : sql`${p.value}`;
+      return sql`${sql.raw(p.field)} = ${value}`;
+    });
+
+    await db.execute(sql`
+      update documents set ${sql.join(assignments, sql`, `)} where id = ${documentId}
+    `);
+  }
+
+  return {
+    written: toWrite.map((p) => p.field),
+    keptBecauseConfirmed: usable
+      .filter((p) => confirmed.has(p.field))
+      .map((p) => p.field),
+  };
+}

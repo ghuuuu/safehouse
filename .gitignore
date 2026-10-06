@@ -100,3 +100,8 @@ graphify-out/
 
 # React Router build output
 /.react-router/
+
+# The models live here, but the passport one is vendored by hand and is
+# large enough to be worth keeping out of git until it is actually needed.
+# See tessdata/README.md.
+tessdata/*.traineddata

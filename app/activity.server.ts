@@ -29,6 +29,7 @@ export const ACTIONS = {
   documentFiled: "document.filed",
   vaultViewedAs: "vault.viewed-as",
   fieldRevealed: "field.revealed",
+  documentRead: "document.read",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];

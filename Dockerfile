@@ -20,6 +20,20 @@ COPY --from=production-dependencies-env /app/node_modules /app/node_modules
 COPY --from=build-env /app/build /app/build
 WORKDIR /app
 
+# The reader (D27). Apache-2.0 engine and models, no GPU, no Python, no second
+# process, and nothing resident: it is a program that starts, reads and exits.
+# `osd` is the orientation detector — what notices a page is upside down.
+RUN apk add --no-cache \
+      tesseract-ocr \
+      tesseract-ocr-data-eng \
+      tesseract-ocr-data-osd
+
+# The passport model, vendored rather than fetched: its source repository was
+# archived in 2021, and a build that depends on an archived repository staying
+# up is a build that fails one day (D27). Absent, the MRZ path says so and
+# refuses rather than guessing with the English model.
+COPY tessdata/ /usr/share/safehouse-tessdata/
+
 # The document store, created in the image so the named volume mounted over it
 # inherits this ownership on first use. A vault that writes its documents as
 # root is one container escape away from being a worse problem than it needs to

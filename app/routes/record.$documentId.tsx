@@ -1,7 +1,16 @@
 import { Form, Link, useFetcher } from "react-router";
 
 import type { Route } from "./+types/record.$documentId";
-import { EDITABLE_FIELDS, findRecordView, revealIdentifier, saveFields } from "../record.server";
+import { ACTIONS, record as logEvent } from "../activity.server";
+import { findFile, readFileContents } from "../download.server";
+import { readDocument } from "../ocr.server";
+import {
+  EDITABLE_FIELDS,
+  findRecordView,
+  revealIdentifier,
+  saveFields,
+  saveProposals,
+} from "../record.server";
 import { withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
 
@@ -48,6 +57,41 @@ export async function action({ request, params }: Route.ActionArgs) {
     return withVault(request, async (db, user) => {
       await requireStepUp(request, user);
       return { revealed: await revealIdentifier(db, params.documentId) };
+    });
+  }
+
+  if (intent === "read") {
+    return withVault(request, async (db) => {
+      const view = await findRecordView(db, params.documentId);
+      const first = view?.pages[0];
+
+      if (!first) {
+        return { read: "There is nothing scanned behind this one to read." };
+      }
+
+      const row = await findFile(db, first.id);
+      if (!row) return { read: "That page could not be opened." };
+
+      // Logged before anything is decrypted, in the same transaction, like
+      // every other time this vault opens a document (D14).
+      await logEvent(db, {
+        action: ACTIONS.documentRead,
+        subjectType: "document",
+        subjectId: params.documentId,
+      });
+
+      const bytes = await readFileContents(row);
+      const result = await readDocument(bytes, row.mime);
+      const saved = await saveProposals(db, params.documentId, result.proposals);
+
+      const kept = saved.keptBecauseConfirmed.length
+        ? " Left alone what you had already confirmed."
+        : "";
+      const filled = saved.written.length
+        ? "Filled in " + saved.written.length + " field(s), unconfirmed."
+        : "Nothing new to fill in.";
+
+      return { read: result.how + " " + filled + kept };
     });
   }
 
@@ -177,13 +221,26 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           {actionData && "saved" in actionData ? (
             <p className="text-sm text-gray-500">Saved.</p>
           ) : null}
+          {actionData && "read" in actionData ? (
+            <p className="text-sm text-gray-500">{actionData.read}</p>
+          ) : null}
 
-          <button
-            type="submit"
-            className="self-start rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
-          >
-            Save
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
+            >
+              Save
+            </button>
+            <button
+              type="submit"
+              name="intent"
+              value="read"
+              className="text-sm text-gray-500 underline"
+            >
+              Read it from the scan
+            </button>
+          </div>
         </Form>
       </section>
 
