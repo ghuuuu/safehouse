@@ -4,6 +4,7 @@ import {
   findFile,
   readFileContents,
 } from "../download.server";
+import { ACTIONS, record } from "../activity.server";
 import { withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
 
@@ -39,6 +40,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     if (!row) {
       throw new Response("No such file.", { status: 404 });
     }
+
+    // Inside the same transaction as the read, and before the bytes exist as
+    // a response. If this write fails the download fails with it, which is the
+    // only way "every download is recorded" is true rather than aspirational.
+    await record(db, {
+      action: ACTIONS.documentDownloaded,
+      subjectType: "document_file",
+      subjectId: row.id,
+    });
 
     const bytes = await readFileContents(row);
 

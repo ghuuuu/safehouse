@@ -2,6 +2,7 @@ import { Form, Link } from "react-router";
 import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/vault";
+import { ACTIONS, record } from "../activity.server";
 import { VAULT_LIST_SQL } from "../vault.server";
 import {
   resolveViewContext,
@@ -58,6 +59,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   // The denominator in "14 of 36", counted as the actor rather than as a raw
   // total — an admin who could not see everything must not be told how much
   // everything is.
+  if (view.isViewingAs) {
+    // Recorded in the actor's own transaction, because the viewed one is
+    // read-only (and because the line is about what the admin did, not about
+    // what the person whose eyes they borrowed did).
+    await withActorVault(view, (db) =>
+      record(db, {
+        action: ACTIONS.vaultViewedAs,
+        subjectType: "user",
+        subjectId: view.viewedUserId,
+        actingAsUserId: view.viewedUserId,
+      }),
+    );
+  }
+
   const reachable = view.isViewingAs
     ? await withActorVault(view, async (db) => {
         const [row] = await db.execute<{ n: number }>(

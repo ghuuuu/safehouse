@@ -31,6 +31,7 @@ import {
   MAX_UPLOAD_BYTES,
   type Category,
 } from "./documents";
+import { ACTIONS, record } from "./activity.server";
 import { sealFile } from "./crypto.server";
 import type { VaultTransaction } from "./db.server";
 import { deleteBlob, putBlob, storageKeyFor } from "./storage.server";
@@ -148,6 +149,12 @@ export async function fileDocument(
     await deleteBlob(storageKey).catch(() => {});
     throw error;
   }
+
+  await record(db, {
+    action: ACTIONS.documentFiled,
+    subjectType: "document",
+    subjectId: documentId,
+  });
 
   return { recordId, documentId, fileId };
 }

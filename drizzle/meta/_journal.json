@@ -43,6 +43,13 @@
       "when": 1787389952497,
       "tag": "0005_write_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787390012497,
+      "tag": "0006_activity_log",
+      "breakpoints": true
     }
   ]
 }
