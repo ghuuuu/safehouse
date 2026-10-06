@@ -8,6 +8,8 @@ export default [
   route("vault", "routes/vault.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
+  // One record: its fields, its pages, its versions.
+  route("record/:documentId", "routes/record.$documentId.tsx"),
   // The bytes themselves, behind a step-up password check (D4).
   route("file/:fileId", "routes/file.$fileId.tsx"),
   route("verify", "routes/verify.tsx"),

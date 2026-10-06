@@ -195,7 +195,9 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                 className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
               >
                 <span>
-                  {document.title}
+                  <Link className="underline" to={`/record/${document.id}`}>
+                    {document.title}
+                  </Link>
                   <span className="text-gray-500">
                     {" — "}
                     {document.ownerName ?? (

@@ -287,6 +287,14 @@ export const documents = pgTable(
     placeOfIssue: text("place_of_issue"),
     originalLocationNote: text("original_location_note"),
     details: jsonb("details").notNull().default({}),
+    /**
+     * Which fields a person has looked at and agreed with (D26).
+     *
+     * Extraction proposes values; a human confirms them. Anything not named
+     * here was never confirmed by anybody, and nothing — an expiry reminder
+     * least of all — is allowed to act on it.
+     */
+    confirmedFields: jsonb("confirmed_fields").notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

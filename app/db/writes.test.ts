@@ -285,3 +285,74 @@ describe("what stays out of reach entirely", () => {
     expect(error?.code).toBe("42501");
   });
 });
+
+describe("editing a document's fields", () => {
+  const edit = (sql: Sql, documentId: string) => sql`
+    update documents
+    set expires_on = '2030-01-01', confirmed_fields = '["expires_on"]'::jsonb
+    where id = ${documentId}
+  `;
+
+  test("an individual may correct a document they can see", async () => {
+    const error = await asUserRollingBack(USER.daniel, (sql) =>
+      refusal(() => edit(sql, DOCUMENT.danielLicence)),
+    );
+
+    expect(error).toBeNull();
+  });
+
+  test("an individual may not edit a document they cannot see", async () => {
+    const error = await asUserRollingBack(USER.maya, (sql) =>
+      refusal(() => edit(sql, DOCUMENT.ivyCounselling)),
+    );
+
+    // No row matches the `using` clause, so nothing is updated and nothing is
+    // refused — the row simply is not there. A silent no-op is the correct
+    // answer: telling her the update was forbidden would confirm the document
+    // exists.
+    expect(error).toBeNull();
+
+    const after = await asUserRollingBack(
+      USER.priya,
+      (sql) => sql`select expires_on from documents where id = ${DOCUMENT.ivyCounselling}`,
+    );
+    expect(after[0].expires_on).toBeNull();
+  });
+
+  test("a third party may not edit a document they can see", async () => {
+    const error = await asUserRollingBack(USER.sam, (sql) =>
+      refusal(() => edit(sql, DOCUMENT.halePermit)),
+    );
+
+    expect(error).toBeNull();
+
+    const after = await asUserRollingBack(
+      USER.priya,
+      (sql) => sql`select expires_on from documents where id = ${DOCUMENT.halePermit}`,
+    );
+    expect(String(after[0].expires_on)).not.toContain("2030");
+  });
+
+  test("a document cannot be moved into a record the editor cannot see", async () => {
+    // The `with check` half. Without it, an edit could carry a document out of
+    // its owner's vault and into somebody else's.
+    const error = await asUserRollingBack(USER.maya, (sql) =>
+      refusal(
+        () => sql`
+          update documents set record_id = ${RECORD.ivyCounselling}
+          where id = ${DOCUMENT.mayaPassport}
+        `,
+      ),
+    );
+
+    expect(error?.code).toBe("42501");
+  });
+
+  test("nothing may be deleted, still", async () => {
+    const error = await asUserRollingBack(USER.priya, (sql) =>
+      refusal(() => sql`delete from documents where id = ${DOCUMENT.mayaPassport}`),
+    );
+
+    expect(error?.code).toBe("42501");
+  });
+});
