@@ -188,12 +188,79 @@ Pages, version stack, and the structured field panel (D20). Masking per
 not hidden in CSS (CLAUDE.md). Revealing one is a privileged action that writes
 to the Step 5 log before it answers.
 
+The fields themselves already exist — `issued_on`, `expires_on`,
+`issuer_country`, `identifier`, `place_of_issue`, and `details` for whatever a
+document type needs. Nothing has ever displayed or written them. This screen is
+where a person enters them by hand, and it has to work by hand before anything
+tries to fill them automatically.
+
+It also brings the confirmation state D26 requires: every field needs to carry
+whether a person has agreed with its value, so that "nobody has checked this"
+is representable before Step 8 starts proposing values.
+
 Gated by spec open question 4 — whether a per-record grant carries its owner's
 name — because this screen is where that reads as a blank or a sentence.
 
 **Size.** L. **Depends on.** Steps 4, 5.
 
-### Step 8 — People: roster, invites, add-member wizard
+### Step 8 — Reading what the scan says
+
+The point of the whole thing: a document that is more than a picture. Fill the
+fields from Step 7 out of the scan itself, on this machine (D26).
+
+Two readers, because the documents divide cleanly. Passports, ID cards and
+visas carry a machine-readable zone — the two lines of chevrons at the foot —
+which yields surname, given names, date of birth, nationality, document number
+and expiry, with check digits that say whether the read was clean. That is the
+household's highest-value case and it is close to perfect. Everything else gets
+a general local text read, which is adequate on a flat scan and poor on a
+crumpled bill, and the interface says so rather than pretending otherwise.
+
+**Nothing extracted is trusted.** Every value arrives as a proposal against the
+field it belongs to, and a person confirms or corrects it. An unconfirmed value
+is never used to decide anything — in particular it does not drive Step 9. A
+failed check digit produces "could not read this cleanly", not a number. An
+optical misread that silently becomes a renewal date is worse than no
+extraction at all.
+
+**New dependency.** A local engine, named and agreed before it is added
+(CLAUDE.md), preferring a system package in the image over a bundled one.
+
+**Acceptance.** A passport scan fills six fields with check digits verified; a
+deliberately corrupted strip fills none and says why; no code path in the
+extraction reaches the network, asserted rather than assumed; an unconfirmed
+value cannot reach a reminder.
+
+**Size.** L. **Depends on.** Steps 6, 7. Backups first, because extraction puts
+far more of a household's identifiers into the database and D14's obligations
+get heavier, not lighter (D26).
+
+### Step 9 — What expires, and saying so
+
+The first thing the extracted data pays for. A vault that knows a passport
+expires in March and says nothing in January is a worse filing cabinet than a
+drawer.
+
+The machinery is mostly there: `documents.expires_on` has an index built for
+exactly this question, `settings.expiry_reminder_lead_days` already says sixty,
+and the `notifications` table exists with a policy over it. What is missing is
+the query, a write policy for notifications, and somewhere to show them.
+
+Expiry is read by comparing the database clock inside the view (D19's pattern)
+rather than by a scheduled job — a job that fails to run is a reminder that
+never arrives, and nobody notices a thing that does not happen. In-app first,
+per D13; delivery elsewhere is Step 17.
+
+Only confirmed dates count (D26).
+
+**Acceptance.** A document expiring inside the lead window appears and one just
+outside it does not — the fixture has that pair on purpose, at 89 and 103 days.
+A document whose expiry nobody confirmed does not appear at all. No reminder
+contains a document title, a file name or a field value (D13, CLAUDE.md).
+
+**Size.** M. **Depends on.** Step 8.
+
+### Step 10 — People: roster, invites, add-member wizard
 
 Today the only account that can exist is the first admin through `/setup`. The
 sign-up endpoint is admin-gated but has no interface, so every deployment is a
@@ -205,15 +272,15 @@ root case as its own card (`PRODUCT.md` §Screens).
 
 **Size.** L. **Depends on.** Step 3 (it writes people and relationships).
 
-### Step 9 — The family tree
+### Step 11 — The family tree
 
 The app's primary navigation device, and real data rather than decoration: the
 circle the access model derives comes from these rows (D16). Pan, zoom, click a
 person, the vault below filters to them.
 
-**Size.** L. **Depends on.** Step 8.
+**Size.** L. **Depends on.** Step 10.
 
-### Step 10 — The access console
+### Step 12 — The access console
 
 Per-user panel as the only place grants are edited; the matrix as a read-only
 audit view that opens a panel when a cell is clicked (D21). Both views read the
@@ -229,10 +296,11 @@ in "N of M" — because the reach bar is that number drawn.
 
 **Size.** M. **Depends on.** Steps 3, 5.
 
-### Step 11 — Search
+### Step 13 — Search
 
 Across titles, categories, tags and record field values: finding a passport by
-its number is the stated bar (`PRODUCT.md` §Screens).
+its number is the stated bar (`PRODUCT.md` §Screens). Step 8 is what makes this
+worth building — searching fields nobody ever filled in finds nothing.
 
 **Decide before building.** D14 records a considered alternative — store the
 value encrypted alongside keyed fingerprints of the whole number and the last
@@ -240,56 +308,59 @@ four digits, which survives a stolen database but cannot do arbitrary substring
 search. Choosing it after search ships is a migration; choosing it before is a
 design.
 
-**Size.** M. **Depends on.** Step 7.
+**Size.** M. **Depends on.** Step 8.
 
-### Step 12 — Dashboard
+### Step 14 — Dashboard
 
-The tree, expiring-soon, category overview, quick-search chips. Expiry is read
-by comparing the database clock inside the view (D19's pattern) rather than by a
-job that can fail to run.
+The tree, expiring-soon, category overview, quick-search chips. The
+expiring-soon list is Step 9's query, given a home.
 
-**Size.** M. **Depends on.** Steps 9, 11.
+**Size.** M. **Depends on.** Steps 9, 11, 13.
 
-### Step 13 — Bulk intake
+### Step 15 — Bulk intake
 
 The triage surface for a large intake across people and categories at once. D20
 is explicit that a 200-file intake creates 200 records, and that this is the
-intended card model rather than an accident.
+intended card model rather than an accident. Step 8 runs over each of them,
+which is what makes a 200-file intake survivable.
 
-**Size.** L. **Depends on.** Step 3.
+**Size.** L. **Depends on.** Steps 3, 8.
 
 ---
 
-# Act III — It becomes somebody else's
+# Act III — The parts that are not about documents
 
-### Step 14 — Settings and security
+### Step 16 — Settings and security
 
 Account, Security, Notifications panels. Two-factor, auto-lock interval, active
 devices, and the emergency ceiling — which stays a constant in code, with the
 setting able to be raised only up to it (D19).
 
-**Size.** M. **Depends on.** Step 8.
+**Size.** M. **Depends on.** Step 10.
 
-### Step 15 — Notifications
+### Step 17 — Notifications beyond the app
 
-In-app first, with pluggable delivery (D13). No notification on any channel may
-contain document contents, file names or field values: an expiry reminder says a
-document is expiring and says to open Safehouse. Delivery failure is itself
-visible in the app, because a silently broken relay must not silently disable
-alerts. Break-glass activation alerts the admin (D19).
+In-app landed in Step 9. This is the pluggable delivery half (D13). No
+notification on any channel may contain document contents, file names or field
+values: an expiry reminder says a document is expiring and says to open
+Safehouse. Delivery failure is itself visible in the app, because a silently
+broken relay must not silently disable alerts. Break-glass activation alerts
+the admin (D19).
 
-**Size.** M. **Depends on.** Steps 5, 14.
+**Size.** M. **Depends on.** Steps 9, 16.
 
-### Step 16 — First run for an empty household
+### Step 18 — First run for an empty household — *deferred*
 
 Everything above assumes a seeded fixture. A household installing this for the
-first time has an empty database, no tree, and no documents. The first-run path
-has to carry them from an empty vault to a tree with people in it and a first
-document filed, without them reading any of these documents.
+first time has an empty database, no tree, and no documents.
 
-**Size.** L. **Depends on.** Steps 8, 9, 13.
+Deferred by the household that owns this one: it is being built for a vault
+that already exists and already has its administrator. Picked up if Safehouse
+is ever installed somewhere else.
 
-### Step 17 — Operations
+**Size.** L. **Depends on.** Steps 10, 11, 15.
+
+### Step 19 — Operations
 
 Upgrade path across schema changes on a live vault with real documents in it;
 the restore drill from Step 6 on a schedule; what to do when the key file is
@@ -304,12 +375,19 @@ lost (nothing — say so, loudly, before it happens rather than after).
 | Decision | Gates | Cost of leaving it |
 |---|---|---|
 | Open question 4 — does a per-record grant carry its owner's name | Step 7 | A third party cannot tell two identically-titled documents apart |
-| Open question 5 — is the admin's reach the right denominator | Step 10 | "N of M" quietly changes meaning the day an admin cannot see everything |
-| Open question 6 — fixture size | Step 1 | Every visual surface is designed against a dataset that cannot show its own failure modes |
-| D14's alternative — encrypted values plus keyed fingerprints | Step 11 | Choosing it after search ships is a migration rather than a design |
+| Which local reading engine, and adding it as a dependency | Step 8 | Nothing proceeds; D26 settled where reading happens, not what does it |
+| Open question 5 — is the admin's reach the right denominator | Step 12 | "N of M" quietly changes meaning the day an admin cannot see everything |
+| D14's alternative — encrypted values plus keyed fingerprints | Step 13 | Choosing it after search ships is a migration rather than a design |
+| Open question 6 — fixture size | settled | Thirty-six documents, and Rose reaches fourteen of them |
 
 ## Not in this roadmap
 
-Multi-tenancy (D2 settles it), mobile applications, OCR, sharing outside the
+Multi-tenancy (D2 settles it), mobile applications, sharing outside the
 household, and running a mail server (D13 settles it). None of them are
 prerequisites for anything above.
+
+Sending a document off this machine to be read more accurately is deliberately
+absent rather than forgotten: D26 allows it only as a per-document choice with
+its own spec, and no such code exists. Until it does, the vault cannot send a
+document anywhere, which is a stronger guarantee than a setting that defaults
+to off.

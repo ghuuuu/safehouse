@@ -757,10 +757,78 @@ than the hole this closes. The app role is refused temporary tables as well.
 
 ---
 
+## D26 — Documents are read on this machine; sending one out is a per-document choice
+
+**Decision.** Safehouse extracts structured fields from a scan — expiry date,
+document number, issuing country, dates of issue — on the machine it is
+installed on. Identity documents are read from their machine-readable zone, the
+two lines of `<` at the foot of a passport or ID card, which yields surname,
+given names, date of birth, nationality, document number and expiry with check
+digits that say whether the read was clean. Everything else is read by a general
+text engine running locally, which is adequate on a flat scan and poor on a
+crumpled utility bill, and that limit is stated rather than papered over.
+
+No document, page, or crop of one is sent anywhere else by default. If a better
+reading of a messy document is wanted, that is a decision taken for one document
+at a time: it names where the file is going, requires the step-up check a
+download requires, is written to the activity log, and is never the default or
+a setting that can be left on.
+
+**Extraction is a suggestion, never an authority.** Every extracted value lands
+as a proposal the household confirms or corrects. A value nobody has confirmed
+is marked unconfirmed and is not used to decide anything — an expiry reminder
+fires on a date a person agreed with, not on one an optical read guessed. A
+failed MRZ check digit produces "could not read this cleanly", not a value.
+
+**Why.** The whole product is one promise: this is your filing cabinet, in your
+house, and it does not phone anybody (D3, D13). Posting a passport scan to a
+third party to have it read undoes that promise more completely than any other
+feature could, because it moves the exact thing the vault exists to protect, in
+plaintext, to a machine the household does not control. A household that wanted
+that trade already has Google Drive.
+
+The case for sending documents out is real and it is about accuracy: a cloud
+reader or a vision model is dramatically better on bills, letters, insurance
+schedules and anything handwritten. It is weakest exactly where it would matter
+most. Passports, ID cards and visas — the documents a household most wants
+structured, searchable, and watched for expiry — carry a strip designed by
+standards bodies for machines to read, and parsing it locally is close to
+perfect and verifiable by its own check digits. The best case for the cloud is
+the long tail; the local reader covers the head.
+
+Rejected: cloud extraction as the default, because it contradicts D3 and D13 and
+would make the vault's central claim false. Rejected: a local vision model
+always running, because it is a second service with a GPU-shaped appetite on a
+box that is meant to be a Raspberry Pi in a cupboard, and D9 permits a second
+service only when something genuinely cannot work without it. Rejected:
+extraction that writes fields directly, because an optical misread that silently
+becomes a renewal date is worse than no extraction — it is a vault confidently
+telling you the wrong thing.
+
+**Consequences.**
+- The fields exist already (`documents.issued_on`, `expires_on`,
+  `issuer_country`, `identifier`, `place_of_issue`, plus `details` for whatever
+  a document type needs). Extraction fills them; it does not design them.
+- A confirmation state has to exist per field, so "nobody has checked this" is
+  representable. That is a schema change and it comes with the Record screen.
+- Whatever local engine is chosen is a new dependency and gets said out loud
+  first (CLAUDE.md). A system package in the image is preferred to a bundled
+  one.
+- More extracted values in the database makes D14's obligations heavier rather
+  than lighter: encrypted backups (D6), Postgres unreachable from outside the
+  container network, and every reveal of a masked value logged. Extraction
+  should not land before backups do.
+- The outbound path, if it is ever built, is a new security surface and gets its
+  own spec. Until then there is no code that can send a document anywhere, which
+  is a stronger guarantee than a setting that defaults to off.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D25 record what building
-the schema, the sign-in path and the permission layer forced into the open.
+None. D9–D21 closed the list that stood here; D22 to D26 record what building
+the schema, the sign-in path, the permission layer and the question of reading a
+scan forced into the open.
 
 Worth revisiting deliberately rather than by drift:
 
@@ -772,3 +840,6 @@ Worth revisiting deliberately rather than by drift:
   not a closed question.
 - **Per-owner category grants** (D18) — revisit if the per-record exception stops
   being exceptional.
+- **Reading a document somewhere else** (D26) — allowed only per document,
+  with its own spec, and not built. Revisit when the local reader has been
+  lived with long enough to know what it actually fails on.
