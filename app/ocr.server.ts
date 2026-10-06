@@ -187,18 +187,31 @@ export async function readMrz(
   const meta = await sharp(image).metadata();
   if (!meta.height || !meta.width) return null;
 
+  // `metadata()` reports the stored pixels and ignores any `autoOrient()` later
+  // in a pipeline, so a phone photo tagged sideways needs its dimensions
+  // swapped here. Without this the band below is cropped off the wrong edge of
+  // the displayed page — a vertical strip of margin — and no strip is ever
+  // found. It fails silently, with no error and no log, which is how it went
+  // unnoticed.
+  const turned = (meta.orientation ?? 1) >= 5;
+  const width = turned ? meta.height : meta.width;
+  const height = turned ? meta.width : meta.height;
+
   // The strip sits in the bottom quarter to third of the page. Both are tried
   // because passports and ID cards place it differently.
   const bands = [0.25, 0.33, 0.2];
 
   for (const band of bands) {
-    const top = Math.floor(meta.height * (1 - band));
+    const top = Math.floor(height * (1 - band));
     const crop = await sharp(image)
-      .extract({ left: 0, top, width: meta.width, height: meta.height - top })
+      // Before extract, always. The other order crops the wrong edge and
+      // reports success.
+      .autoOrient()
+      .extract({ left: 0, top, width, height: height - top })
       .greyscale()
       .normalise()
       // OCR-B needs height to read well; 3x is enough and keeps it quick.
-      .resize({ width: Math.min(meta.width * 3, 4000) })
+      .resize({ width: Math.min(width * 3, 4000) })
       .png()
       .toBuffer();
 
@@ -247,20 +260,83 @@ function flatten(fields: Record<string, unknown>): Record<string, string> {
 /* 3. The page                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * `--psm 1` rather than 3: automatic page segmentation *with* orientation and
+ * script detection, so Tesseract notices a page that is a quarter turn out and
+ * rotates it internally before recognising. The model that decides is already
+ * in the image.
+ *
+ * Deliberately not a separate `--psm 0` call that parses an orientation and a
+ * confidence out of stderr. That would buy a threshold to tune, two warning
+ * strings to interpret, and the ability to turn somebody's page the wrong way
+ * round. Leaving the decision inside Tesseract means a wrong call costs a poor
+ * text read, which is already the worst case on this path, and our pixels are
+ * never touched.
+ */
 export async function readPageText(image: Buffer): Promise<string> {
+  return (await tesseract(image, { psm: "1" })).trim();
+}
+
+/**
+ * One upright, straight, greyscale page — derived for reading, then discarded.
+ *
+ * The stored file is never touched. The vault keeps the bytes it was handed; a
+ * lossy re-encode of somebody's passport to improve a machine's guess is the
+ * wrong trade, and a cropping mistake on the only copy is unrecoverable. This
+ * lives for the length of one read.
+ *
+ * The order is load-bearing:
+ *
+ *   `autoOrient` first, because every crop below it is computed in displayed
+ *   coordinates and sharp does not do this on load — the pixels of a sideways
+ *   phone photo are the only truth once the tag is dropped.
+ *
+ *   Rotate second, by the measured angle, only when the measurement was
+ *   confident enough to act on.
+ *
+ *   Trim last. A dark scanner edge stops a trim dead if it runs first, and
+ *   trimming afterwards also removes the white wedges the rotation added.
+ */
+export async function preparePage(
+  image: Buffer,
+): Promise<{ bytes: Buffer; how: string }> {
   const sharp = (await import("sharp")).default;
+  const { findSkew, worthStraightening } = await import("./image-prep.server");
 
-  const meta = await sharp(image).metadata();
-  const pixels = (meta.width ?? 0) * (meta.height ?? 0);
+  const skew = await findSkew(image).catch(() => null);
+  const straighten = worthStraightening(skew);
 
-  // Capping the input is what keeps the occasional enormous photograph from
-  // taking the container's memory with it.
-  const prepared =
-    pixels > MAX_PIXELS
-      ? await sharp(image).resize({ width: 4000, withoutEnlargement: true }).png().toBuffer()
-      : await sharp(image).greyscale().png().toBuffer();
+  let pipeline = sharp(image).autoOrient();
+  if (straighten) pipeline = pipeline.rotate(skew.angle, { background: "white" });
 
-  return (await tesseract(prepared, { psm: "3" })).trim();
+  const prepared = await pipeline.trim({ threshold: 15 }).greyscale().png().toBuffer();
+
+  // A trim that ate the page means the threshold met something unexpected —
+  // a dark border, an inverted scan. Fall back to the untrimmed page rather
+  // than hand the reader a sliver.
+  const meta = await sharp(prepared).metadata();
+  const survived = (meta.width ?? 0) * (meta.height ?? 0) >= 250_000;
+
+  let base = survived
+    ? sharp(prepared)
+    : (straighten
+        ? sharp(image).autoOrient().rotate(skew.angle, { background: "white" })
+        : sharp(image).autoOrient()
+      ).greyscale();
+
+  const final = await base.metadata();
+  if ((final.width ?? 0) * (final.height ?? 0) > MAX_PIXELS) {
+    // The occasional photograph of a wall is what takes the container's memory
+    // with it, not the average page.
+    base = base.resize({ width: 4000, withoutEnlargement: true });
+  }
+
+  return {
+    bytes: await base.png().toBuffer(),
+    how: straighten
+      ? `Straightened by ${Math.abs(skew.angle).toFixed(1)}° before reading. `
+      : "",
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -539,23 +615,28 @@ export async function readDocument(
     };
   }
 
+  // Prepared once and shared, so the two readers cannot disagree about which
+  // way up the page is.
+  const page = await preparePage(bytes).catch(() => ({ bytes, how: "" }));
+
   const hasMrzModel = await mrzModelAvailable();
-  const mrz = hasMrzModel ? await readMrz(bytes).catch(() => null) : null;
+  const mrz = hasMrzModel ? await readMrz(page.bytes).catch(() => null) : null;
 
   if (mrz?.valid) {
     return {
       proposals: proposalsFromMrz(mrz.fields),
       text: "",
-      how: "Read from the machine-readable strip, and the check digits agree.",
+      how: `${page.how}Read from the machine-readable strip, and the check digits agree.`,
     };
   }
 
-  const text = await readPageText(bytes).catch(() => "");
+  const text = await readPageText(page.bytes).catch(() => "");
 
   return {
     proposals: proposalsFromText(text),
     text,
     how:
+      page.how +
       (hasMrzModel
         ? ""
         : "The passport model is not installed, so no identity document can be read here — see tessdata/README.md. ") +

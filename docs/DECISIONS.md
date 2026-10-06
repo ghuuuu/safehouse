@@ -965,9 +965,64 @@ being imposed on top of them.
   never a chat model, never prose, never a paragraph stating coverage.
 ---
 
+## D29 — Straighten a page for reading, never for keeping
+
+**Decision.** Before a scan is read, the vault derives an upright, straightened,
+greyscale copy of it: the orientation tag is honoured, the tilt is measured and
+corrected if the measurement was confident, and the borders are trimmed. The
+copy lives for the length of one read and is then discarded.
+
+**The stored file is never modified.** The vault keeps the bytes it was handed.
+A lossy re-encode of somebody's passport to improve a machine's guess is the
+wrong trade, and a cropping mistake on the only copy cannot be undone.
+
+**This amends a consequence of D27.** That decision said accuracy on tilted
+pages was poor and "the answer is the upload screen saying so, not a
+preprocessing pipeline". The pipeline turned out to be seventy lines and no new
+dependency, and what it recovers is larger than anything an engine swap would
+buy — one benchmark recovers 81% of an invoice's numeric fields upright and 31%
+at three to five degrees. Measured here: a page tilted seven degrees comes back
+at 0.23 degrees, in about 120 milliseconds, using a library already installed.
+A quality gate at upload is still worth building and is not a substitute.
+
+**Why this method.** A projection profile — shear the page by a candidate angle,
+stack the rows, see how cleanly the lines pile up — scored by Leptonica's
+differential square sum rather than a plain variance, because the difference
+between neighbouring rows rejects background noise that otherwise scales with
+how much ink is on the page, and keeps working on two columns. Leptonica is
+already in the container as Tesseract's own dependency, and its published
+constants are better defaults than anything invented here.
+
+Quarter turns are left to Tesseract, which is asked for page segmentation with
+orientation detection and rotates internally. Deliberately not a separate call
+that parses an orientation out of stderr: that would buy a threshold to tune
+and the ability to turn somebody's page the wrong way round, where the current
+arrangement means a wrong call costs a poor text read and never touches a pixel
+we keep.
+
+**Consequences.**
+- The estimator returns a confidence and is willing to say nothing. Below a
+  third of a degree there is nothing to gain; below the confidence floor the
+  page did not answer clearly — a blank form, a photograph, one line of text —
+  and it is left alone. Rotating on a bad guess makes a document worse, and
+  this runs unattended.
+- Order inside the pipeline is load-bearing and commented as such. Orientation
+  before any crop, because every crop is computed in displayed coordinates.
+  Trim last, because a dark scanner edge stops a trim dead if it runs first,
+  and because trimming afterwards removes the wedges the rotation added.
+- A fixed live bug: sharp does not honour the orientation tag on load, and
+  `metadata()` ignores an `autoOrient()` later in the pipeline. The passport
+  reader cropped its band using stored dimensions, so a portrait phone photo
+  had a vertical strip of margin cropped instead of the machine-readable zone.
+  It failed silently — no error, no log, just nothing found.
+- An image-only PDF reaches none of this and gets nothing from it. Rasterising
+  those is named in D27 and is still not built; for a household whose bills
+  arrive as scanned PDFs it is probably worth more than this was.
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D28 record what building
+None. D9–D21 closed the list that stood here; D22 to D29 record what building
 the schema, the sign-in path, the permission layer and the question of reading a
 scan forced into the open.
 
