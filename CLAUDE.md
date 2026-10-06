@@ -64,6 +64,10 @@ without it.
 #             npm run db:migrate   creates the app role, applies migrations
 #             npm run db:setup     the app role on its own (db:migrate runs it)
 # dev data:   npm run db:seed      the fixture household, and a way back in
+# the key:    npm run key:make     once per deployment, before the first upload
+# backup:     npm run backup       database encrypted, documents copied as-is
+#             npm run backup:drill prove one restores, into a throwaway database
+#             npm run restore      put one back (refuses a vault with accounts)
 ```
 
 First run, and after any schema change: `docker compose up -d db` then
@@ -79,6 +83,17 @@ accounts.
 
 `npm test` needs the database running. It builds `safehouse_test` from the
 migrations and the fixture in `app/db/fixture.ts` on every run.
+
+A backup is the database encrypted under the key-encryption key plus the
+document store copied verbatim — the blobs are already sealed, so they are not
+encrypted twice. The key file is in neither, and the finished backup is
+searched for it before the command exits. Losing the key loses the backups too
+(D12); that is the trade, and the alternative is a backup that opens without a
+key, which is no backup at all.
+
+Run `npm run backup:drill` after any change to the schema or the storage
+layout. D6 asks for restore to be tested rather than assumed, and the drill
+restores into a throwaway database and opens a real document out of it.
 
 `npm run dev` prints future-flag warnings about React Router v8 and one Vite
 deprecation notice. Those are expected — see D9. Anything else in that output is
