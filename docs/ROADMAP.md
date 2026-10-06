@@ -50,7 +50,7 @@ Carried forward from the view-as work, because it held up:
 
 ---
 
-# Act I — The vault becomes real
+# Act I — The vault becomes real — **done**
 
 A household can put documents in, read them back, and not lose them. Nothing in
 Act II is worth building until this is true, and D6 says in as many words that
@@ -175,7 +175,16 @@ backup contains no key material.
 
 **Size.** M. **Depends on.** Steps 2, 3.
 
-**At the end of Act I**, real documents can responsibly go in.
+**Act I is done.** Proved end to end over HTTP on 2026-10-06: sign in, file a
+604-byte document, ask for it back and be sent to the password form, confirm,
+and receive bytes identical to the ones uploaded. The copy on disk is 620
+bytes, shares nothing with the plaintext, and does not contain its header. The
+download is in the log. A backup taken afterwards drilled clean: 37 documents
+restored into a throwaway database and the file opened and verified against the
+digest recorded when it was filed.
+
+Real documents can responsibly go in — after the key is regenerated, because
+the development one was printed into a conversation.
 
 ---
 
