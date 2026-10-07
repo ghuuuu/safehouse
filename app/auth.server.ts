@@ -1,7 +1,9 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -20,6 +22,15 @@ import * as schema from "./db/schema";
  * tokens and cookie signing, because those are exactly the things that look
  * simple and are not.
  */
+
+/** The setup page's floor, and since invites, everybody's. */
+export const MIN_PASSWORD = 12;
+
+/**
+ * How long an invite or reset link stays good. Delivered by hand (D13), so it
+ * has to survive a weekend; single-use, so it does not have to survive longer.
+ */
+const LINK_LIFETIME_SECONDS = 72 * 60 * 60;
 
 let cached: postgres.Sql | undefined;
 
@@ -69,6 +80,153 @@ export async function passwordMatches(
   return context.password.verify({ hash: account.password, password });
 }
 
+/**
+ * True for a session that belongs to an admin who has not been disabled.
+ *
+ * Disabled is checked here because nothing else on this side checks it. The
+ * library still honours a disabled account's session; `getSignedInUser` is what
+ * treats it as signed out, and the gates below run before that.
+ */
+function isActiveAdmin(user: unknown): boolean {
+  const u = user as { role?: string | null; disabledAt?: unknown } | undefined;
+  return u?.role === "admin" && !u.disabledAt;
+}
+
+/** A request that only an admin may make, made by somebody else. */
+export class NotAllowed extends Error {}
+
+export type LinkResult =
+  | { ok: true; link: string }
+  /** Something the admin can fix, said in their words. */
+  | { ok: false; problem: string };
+
+/**
+ * Where the library hands over a reset token: to whichever `signInLinkFor`
+ * call asked for it, and to nobody else.
+ *
+ * This is the delivery slot D13 describes. Today the only channel is the admin's
+ * screen; email, when it exists, is a second thing to do with the same token.
+ */
+const delivery = new AsyncLocalStorage<(token: string) => void>();
+
+async function requireAdmin(headers: Headers): Promise<void> {
+  const session = await auth.api.getSession({ headers });
+  if (!isActiveAdmin(session?.user)) throw new NotAllowed();
+}
+
+/**
+ * A link that sets the password of the account on this person, once.
+ *
+ * The token is in the fragment, so the browser never sends it anywhere: not in
+ * the request line `react-router-serve` logs, and not in a Referer header. The
+ * page reads it out and posts it.
+ */
+export async function signInLinkFor(
+  headers: Headers,
+  personOwnerId: string,
+): Promise<LinkResult> {
+  await requireAdmin(headers);
+
+  const [user] = await authDb()
+    .select({ email: schema.users.email })
+    .from(schema.users)
+    .where(eq(schema.users.personOwnerId, personOwnerId));
+
+  if (!user) {
+    return { ok: false, problem: "They have no sign-in yet. Invite them instead." };
+  }
+
+  let token: string | undefined;
+  await delivery.run(
+    (delivered) => {
+      token = delivered;
+    },
+    () => auth.api.requestPasswordReset({ body: { email: user.email }, headers }),
+  );
+
+  if (!token) throw new Error("The reset token was never delivered.");
+
+  return { ok: true, link: `${requireEnv("BETTER_AUTH_URL")}/set-password#${token}` };
+}
+
+/**
+ * Give a person in the tree a sign-in: an account with no password, attached
+ * to them, and the link that sets one.
+ *
+ * Always an individual. Admin is made once, at first run, and a third party or
+ * an emergency contact has no person to attach to, so neither comes through
+ * here. The account is made by the library's own adapter rather than its
+ * sign-up endpoint, because sign-up insists on a password and would sign the
+ * new account in on the admin's request.
+ */
+export async function inviteToSignIn(
+  headers: Headers,
+  invite: { personOwnerId: string; email: string; name: string },
+): Promise<LinkResult> {
+  await requireAdmin(headers);
+
+  const email = invite.email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, problem: "That does not look like an email address." };
+  }
+
+  const [taken] = await authDb()
+    .select({ email: schema.users.email, person: schema.users.personOwnerId })
+    .from(schema.users)
+    .where(or(eq(schema.users.email, email), eq(schema.users.personOwnerId, invite.personOwnerId)));
+
+  if (taken) {
+    return {
+      ok: false,
+      problem:
+        taken.person === invite.personOwnerId
+          ? "They already have a sign-in. Make them a new link instead."
+          : "Somebody already signs in with that address.",
+    };
+  }
+
+  const context = await auth.$context;
+  const user = await context.internalAdapter.createUser({
+    email,
+    name: invite.name,
+    emailVerified: false,
+    role: "individual",
+    personOwnerId: invite.personOwnerId,
+  }, { method: "admin" });
+
+  try {
+    const link = await signInLinkFor(headers, invite.personOwnerId);
+    if (!link.ok) throw new Error(link.problem);
+    return link;
+  } catch (error) {
+    // An account with no password and no link is a person nobody can let in.
+    await context.internalAdapter.deleteUser(user.id);
+    throw error;
+  }
+}
+
+/** Spend a link. A bad token and a used one get the same answer. */
+export async function setPasswordWithLink(
+  token: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; problem: string }> {
+  if (newPassword.length < MIN_PASSWORD) {
+    // The library enforces the same floor, also before it spends the token.
+    // Checked here as well only so the answer is a sentence, not an error code.
+    return { ok: false, problem: `Use at least ${MIN_PASSWORD} characters.` };
+  }
+
+  try {
+    await auth.api.resetPassword({ body: { token, newPassword } });
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      problem: "This link has been used or has expired. Ask for a new one.",
+    };
+  }
+}
+
 export const auth = betterAuth({
   secret: requireEnv("BETTER_AUTH_SECRET"),
   baseURL: requireEnv("BETTER_AUTH_URL"),
@@ -99,9 +257,20 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
-    // Nothing is emailed yet (D8), so there is no reset link to send. Until
-    // there is, the admin resets a password.
+    // Nothing is emailed yet (D8). The admin hands over a link instead.
     requireEmailVerification: false,
+    minPasswordLength: MIN_PASSWORD,
+    resetPasswordTokenExpiresIn: LINK_LIFETIME_SECONDS,
+    // A reset is often how somebody locks a lost laptop out. Leaving its
+    // session alive would leave whoever has it signed in.
+    revokeSessionsOnPasswordReset: true,
+    // Delivers to the `signInLinkFor` call that asked, or refuses. Never logs:
+    // the token is a password until it is spent.
+    sendResetPassword: async ({ token }) => {
+      const deliver = delivery.getStore();
+      if (!deliver) throw new Error("There is nowhere to deliver a sign-in link.");
+      deliver(token);
+    },
   },
 
   databaseHooks: {
@@ -138,18 +307,26 @@ export const auth = betterAuth({
      * attached to it reaches no owner (0003_identity_boundary.sql).
      */
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email") return;
+      if (ctx.path === "/sign-up/email") {
+        if (await noUsersYet()) return;
+        if (isActiveAdmin((await getSessionFromCtx(ctx))?.user)) return;
 
-      if (await noUsersYet()) return;
-
-      const session = await getSessionFromCtx(ctx);
-      if (session?.user && (session.user as { role?: string }).role === "admin") {
-        return;
+        throw new APIError("FORBIDDEN", {
+          message: "Accounts are created by the household administrator.",
+        });
       }
 
-      throw new APIError("FORBIDDEN", {
-        message: "Accounts are created by the household administrator.",
-      });
+      // The same door from the other side. As shipped, anybody may ask for a
+      // reset link for any address; here only the admin may, and only through
+      // `signInLinkFor`, which is the one place that can receive the token.
+      // Spending a link (`/reset-password`) stays open: holding it is the proof.
+      if (ctx.path === "/request-password-reset") {
+        if (isActiveAdmin((await getSessionFromCtx(ctx))?.user)) return;
+
+        throw new APIError("FORBIDDEN", {
+          message: "Sign-in links are made by the household administrator.",
+        });
+      }
     }),
   },
 

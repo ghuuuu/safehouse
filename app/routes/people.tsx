@@ -8,6 +8,9 @@ import {
   type Link as PersonLink,
   type ParentType,
 } from "../people";
+import { sql } from "drizzle-orm";
+
+import { inviteToSignIn, NotAllowed, signInLinkFor } from "../auth.server";
 import { addPerson, listAnchors, listHousehold } from "../people.server";
 import { withVault } from "../session.server";
 
@@ -52,6 +55,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
+
+  const intent = String(form.get("intent") ?? "");
+  if (intent === "invite" || intent === "link") {
+    return signInAction(request, intent, form);
+  }
 
   const relation = String(form.get("relation") ?? "");
   const anchorOwnerId = String(form.get("anchorOwnerId") ?? "");
@@ -108,6 +116,106 @@ export async function action({ request }: Route.ActionArgs) {
   }
 }
 
+/**
+ * Inviting somebody, or making a new sign-in link for them.
+ *
+ * Who may is decided in auth.server.ts, which checks the session for an active
+ * admin before it asks any question at all. The vault transaction here does two
+ * other jobs: it confirms the owner is a person this admin can see, through the
+ * ordinary policies, and it writes the log line. The link is returned only
+ * after that line is written, so a link nobody logged is a link nobody saw.
+ */
+async function signInAction(request: Request, intent: "invite" | "link", form: FormData) {
+  const ownerId = String(form.get("ownerId") ?? "");
+
+  try {
+    return await withVault(request, async (db) => {
+      const [person] = await db.execute<{ name: string }>(sql`
+        select display_name as name from owners
+        where id = ${ownerId} and kind = 'person' and archived_at is null
+      `);
+      if (!person) return { ownerId, error: "Pick somebody in the household." };
+
+      const result =
+        intent === "invite"
+          ? await inviteToSignIn(request.headers, {
+              personOwnerId: ownerId,
+              email: String(form.get("email") ?? ""),
+              name: person.name,
+            })
+          : await signInLinkFor(request.headers, ownerId);
+
+      if (!result.ok) return { ownerId, error: result.problem };
+
+      await record(db, {
+        action: intent === "invite" ? ACTIONS.accountInvited : ACTIONS.signInLinkMade,
+        subjectType: "owner",
+        subjectId: ownerId,
+      });
+
+      return { ownerId, link: result.link };
+    });
+  } catch (error) {
+    if (error instanceof NotAllowed) {
+      return { ownerId, error: "Only the household administrator can do that." };
+    }
+    throw error;
+  }
+}
+
+/** The link, once, with what to do with it. */
+function SignInControls({
+  row,
+  result,
+}: {
+  row: { ownerId: string; displayName: string; hasAccount: boolean };
+  result?: { link?: string; error?: string };
+}) {
+  if (result?.link) {
+    return (
+      <div className="mt-2 flex flex-col gap-1 text-xs">
+        <input
+          readOnly
+          aria-label={`Sign-in link for ${row.displayName}`}
+          className="rounded-lg border border-gray-300 p-2 font-mono"
+          value={result.link}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+        <span className="text-gray-500">
+          Give this to {row.displayName} yourself. It works once, for three days,
+          and it is not shown again.
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Form method="post" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      <input type="hidden" name="ownerId" value={row.ownerId} />
+      {row.hasAccount ? (
+        <button className="underline" type="submit" name="intent" value="link">
+          New sign-in link
+        </button>
+      ) : (
+        <>
+          <input
+            className="rounded-lg border border-gray-300 p-1"
+            type="email"
+            name="email"
+            placeholder="their email"
+            aria-label={`Email for ${row.displayName}`}
+            required
+          />
+          <button className="underline" type="submit" name="intent" value="invite">
+            Invite
+          </button>
+        </>
+      )}
+      {result?.error ? <span className="text-red-700">{result.error}</span> : null}
+    </Form>
+  );
+}
+
 const KIND_LABELS: Record<string, string> = {
   person: "People",
   business: "Businesses",
@@ -150,6 +258,17 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                     ) : null}
                     {row.archived ? (
                       <span className="text-gray-500"> · archived</span>
+                    ) : null}
+                    {/* Presentation, like `canAdd`: auth.server.ts refuses anybody else. */}
+                    {canAdd && kind === "person" && !row.archived && !row.diedOn ? (
+                      <SignInControls
+                        row={{ ...row, hasAccount: row.account !== null }}
+                        result={
+                          actionData && "ownerId" in actionData && actionData.ownerId === row.ownerId
+                            ? actionData
+                            : undefined
+                        }
+                      />
                     ) : null}
                   </span>
                   <span className="text-right text-xs text-gray-500">
@@ -267,7 +386,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
               </p>
             )}
 
-            {actionData && "error" in actionData && actionData.error ? (
+            {actionData && !("ownerId" in actionData) && "error" in actionData && actionData.error ? (
               <p className="text-sm text-red-700">{actionData.error}</p>
             ) : null}
 

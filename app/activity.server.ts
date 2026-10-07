@@ -36,6 +36,13 @@ export const ACTIONS = {
    * closer in kind to granting a permission than to typing in a name.
    */
   personAdded: "person.added",
+  /**
+   * A person was given a sign-in, or an existing one a new link. Either way a
+   * credential was handed out, and the log is the only record of who got one
+   * from whom; the link itself is never written anywhere.
+   */
+  accountInvited: "account.invited",
+  signInLinkMade: "account.link-made",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];

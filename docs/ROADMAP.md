@@ -305,7 +305,7 @@ admin generates a single-use link and delivers it by hand.
 The wizard is built around one sentence — *"___ is the ___ of ___."* — with the
 root case as its own card (`PRODUCT.md` §Screens).
 
-**Half landed: the roster and the wizard. Invites are still to do.** The roster
+**Landed.** The roster
 and the add-member form are `/people`, over `app/people.server.ts`. Migration
 0009 gives the app role INSERT on `owners`, `people` and `relationships`, admin
 only: a tree edge is read by `family_circle`, so adding one is an access-control
@@ -315,13 +315,24 @@ test green. A partial unique index keeps one login per person. Siblings get
 the anchor's parents rather than a sibling edge, and a sibling of somebody with
 no recorded parent is refused. Each addition is logged as `person.added`.
 
-**Acceptance so far.** Fourteen tests in `app/db/people.test.ts`: who may add (an
+Invites and password resets are the same link (D32). On a person's roster row
+the admin either invites them by email or makes a new sign-in link, then
+delivers it by hand. `/set-password` spends it. The library's public reset
+endpoint answers only to an active admin.
+
+**Acceptance, as met.** Fourteen tests in `app/db/people.test.ts`: who may add (an
 admin may; a member, a third party and an anonymous request may not, with SQLSTATE
 42501), the direction of each edge the sentence produces, and what the roster
-shows each kind of viewer.
+shows each kind of viewer. Fourteen more in `app/invites.test.ts`:
+- Who may make a link: not a stranger, a member, or a disabled admin, through
+  any route.
+- An invite makes an `individual` with no password, and cannot take an address
+  or a person that is already taken.
+- A link works once, a short password does not spend it, and a reset ends the
+  account's other sessions.
 
-**Still open.** The invite link and the password reset (D13), which is what
-turns a person row into somebody who can sign in.
+The reset gate, the session revocation, the admin check that comes before any
+lookup, and the disabled check were each removed and a test went red.
 
 **Size.** L. **Depends on.** Step 3 (it writes people and relationships).
 

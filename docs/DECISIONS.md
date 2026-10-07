@@ -1104,9 +1104,50 @@ role's alone.
 
 ---
 
+## D32 — An invite is a password reset for an account with no password
+
+**Decision.** There is one kind of link. The admin makes it from the roster,
+copies it, and gives it to the person by hand (D13). For somebody with no
+sign-in, the admin first types their email, and Safehouse creates an
+`individual` account attached to that person, with no password. For somebody
+who already has a sign-in, the same button makes a reset link. Either way the
+link sets a password once, lasts 72 hours, and signs the account out
+everywhere else.
+
+**Why.** The auth library already has a single-use, expiring, hashed-on-use
+token flow: password reset. Its `resetPassword` creates the password
+credential when the account has none, so an invite needs no second mechanism.
+Building a separate invite token would have meant hand-rolling exactly what
+CLAUDE.md says not to.
+
+The library serves the reset request publicly and hands the token to a
+`sendResetPassword` callback. Here that endpoint answers only to an active
+admin, like sign-up, and the callback delivers only to the `signInLinkFor`
+call that asked, through an AsyncLocalStorage slot. A request that arrives any
+other way has nowhere to deliver and fails. When email exists, it is a second
+thing that callback does with the same token.
+
+**Consequences.**
+- The token travels in the URL fragment (`/set-password#…`). The browser never
+  sends a fragment, so the token stays out of the server's request log and out
+  of Referer headers. The page therefore needs JavaScript to read it.
+- An invite always makes an `individual`. Admin is made once, at first run. A
+  third party or an emergency contact has no person to attach to, so no link
+  can be made for them from the roster yet; that belongs to the access console.
+- Every link made is logged (`account.invited`, `account.link-made`) in the
+  admin's vault transaction, and the link is shown only after that write. The
+  link itself is never stored or logged.
+- The password floor is 12 characters for everybody, enforced by the library,
+  where it had been enforced only on the setup page.
+- Checking `disabledAt` moved into the auth module's gates. Before this, a
+  disabled admin with a live session could still create accounts through the
+  sign-up endpoint.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D31 record what building
+None. D9–D21 closed the list that stood here; D22 to D32 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 

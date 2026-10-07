@@ -16,6 +16,8 @@ export default [
   route("file/:fileId", "routes/file.$fileId.tsx"),
   route("verify", "routes/verify.tsx"),
   route("sign-in", "routes/sign-in.tsx"),
+  // Where an invite or reset link lands. Public: the link is the credential.
+  route("set-password", "routes/set-password.tsx"),
   route("sign-out", "routes/sign-out.tsx"),
   // Sign-in, sign-out and session, served by the auth library (D10).
   route("api/auth/*", "routes/api.auth.$.ts"),
