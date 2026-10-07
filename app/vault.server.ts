@@ -30,6 +30,9 @@ export const VAULT_LIST_SQL = `
     r.title,
     r.is_private as "isPrivate",
     o.display_name as "ownerName",
+    -- From owners, not records.owner_id, so it is null exactly when the name
+    -- is: a per-record grant does not get to learn who its owner is (D17).
+    o.id as "ownerId",
     d.version_no as "versionNo",
     d.is_current as "isCurrent",
     d.expires_on as "expiresOn",
@@ -49,3 +52,23 @@ export const VAULT_LIST_SQL = `
   left join owners o on o.id = r.owner_id
   order by r.category, o.display_name, r.title, d.version_no desc
 `;
+
+/**
+ * One owner's documents, out of a list the policies have already decided.
+ *
+ * A narrowing, not a permission: it can only remove rows, and it runs on the
+ * server, so nothing it drops was ever sent. That is why it is a filter over
+ * the list rather than a parameter in the query above, which stays
+ * parameterless so who sees what is never a value spliced into it. An owner the
+ * viewer cannot see has no rows here, so asking for one gets the same empty
+ * answer as an owner with no documents.
+ *
+ * ponytail: filters the whole list in memory, which is fine at household scale.
+ * Move it into SQL if a vault ever holds thousands of documents.
+ */
+export function forOwner<T extends { ownerId: string | null }>(
+  rows: T[],
+  ownerId: string,
+): T[] {
+  return rows.filter((row) => row.ownerId !== null && row.ownerId === ownerId);
+}

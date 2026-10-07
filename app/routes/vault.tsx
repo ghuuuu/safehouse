@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/vault";
 import { ACTIONS, record } from "../activity.server";
-import { VAULT_LIST_SQL } from "../vault.server";
+import { forOwner, VAULT_LIST_SQL } from "../vault.server";
 import {
   resolveViewContext,
   withActorVault,
@@ -20,6 +20,8 @@ type DocumentRow = {
   title: string;
   /** Null when the viewer reached the document without reaching its owner. */
   ownerName: string | null;
+  /** Null exactly when `ownerName` is. */
+  ownerId: string | null;
   versionNo: number;
   isCurrent: boolean;
   isPrivate: boolean;
@@ -43,6 +45,11 @@ type DocumentRow = {
  * decides that in `resolveViewContext` before either transaction opens. See
  * `app/view-as.server.ts`.
  *
+ * `?owner=` (where a tree click lands) narrows the list further, here on the
+ * server, using `forOwner`. It removes rows and never adds any. The owner's
+ * name for the heading is read through `owners_read`, so an owner the viewer
+ * cannot see gets no name and no documents: the same empty page as a stranger.
+ *
  * Note what is not selected: `documents.identifier` holds the passport number.
  * It is masked in the interface, so it must not be in the payload that renders
  * the interface (CLAUDE.md). A record view that needs it can ask for it there,
@@ -50,11 +57,21 @@ type DocumentRow = {
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const view = await resolveViewContext(request);
+  const ownerId = new URL(request.url).searchParams.get("owner");
 
-  const documents = await withViewedVault(view, async (db) => {
+  const { all, ownerName } = await withViewedVault(view, async (db) => {
     const rows = await db.execute<DocumentRow>(sql.raw(VAULT_LIST_SQL));
-    return [...rows];
+    // Compared as text, so a malformed id finds nothing instead of raising a
+    // cast error that would tell it apart from a real one.
+    const [owner] = ownerId
+      ? await db.execute<{ name: string }>(
+          sql`select display_name as name from owners where id::text = ${ownerId}`,
+        )
+      : [];
+    return { all: [...rows], ownerName: owner?.name ?? null };
   });
+
+  const documents = ownerId ? forOwner(all, ownerId) : all;
 
   // The denominator in "14 of 36", counted as the actor rather than as a raw
   // total — an admin who could not see everything must not be told how much
@@ -80,10 +97,14 @@ export async function loader({ request }: Route.LoaderArgs) {
         );
         return row.n;
       })
-    : documents.length;
+    : all.length;
 
   return {
     documents,
+    // The viewed user's whole reach, for "N of M": narrowing to one owner does
+    // not change how much of the vault they can see.
+    reachedByViewed: all.length,
+    owner: ownerId ? { id: ownerId, name: ownerName } : null,
     reachable,
     actor: view.actor,
     isViewingAs: view.isViewingAs,
@@ -105,11 +126,21 @@ function groupByCategory(documents: DocumentRow[]) {
 }
 
 export default function Vault({ loaderData }: Route.ComponentProps) {
-  const { documents, reachable, actor, isViewingAs, viewedUser, roster } =
-    loaderData;
+  const {
+    documents,
+    reachedByViewed,
+    owner,
+    reachable,
+    actor,
+    isViewingAs,
+    viewedUser,
+    roster,
+  } = loaderData;
 
   const canViewAs = actor.role === "admin";
   const groups = groupByCategory(documents);
+  // Keeps whose eyes you are using when clearing the owner filter.
+  const everything = isViewingAs && viewedUser ? `/vault?as=${viewedUser.id}` : "/vault";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
@@ -126,7 +157,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             {viewedUser.role}
             {viewedUser.disabled ? ", disabled" : null}). They reach{" "}
             <strong className="font-medium">
-              {documents.length} of {reachable}
+              {reachedByViewed} of {reachable}
             </strong>{" "}
             documents.
           </p>
@@ -144,10 +175,20 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             : `${documents.length} documents`}
           {isViewingAs ? null : `, as ${actor.name}`}.
         </p>
+        {owner ? (
+          <p className="mt-2 text-sm">
+            Showing {owner.name ? <strong className="font-medium">{owner.name}</strong> : "one owner"}
+            {"'s documents only. "}
+            <Link className="underline" to={everything}>
+              Show everything
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {canViewAs ? (
         <Form method="get" className="flex flex-wrap items-center gap-2 text-sm">
+          {owner ? <input type="hidden" name="owner" value={owner.id} /> : null}
           <label className="text-gray-500" htmlFor="as">
             View as
           </label>
@@ -178,8 +219,9 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
 
       {groups.length === 0 ? (
         <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
-          Nothing here. {isViewingAs ? "This account" : "You"} cannot see any
-          documents.
+          {owner
+            ? "Nothing here that you can see."
+            : `Nothing here. ${isViewingAs ? "This account" : "You"} cannot see any documents.`}
         </p>
       ) : null}
 

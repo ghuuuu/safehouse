@@ -14,8 +14,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { ROSTER_SQL } from "../view-as.server";
-import { VAULT_LIST_SQL } from "../vault.server";
-import { DOCUMENT, FILE, USER } from "./fixture";
+import { forOwner, VAULT_LIST_SQL } from "../vault.server";
+import { DOCUMENT, FILE, OWNER, USER } from "./fixture";
 import { asUser, closeTestDatabase, prepareTestDatabase } from "./test-harness";
 
 beforeAll(async () => {
@@ -105,6 +105,17 @@ describe("the list the vault page runs", () => {
     expect(rows.every((row) => row.ownerName !== null)).toBe(true);
   });
 
+  test("the owner id is withheld exactly when the owner name is", async () => {
+    // The id is what a tree click filters on. Carrying it for a per-record
+    // grant would hand Sam an identifier for an owner he may not see.
+    for (const userId of [USER.sam, USER.priya, USER.maya]) {
+      const rows = await asUser(userId, (sql) => sql.unsafe(VAULT_LIST_SQL));
+      for (const row of rows) {
+        expect(row.ownerId === null, `${row.title}`).toBe(row.ownerName === null);
+      }
+    }
+  });
+
   test("a parent's list excludes a child's private letter", async () => {
     const listed = await listedTo(USER.maya);
 
@@ -143,6 +154,43 @@ describe("the list the vault page runs", () => {
     expect(decree?.fileId).toBeNull();
   });
 
+});
+
+describe("narrowing the list to one owner", () => {
+  async function listedToFor(userId: string, ownerId: string) {
+    const rows = await asUser(userId, (sql) => sql.unsafe(VAULT_LIST_SQL));
+    return named(forOwner(rows as unknown as { id: string; ownerId: string | null }[], ownerId).map((row) => row.id));
+  }
+
+  test("gives the owner's documents the viewer could already see, and nothing else", async () => {
+    // Ivy's counselling letter is private: Maya does not get it by asking for
+    // Ivy, because narrowing starts from what the policies already returned.
+    expect(await listedToFor(USER.maya, OWNER.ivy)).toEqual([
+      "ivyBirthCertificate",
+      "ivyImmunisation",
+      "ivyInsuranceCard",
+    ]);
+  });
+
+  test.each([
+    ["an owner outside the viewer's circle", OWNER.nadia],
+    ["an owner reached only through a per-record grant", OWNER.rose],
+    ["an owner that does not exist", "00000000-0000-4000-8000-000000000999"],
+    ["something that is not an id", "'; drop table records; --"],
+  ])("%s gives the same empty answer", async (_case, ownerId) => {
+    // Indistinguishable from an owner with no documents, so the parameter
+    // cannot be used to ask whether somebody exists.
+    const viewer = ownerId === OWNER.rose ? USER.sam : USER.maya;
+    expect(await listedToFor(viewer, ownerId)).toEqual([]);
+  });
+
+  test("composes with viewing as somebody: the same answer they would get", async () => {
+    // View-as is the same query in the viewed user's transaction, so the
+    // narrowing cannot behave differently there. Asserted anyway, because the
+    // tree's click-through is exactly this combination.
+    expect(await listedToFor(USER.daniel, OWNER.theo)).toEqual(["theoPassport"]);
+    expect(await listedToFor(USER.maya, OWNER.theo)).toEqual([]);
+  });
 });
 
 describe("the roster the picker offers", () => {
