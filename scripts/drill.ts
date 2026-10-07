@@ -22,7 +22,7 @@ import { join, resolve } from "node:path";
 import postgres from "postgres";
 
 import { openDump, type Manifest } from "../app/backup.server";
-import { openFile } from "../app/crypto.server";
+import { keyIdOf, openFile } from "../app/crypto.server";
 import { keyProviderFromFile } from "../app/keys.server";
 
 const DRILL_DATABASE = "safehouse_drill";
@@ -105,6 +105,7 @@ console.log(`  restored into ${DRILL_DATABASE}`);
 const drill = postgres(withDatabase(ownerUrl, DRILL_DATABASE), { max: 1, onnotice: () => {} });
 let checked = 0;
 let missing = 0;
+let retired = 0;
 
 try {
   const files = await drill`
@@ -124,11 +125,25 @@ try {
       continue;
     }
 
+    const wrappedDek = Buffer.from(file.wrapped_dek as Buffer);
+
+    // A file wrapped under a key this machine no longer holds is not a restore
+    // failure, and must not be reported as one. It means the key-encryption key
+    // was replaced after this row was written — a deliberate rotation that did
+    // not finish, or a key regenerated with documents already filed. The backup
+    // is intact; what is missing is the key, and D12 is explicit that losing it
+    // loses the data. Checked by comparing key ids rather than by catching the
+    // error, because the same exception also covers cases worth shouting about.
+    if (!keyIdOf(wrappedDek).equals(provider.keyId())) {
+      retired += 1;
+      continue;
+    }
+
     const plaintext = openFile(
       {
         stored: sealed,
         nonce: Buffer.from(file.nonce as Buffer),
-        wrappedDek: Buffer.from(file.wrapped_dek as Buffer),
+        wrappedDek,
       },
       file.id as string,
       provider,
@@ -155,9 +170,21 @@ try {
 }
 
 console.log("");
-if (checked === 0 && missing > 0) {
+
+if (retired > 0) {
+  // Said before the verdict, because it is the one line that needs acting on and
+  // a passing drill is otherwise read as "nothing to see".
   console.error(
-    `Drill FAILED: ${missing} file rows restored and not one of them had bytes behind it.`,
+    `  ${retired} file${retired === 1 ? "" : "s"} wrapped under a key-encryption key\n` +
+      `  this machine no longer has. The backup holds them; nothing can open them.\n` +
+      `  Either restore the old key file, or accept that those files are gone (D12).`,
+  );
+}
+
+if (checked === 0 && missing + retired > 0) {
+  console.error(
+    `Drill FAILED: ${missing + retired} file rows restored and not one of them ` +
+      `could be opened and checked.`,
   );
   process.exit(1);
 }
@@ -165,7 +192,8 @@ if (checked === 0 && missing > 0) {
 console.log(
   `Drill passed: ${manifest.counts.documents} documents restored, ` +
     `${checked} files opened and verified byte for byte` +
-    (missing > 0 ? `, ${missing} rows with no stored blob (fixture rows have none)` : ""),
+    (missing > 0 ? `, ${missing} rows with no stored blob (fixture rows have none)` : "") +
+    (retired > 0 ? `, ${retired} unopenable under the current key` : ""),
 );
 
 function withDatabase(url: string, database: string): string {
