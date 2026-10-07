@@ -1145,9 +1145,38 @@ thing that callback does with the same token.
 
 ---
 
+## D33 — The tree shows sex where recorded, and relationships that ended
+
+**Decision.** The family tree shows each person's name, a mark for somebody
+who has died, and female or male where it has been recorded. `people.sex` is
+nullable, and existing people stay null ("not recorded"). Relationships that
+have ended (a divorce, a guardianship that ran out) are drawn as dashed grey
+lines and labelled, not hidden. Businesses and the household are separate
+tabs beside the family.
+
+**Why.** The household asked for all three. Sex is nullable because a vault
+that has been running without it has no true value to fill in, and a default
+would assert something nobody said. Ended relationships are shown because the
+tree is the household's record of itself as well as a navigation device, and a
+family with a divorce in it looks wrong without one. They are drawn
+differently because the access model ignores them (`current_spouse` and
+`effective_parent` both require `ended_on is null`), and the picture should
+not imply otherwise.
+
+**Consequences.**
+- The tree draws only lines whose two ends the viewer can see, because
+  `relationships_read` already requires that. An ended edge is no exception:
+  Maya does not see Daniel's divorce, because she cannot see Nadia.
+- `sex` has two values. A household that needs another can add an enum value
+  in a migration; nothing reads it except the tree.
+- The tree's payload is a name, a deceased flag and sex per person. Given name,
+  family name and date of birth stay out, as on the roster.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D32 record what building
+None. D9–D21 closed the list that stood here; D22 to D33 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 

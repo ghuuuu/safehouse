@@ -29,9 +29,10 @@ envelope encryption, the write policies, filing a document, downloading one
 behind a step-up check, the append-only activity log, and backups with a drill
 that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
-and the expiry list.
+and the expiry list. Then the people roster with invites and resets, a boot
+check that refuses the wrong key, and the family tree.
 
-Not built: people and invites, the family tree, the access console, search, the
+Not built: the access console, search, the
 dashboard, bulk operations, settings, outbound notification delivery, and the
 operations docs. The notifications table has a read policy and no writer, on
 purpose (D30).
@@ -341,6 +342,31 @@ lookup, and the disabled check were each removed and a test went red.
 The app's primary navigation device, and real data rather than decoration: the
 circle the access model derives comes from these rows (D16). Pan, zoom, click a
 person, the vault below filters to them.
+
+**Landed.** `/tree` draws the household as an SVG laid out by generation
+(`app/tree-layout.ts`, no new dependency). You can drag to pan and use the
+wheel or buttons to zoom. Every person is a link that keyboard users can
+reach. A click goes to `/vault?owner=`, which narrows rows the vault's
+policies already returned and keeps view-as. Names, a deceased mark and
+female/male marks are shown; ended relationships are dashed and labelled
+(D33). Businesses and the household are tabs beside the family. Recording sex
+added migration 0011 and a field on the add-member form.
+
+**Acceptance, as met.**
+- `app/db/tree.test.ts`: the admin gets everyone and every edge including ended
+  ones; Maya gets her five people and no edge leaving her circle; a third party
+  and an unattached account get nothing; the payload has no names beyond the
+  display name and no dates.
+- `app/tree-layout.test.ts`: parents above children, spouses side by side,
+  deterministic, a cycle still terminates. Two rules were removed and a test
+  went red each time.
+- `app/db/view-as.test.ts`: `?owner=` gives the same empty answer for a
+  hidden, nonexistent or malformed owner.
+- In a browser: Priya, and Priya viewing as Maya, with click-through, tabs,
+  Tab and Enter, and a drag that pans rather than navigating.
+
+**Not done.** The dashboard's Individuals/Businesses switch is Step 14, and
+editing or ending a relationship from the tree has no surface yet.
 
 **Size.** L. **Depends on.** Step 10.
 
