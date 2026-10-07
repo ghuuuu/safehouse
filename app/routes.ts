@@ -6,6 +6,8 @@ export default [
   route("setup", "routes/setup.tsx"),
   // The vault, optionally through somebody else's eyes: /vault?as=<userId>.
   route("vault", "routes/vault.tsx"),
+  // Who documents can be filed to, and the admin's form for adding somebody.
+  route("people", "routes/people.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
   // One record: its fields, its pages, its versions.

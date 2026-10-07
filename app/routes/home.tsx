@@ -112,6 +112,18 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         ))}
       </dl>
 
+      <nav className="flex gap-4 text-sm">
+        <Link className="underline" to="/vault">
+          Vault
+        </Link>
+        <Link className="underline" to="/people">
+          People
+        </Link>
+        <Link className="underline" to="/upload">
+          File a document
+        </Link>
+      </nav>
+
       <p className="text-sm text-gray-500">
         These are the counts you are entitled to, resolved by the database
         rather than by this page.

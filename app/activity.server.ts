@@ -30,6 +30,12 @@ export const ACTIONS = {
   vaultViewedAs: "vault.viewed-as",
   fieldRevealed: "field.revealed",
   documentRead: "document.read",
+  /**
+   * Somebody was added to the tree. Logged because a tree edge is read by
+   * `family_circle`, so this line is the record of an access-control change —
+   * closer in kind to granting a permission than to typing in a name.
+   */
+  personAdded: "person.added",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];

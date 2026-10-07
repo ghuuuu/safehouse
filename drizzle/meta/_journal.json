@@ -64,6 +64,13 @@
       "when": 1787390132497,
       "tag": "0008_document_extraction",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787390192497,
+      "tag": "0009_person_writes",
+      "breakpoints": true
     }
   ]
 }

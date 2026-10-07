@@ -242,14 +242,16 @@ describe("documents and their files", () => {
 });
 
 describe("what stays out of reach entirely", () => {
+  // `owners`, `people` and `relationships` left this list when 0009 gave the
+  // admin a way to add somebody to the household. They have their own policies
+  // and their own file now, which is what the comment below always promised:
+  // app/db/people.test.ts. Everything still here has no grant at all.
   const forbidden = [
-    ["owners", (sql: Sql) => sql`insert into owners (kind, display_name) values ('person', 'Invented')`],
     ["users", (sql: Sql) => sql`insert into users (email, name, role) values ('x@example.invalid', 'X', 'admin')`],
     ["grant_owners", (sql: Sql) => sql`insert into grant_owners (user_id, owner_id) values (${USER.sam}, ${OWNER.rose})`],
     ["grant_categories", (sql: Sql) => sql`insert into grant_categories (user_id, category) values (${USER.sam}, 'medical')`],
     ["grant_records", (sql: Sql) => sql`insert into grant_records (user_id, record_id) values (${USER.sam}, ${RECORD.mayaPassport})`],
     ["emergency_activations", (sql: Sql) => sql`insert into emergency_activations (user_id, expires_at) values (${USER.lapsed}, now() + interval '1 day')`],
-    ["relationships", (sql: Sql) => sql`insert into relationships (from_owner_id, to_owner_id, kind) values (${OWNER.rose}, ${OWNER.nadia}, 'spouse_of')`],
   ] as const;
 
   test.each(forbidden)(

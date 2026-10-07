@@ -305,6 +305,24 @@ admin generates a single-use link and delivers it by hand.
 The wizard is built around one sentence — *"___ is the ___ of ___."* — with the
 root case as its own card (`PRODUCT.md` §Screens).
 
+**Half landed: the roster and the wizard. Invites are still to do.** The roster
+and the add-member form are `/people`, over `app/people.server.ts`. Migration
+0009 gives the app role INSERT on `owners`, `people` and `relationships`, admin
+only: a tree edge is read by `family_circle`, so adding one is an access-control
+change rather than data entry. The migration asserts the admin predicate in each
+policy's text, because widening it to `current_user_may_file()` would leave every
+test green. A partial unique index keeps one login per person. Siblings get
+the anchor's parents rather than a sibling edge, and a sibling of somebody with
+no recorded parent is refused. Each addition is logged as `person.added`.
+
+**Acceptance so far.** Fourteen tests in `app/db/people.test.ts`: who may add (an
+admin may; a member, a third party and an anonymous request may not, with SQLSTATE
+42501), the direction of each edge the sentence produces, and what the roster
+shows each kind of viewer.
+
+**Still open.** The invite link and the password reset (D13), which is what
+turns a person row into somebody who can sign in.
+
 **Size.** L. **Depends on.** Step 3 (it writes people and relationships).
 
 ### Step 11 — The family tree
