@@ -18,8 +18,8 @@ import type { TreeEdge, TreePerson } from "./tree";
 
 export const NODE_WIDTH = 150;
 export const NODE_HEIGHT = 52;
-const GAP_X = 36;
-const GAP_Y = 84;
+const GAP_X = 64;
+const GAP_Y = 96;
 
 export type Layout = {
   positions: Record<string, { x: number; y: number }>;

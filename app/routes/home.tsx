@@ -119,6 +119,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Link className="underline" to="/people">
           People
         </Link>
+        <Link className="underline" to="/tree">
+          Family tree
+        </Link>
         <Link className="underline" to="/upload">
           File a document
         </Link>

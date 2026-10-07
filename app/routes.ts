@@ -8,6 +8,8 @@ export default [
   route("vault", "routes/vault.tsx"),
   // Who documents can be filed to, and the admin's form for adding somebody.
   route("people", "routes/people.tsx"),
+  // The family tree; a click opens /vault?owner= for that person.
+  route("tree", "routes/tree.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
   // One record: its fields, its pages, its versions.
