@@ -276,6 +276,34 @@ describe("the sentence the wizard is built on", () => {
 
     expect(value).toBe(0);
   });
+
+  test("sex is stored when given, and left unrecorded when not", async () => {
+    const { value } = await tryWrite(USER.priya, async (db) => {
+      const given = await addPerson(db, {
+        givenName: "Fixture",
+        familyName: "Given",
+        bornOn: null,
+        sex: "female",
+        link: null,
+      });
+      const blank = await addPerson(db, {
+        givenName: "Fixture",
+        familyName: "Blank",
+        bornOn: null,
+        link: null,
+      });
+      if (!given.ok || !blank.ok) throw new Error("not added");
+
+      const rows = await db.execute<{ owner_id: string; sex: string | null }>(sql`
+        select owner_id, sex from people
+        where owner_id in (${given.ownerId}, ${blank.ownerId})
+      `);
+      const sexOf = new Map([...rows].map((row) => [row.owner_id, row.sex]));
+      return [sexOf.get(given.ownerId), sexOf.get(blank.ownerId)];
+    });
+
+    expect(value).toEqual(["female", null]);
+  });
 });
 
 describe("the roster", () => {

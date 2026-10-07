@@ -30,6 +30,14 @@ export const RELATIONS = [
   { value: "sibling_of", label: "brother or sister of" },
 ] as const;
 
+export type Sex = "female" | "male";
+
+/** Optional on the form: leaving it blank records nothing (D33). */
+export const SEXES: { value: Sex; label: string }[] = [
+  { value: "female", label: "female" },
+  { value: "male", label: "male" },
+];
+
 export const PARENT_TYPES: { value: ParentType; label: string }[] = [
   { value: "biological", label: "biological" },
   { value: "adoptive", label: "adoptive" },

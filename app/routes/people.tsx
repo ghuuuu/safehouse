@@ -5,6 +5,7 @@ import { ACTIONS, record } from "../activity.server";
 import {
   PARENT_TYPES,
   RELATIONS,
+  SEXES,
   type Link as PersonLink,
   type ParentType,
 } from "../people";
@@ -81,6 +82,10 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const bornOn = String(form.get("bornOn") ?? "").trim();
+  const sexField = String(form.get("sex") ?? "");
+  // Anything but the two values is "not recorded", rather than an error or a
+  // cast failure in the database.
+  const sex = SEXES.find((option) => option.value === sexField)?.value ?? null;
 
   try {
     const added = await withVault(request, async (db) => {
@@ -88,6 +93,7 @@ export async function action({ request }: Route.ActionArgs) {
         givenName: String(form.get("givenName") ?? ""),
         familyName: String(form.get("familyName") ?? ""),
         bornOn: bornOn || null,
+        sex,
         link,
       });
 
@@ -321,6 +327,22 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                   type="date"
                   name="bornOn"
                 />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-500">Sex</span>
+                <select
+                  className="rounded-lg border border-gray-300 p-2"
+                  name="sex"
+                  defaultValue=""
+                >
+                  <option value="">not recorded</option>
+                  {SEXES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

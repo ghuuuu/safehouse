@@ -27,12 +27,14 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import type { VaultTransaction } from "./db.server";
-import type { Link, ParentType } from "./people";
+import type { Link, ParentType, Sex } from "./people";
 
 export type NewPerson = {
   givenName: string;
   familyName: string;
   bornOn: string | null;
+  /** Absent or null when the form left it blank. */
+  sex?: Sex | null;
   /** Null for the first person in a household, who has nobody to attach to. */
   link: Link | null;
 };
@@ -185,10 +187,11 @@ export async function addPerson(
   `);
 
   await db.execute(sql`
-    insert into people (owner_id, given_name, family_name, born_on)
+    insert into people (owner_id, given_name, family_name, born_on, sex)
     values (
       ${ownerId}, ${givenName}, ${familyName},
-      ${person.bornOn ? sql`${person.bornOn}::date` : sql`null`}
+      ${person.bornOn ? sql`${person.bornOn}::date` : sql`null`},
+      ${person.sex ? sql`${person.sex}::person_sex` : sql`null`}
     )
   `);
 

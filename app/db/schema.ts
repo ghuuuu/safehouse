@@ -59,6 +59,9 @@ export const parentType = pgEnum("parent_type", [
   "guardian",
 ]);
 
+/** What the tree draws (D33). Nullable on `people`: "not recorded" is a real answer. */
+export const personSex = pgEnum("person_sex", ["female", "male"]);
+
 export const category = pgEnum("category", [
   "personal",
   "medical",
@@ -87,6 +90,7 @@ export const people = pgTable("people", {
   familyName: text("family_name").notNull(),
   bornOn: date("born_on"),
   diedOn: date("died_on"),
+  sex: personSex("sex"),
 });
 
 export const businesses = pgTable("businesses", {

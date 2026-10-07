@@ -232,18 +232,19 @@ export async function insertFixture(sql: Sql): Promise<void> {
   `;
 
   await sql`
-    insert into people (owner_id, given_name, family_name, born_on, died_on) values
-      (${OWNER.rose}, 'Rose', 'Adeyemi', '1951-03-04', null),
-      (${OWNER.frank}, 'Frank', 'Adeyemi', '1949-11-19', '2021-06-02'),
-      (${OWNER.maya}, 'Maya', 'Adeyemi', '1979-07-22', null),
-      (${OWNER.daniel}, 'Daniel', 'Hale', '1977-01-30', null),
-      (${OWNER.ivy}, 'Ivy', 'Hale', '2004-09-14', null),
-      (${OWNER.theo}, 'Theo', 'Hale', '2001-04-08', null),
-      (${OWNER.nadia}, 'Nadia', 'Brandt', '1978-02-11', null),
-      (${OWNER.omar}, 'Omar', 'Brandt', '1950-08-30', null),
-      (${OWNER.lena}, 'Lena', 'Okonjo', '2011-12-01', null),
-      (${OWNER.bram}, 'Bram', 'Okonjo', '2003-05-17', null),
-      (${OWNER.priya}, 'Priya', 'Raman', '1968-10-06', null)
+    insert into people (owner_id, given_name, family_name, born_on, died_on, sex) values
+      (${OWNER.rose}, 'Rose', 'Adeyemi', '1951-03-04', null, 'female'),
+      (${OWNER.frank}, 'Frank', 'Adeyemi', '1949-11-19', '2021-06-02', 'male'),
+      (${OWNER.maya}, 'Maya', 'Adeyemi', '1979-07-22', null, 'female'),
+      (${OWNER.daniel}, 'Daniel', 'Hale', '1977-01-30', null, 'male'),
+      (${OWNER.ivy}, 'Ivy', 'Hale', '2004-09-14', null, 'female'),
+      (${OWNER.theo}, 'Theo', 'Hale', '2001-04-08', null, 'male'),
+      (${OWNER.nadia}, 'Nadia', 'Brandt', '1978-02-11', null, 'female'),
+      (${OWNER.omar}, 'Omar', 'Brandt', '1950-08-30', null, 'male'),
+      (${OWNER.lena}, 'Lena', 'Okonjo', '2011-12-01', null, 'female'),
+      -- Left unrecorded on purpose, so the tree's "not recorded" case is drawn.
+      (${OWNER.bram}, 'Bram', 'Okonjo', '2003-05-17', null, null),
+      (${OWNER.priya}, 'Priya', 'Raman', '1968-10-06', null, 'female')
   `;
 
   await sql`
