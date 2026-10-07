@@ -1065,9 +1065,48 @@ outbound delivery, which needs something to mark as sent.
 
 ---
 
+## D31 — The server will not start under a key that opens none of the vault
+
+**Decision.** At boot, before it serves anything, the server asks the database
+which key-encryption keys the vault's files are wrapped under, and compares
+them with the key it was given. If the vault has files and this key opens none
+of them, the server does not start, and says which key id it holds and which
+ones the vault expects. If the key opens some files but not all, it starts and
+logs a warning naming the other key ids. A missing key file stops it too.
+
+**Why.** It happened. The development key file was replaced while a server was
+running with the old key in memory. That server kept filing documents under the
+old key, the next restart picked up the new one, and the files filed in between
+were lost with the old key. Nothing complained until a backup drill tried to
+open them. A server under the wrong key looks healthy: the vault lists, search
+works, and only opening a file fails. Meanwhile every upload is sealed under the
+wrong key, so the longer it runs, the more the vault splits across two keys.
+Failing at boot is the only point where the mistake costs nothing.
+
+The question has to be asked before anybody signs in, so no user is set and
+every policy matches nothing. That makes it the one question the application
+may ask about every row without saying who is asking. It is answered by
+`public.vault_key_ids()`, a `security definer` function with no arguments that
+returns key ids and nothing else. Key ids are four bytes of a hash of the key,
+already written into every wrapped data key. It is in `public` because the
+application calls it by name, which `perm` forbids (D25), and EXECUTE is the app
+role's alone.
+
+**Consequences.**
+- `app/entry.server.tsx` exists now: React Router's default, with one awaited
+  call at the top. `react-router-serve` imports it at startup, so a refusal
+  stops the process; under Compose, `restart: unless-stopped` turns that into
+  a loop whose log says why.
+- The server needs the database up to start. Compose already waits for it.
+- It does not detect a key file replaced *while* the server runs, because the
+  key is read once and cached. Restarting is what reads it again, and that is
+  when this check runs.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D30 record what building
+None. D9–D21 closed the list that stood here; D22 to D31 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 
