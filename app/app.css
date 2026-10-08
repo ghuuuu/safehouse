@@ -112,6 +112,26 @@ body {
   accent-color: var(--g900);
 }
 
+/*
+ * A row of a list that is one thing to open: the row's main link covers the
+ * whole row, so a thumb does not have to find the words. The row needs
+ * `relative`; any other control in it needs `relative z-10` to stay on top.
+ */
+.row-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Touch: 16px in fields, below which iOS zooms the page on focus. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* A visible focus ring on every control, in ink, never removed. */
 :focus-visible {
   outline: 2px solid var(--g900);

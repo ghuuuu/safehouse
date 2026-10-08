@@ -147,7 +147,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
   const everything = isViewingAs && viewedUser ? `/vault?as=${viewedUser.id}` : "/vault";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
       {isViewingAs && viewedUser ? (
         // The one place in the app that paints its own background, so it is
         // also the one place that has to name its own text colour: the body is
@@ -238,10 +238,10 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             {rows.map((document) => (
               <li
                 key={document.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
+                className="relative flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
               >
                 <span>
-                  <Link className="underline" to={`/record/${document.id}`}>
+                  <Link className="row-link underline" to={`/record/${document.id}`}>
                     {document.title}
                   </Link>
                   <span className="text-gray-500">
@@ -257,7 +257,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                 <span className="flex items-baseline gap-2 text-xs text-gray-500">
                   {document.fileId ? (
                     <Link
-                      className="underline"
+                      className="relative z-10 -my-2 px-1 py-2 underline"
                       to={`/file/${document.fileId}`}
                       reloadDocument
                     >

@@ -143,7 +143,10 @@ A restrained palette of paper and ink, with six muted folder-tab colours and one
 
 ## Layout
 
-A 13rem sidebar beside the page on wide screens; on narrow screens it becomes a block of wrapping links at the top. Each page keeps its own measure inside: forms and records about 48rem, lists and the console up to 64rem. Rows are 16px inside, sections 24–32px apart. On the dashboard, what is running out comes before the family tree.
+A 13rem sidebar beside the page from 768px up. Below that, a bottom tab bar in thumb reach: Dashboard, Vault, Search, File, and More, which opens the rest of the index as a sheet above the bar. Pages are padded 16px on a phone and 32px on wider screens; each keeps its own measure inside, forms and records about 48rem, lists and the console up to 64rem. Rows are 16px inside, sections 24–32px apart. On the dashboard, what is running out comes before the family tree. Nothing scrolls sideways at 390px except the access matrix, inside its own scroller.
+
+### Named Rules
+**The Thumb Rule.** On touch, every control is at least 24px tall and list rows are about 52px. A list row that opens one thing is tappable across its whole width (the `row-link` class); fields are 16px text so the phone does not zoom.
 
 ## Elevation & Depth
 
@@ -178,6 +181,7 @@ Gently rounded: 8px on cards, lists and inputs, 6px on nav items and tabs, full 
 
 ### Navigation
 - **Style:** the sidebar index on shelf. Inactive items in muted ink; hover lays a rule-coloured wash; the current page sits on a sheet with a 1px ruled ring.
+- **Phone:** the tab bar on shelf, 64px tall, labels only. The current tab is ink and semi-bold with a short ink bar above its label.
 
 ### Folder tab (signature)
 The category's name on a tab tinted 12% toward its colour, with a 3px top edge in the colour, above the list of papers it holds. The dashboard uses the small square mark instead.

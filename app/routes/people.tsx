@@ -199,20 +199,20 @@ function SignInControls({
     <Form method="post" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
       <input type="hidden" name="ownerId" value={row.ownerId} />
       {row.hasAccount ? (
-        <button className="underline" type="submit" name="intent" value="link">
+        <button className="py-2 underline" type="submit" name="intent" value="link">
           New sign-in link
         </button>
       ) : (
         <>
           <input
-            className="rounded-lg border border-gray-300 p-1"
+            className="rounded-lg border border-gray-300 p-1 pointer-coarse:p-2"
             type="email"
             name="email"
             placeholder="their email"
             aria-label={`Email for ${row.displayName}`}
             required
           />
-          <button className="underline" type="submit" name="intent" value="invite">
+          <button className="px-1 py-2 underline" type="submit" name="intent" value="invite">
             Invite
           </button>
         </>
@@ -238,7 +238,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 p-8">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">People</h1>
         <p className="mt-1 text-sm text-gray-500">

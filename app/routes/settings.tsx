@@ -161,7 +161,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
   const setup = result?.section === "2fa" ? result.setup : undefined;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 p-8">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
       <h1 className="text-2xl font-medium tracking-tight">Settings</h1>
 
       <section className="flex flex-col gap-3">
@@ -239,7 +239,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
                   <Form method="post">
                     <input type="hidden" name="intent" value="device-out" />
                     <input type="hidden" name="sessionId" value={device.id} />
-                    <button className="text-gray-500 underline" type="submit" disabled={busy}>sign out</button>
+                    <button className="-my-2 py-2 pl-2 text-gray-500 underline" type="submit" disabled={busy}>sign out</button>
                   </Form>
                 )}
               </li>

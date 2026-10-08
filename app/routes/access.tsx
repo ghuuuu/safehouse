@@ -104,14 +104,14 @@ export default function Access({ loaderData }: Route.ComponentProps) {
   const { roster, actorId, matrix, panel } = loaderData;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-2xl font-medium tracking-tight">Access</h1>
         <nav className="flex gap-4 text-sm">
-          <Link className={matrix ? "underline" : "font-medium"} to="/access">
+          <Link className={"py-2 " + (matrix ? "underline" : "font-medium")} to="/access">
             One account
           </Link>
-          <Link className={matrix ? "font-medium" : "underline"} to="/access?view=matrix">
+          <Link className={"py-2 " + (matrix ? "font-medium" : "underline")} to="/access?view=matrix">
             Everyone at once
           </Link>
         </nav>
@@ -120,16 +120,18 @@ export default function Access({ loaderData }: Route.ComponentProps) {
       {matrix ? (
         <MatrixView matrix={matrix} />
       ) : (
-        <div className="grid gap-6 md:grid-cols-[14rem_1fr]">
+        // minmax(0, 1fr): a long record name in "Add one" must not widen the
+        // column past the screen.
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[14rem_minmax(0,1fr)]">
           <nav aria-label="Accounts">
-            <ul className="flex flex-col gap-1 text-sm">
+            <ul className="flex flex-col text-sm md:gap-1">
               {roster.map((entry) => (
-                <li key={entry.id}>
+                <li key={entry.id} className="relative border-b border-gray-200 py-3 last:border-b-0 md:border-b-0 md:py-0">
                   {entry.id === actorId ? (
                     <span className="text-gray-500">{entry.name} (you)</span>
                   ) : (
                     <Link
-                      className={entry.id === panel?.subject.id ? "font-medium" : "underline decoration-gray-300"}
+                      className={"row-link " + (entry.id === panel?.subject.id ? "font-medium" : "underline decoration-gray-300")}
                       to={`/access?as=${entry.id}`}
                     >
                       {entry.name}
@@ -146,7 +148,10 @@ export default function Access({ loaderData }: Route.ComponentProps) {
           </nav>
 
           {panel ? (
-            <PanelView key={panel.subject.id} panel={panel} />
+            // On a phone, the chosen account comes first and the list after it.
+            <div className="order-first md:order-none">
+              <PanelView key={panel.subject.id} panel={panel} />
+            </div>
           ) : (
             <p className="text-sm text-gray-500">
               Pick an account to see what it reaches and change what it is granted. Editing happens
@@ -277,7 +282,7 @@ function OwnerGrants({ panel }: { panel: Panel }) {
     <GrantList kind="owner" title="Owners granted by hand">
       <div className="grid gap-1 text-sm sm:grid-cols-2">
         {panel.options.owners.map((owner) => (
-          <label key={owner.id} className="flex items-center gap-2">
+          <label key={owner.id} className="flex min-h-10 items-center gap-2 md:min-h-0">
             <input type="checkbox" name="owner" value={owner.id} defaultChecked={granted.has(owner.id)} />
             {owner.name}
             {owner.kind !== "person" ? <span className="text-gray-500">({owner.kind})</span> : null}
@@ -294,7 +299,7 @@ function CategoryGrants({ panel }: { panel: Panel }) {
     <GrantList kind="category" title="Kinds of document">
       <div className="flex flex-wrap gap-4 text-sm">
         {CATEGORIES.map((category) => (
-          <label key={category} className="flex items-center gap-2 capitalize">
+          <label key={category} className="flex min-h-10 items-center gap-2 capitalize md:min-h-0">
             <input type="checkbox" name="category" value={category} defaultChecked={granted.has(category)} />
             {category}
           </label>
@@ -318,7 +323,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
         <ul className="flex flex-col gap-1 text-sm">
           {panel.grants.records.map((record) => (
             <li key={record.id}>
-              <label className="flex items-center gap-2">
+              <label className="flex min-h-10 items-center gap-2 md:min-h-0">
                 <input type="checkbox" name="record" value={record.id} defaultChecked />
                 {recordLabel(record)}
               </label>
@@ -328,7 +333,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
       )}
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-gray-500">Add one</span>
-        <select name="record" defaultValue="" className="rounded border border-gray-300 p-1">
+        <select name="record" defaultValue="" className="w-full min-w-0 rounded border border-gray-300 p-2">
           <option value="">—</option>
           {panel.options.records
             .filter((record) => !granted.has(record.id))

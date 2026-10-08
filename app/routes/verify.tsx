@@ -50,7 +50,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Verify({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Confirm it is you</h1>
         <p className="mt-2 text-sm text-gray-500">

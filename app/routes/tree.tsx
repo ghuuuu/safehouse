@@ -56,7 +56,7 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
   const tabHref = (value: Tab) => `/tree?tab=${value}${as ? `&${as}` : ""}`;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       {viewingAs ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           <p>
@@ -77,8 +77,8 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
         <nav className="flex gap-4 text-sm">
-          <Link className="underline" to={`/vault${as ? `?${as}` : ""}`}>Vault</Link>
-          <Link className="underline" to="/people">People</Link>
+          <Link className="py-2 underline" to={`/vault${as ? `?${as}` : ""}`}>Vault</Link>
+          <Link className="py-2 underline" to="/people">People</Link>
         </nav>
       </div>
 

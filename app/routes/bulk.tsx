@@ -112,7 +112,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
 
   if (!canFile) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 p-8">
+      <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
         <h1 className="text-2xl font-medium tracking-tight">File many</h1>
         <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
           Your account can read the vault but not add to it.
@@ -122,7 +122,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">File many</h1>
@@ -132,7 +132,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
         <nav className="flex gap-4 text-sm">
-          <Link className="underline" to="/upload">File one</Link>
+          <Link className="py-2 underline" to="/upload">File one</Link>
         </nav>
       </div>
 

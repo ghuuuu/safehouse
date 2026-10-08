@@ -86,7 +86,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
   const filing = navigation.state === "submitting";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">File a document</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -189,7 +189,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
         </p>
       )}
 
-      <Link className="text-sm text-gray-500 underline" to="/vault">
+      <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
         Back to the vault
       </Link>
     </main>

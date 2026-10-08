@@ -32,7 +32,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
   const { query, hits, viewing } = loaderData;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
       <h1 className="text-2xl font-medium tracking-tight">Search</h1>
 
       {viewing ? (
@@ -75,10 +75,10 @@ export default function Search({ loaderData }: Route.ComponentProps) {
           {hits.map((hit) => (
             <li
               key={hit.documentId}
-              className="flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
+              className="relative flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
             >
               <span>
-                <Link className="underline decoration-gray-300" to={`/record/${hit.documentId}`}>
+                <Link className="row-link underline decoration-gray-300" to={`/record/${hit.documentId}`}>
                   {hit.title}
                 </Link>
                 {hit.ownerName ? <span className="text-gray-500"> — {hit.ownerName}</span> : null}

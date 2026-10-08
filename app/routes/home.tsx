@@ -94,7 +94,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   const total = categories.reduce((sum, c) => sum + c.count, 0);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <h1 className="text-2xl font-medium tracking-tight">Dashboard</h1>
 
       {user.role === "emergency" ? (
@@ -161,7 +161,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             {chips.map((chip) => (
               <li key={chip.label}>
                 <Link
-                  className="rounded-full border border-gray-200 px-3 py-1 hover:border-gray-400"
+                  className="inline-block rounded-full border border-gray-200 px-3 py-1 hover:border-gray-400 pointer-coarse:py-2"
                   to={`/search?q=${encodeURIComponent(chip.label)}`}
                 >
                   {chip.label} <span className="text-gray-500">{chip.count}</span>
@@ -185,9 +185,9 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               {expiring.soon.map((item) => (
                 <li
                   key={item.documentId}
-                  className="flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
+                  className="relative flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
                 >
-                  <Link className="underline decoration-gray-300" to={`/record/${item.documentId}`}>
+                  <Link className="row-link underline decoration-gray-300" to={`/record/${item.documentId}`}>
                     {item.title}
                     {item.ownerName ? ` — ${item.ownerName}` : ""}
                   </Link>

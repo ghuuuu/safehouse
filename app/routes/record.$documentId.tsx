@@ -147,7 +147,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">{view.title}</h1>
         <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
@@ -173,12 +173,12 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
             {view.pages.map((page) => (
               <li
                 key={page.id}
-                className="flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
+                className="relative flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
               >
                 <span>Page {page.pageNo}</span>
                 <span className="flex gap-3 text-xs text-gray-500">
                   <span>{Math.max(1, Math.round(page.byteSize / 1024))} KB</span>
-                  <Link className="underline" to={`/file/${page.id}`} reloadDocument>
+                  <Link className="row-link underline" to={`/file/${page.id}`} reloadDocument>
                     open
                   </Link>
                 </span>
@@ -227,7 +227,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                     form inside a form is invalid HTML that broke hydration. */}
                 <button
                   type="button"
-                  className="underline"
+                  className="-my-2 px-1 py-2 underline"
                   onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
                 >
                   {reveal.state === "submitting" ? "checking…" : "reveal"}
@@ -256,7 +256,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
               type="submit"
               name="intent"
               value="read"
-              className="text-sm text-gray-500 underline"
+              className="py-2 text-sm text-gray-500 underline"
             >
               Read it from the scan
             </button>
@@ -323,10 +323,10 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
             {view.versions.map((version) => (
               <li
                 key={version.id}
-                className="flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
+                className="relative flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
               >
                 <Link
-                  className={version.id === view.document.id ? "font-medium" : "underline"}
+                  className={"row-link " + (version.id === view.document.id ? "font-medium" : "underline")}
                   to={`/record/${version.id}`}
                 >
                   Version {version.versionNo}
@@ -342,7 +342,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         </section>
       ) : null}
 
-      <Link className="text-sm text-gray-500 underline" to="/vault">
+      <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
         Back to the vault
       </Link>
     </main>
