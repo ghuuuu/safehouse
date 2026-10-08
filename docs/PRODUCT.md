@@ -24,7 +24,7 @@ deliberately not a multi-tenant application.
 The target feeling is a well-kept home filing cabinet: calm, tactile, private.
 Explicitly not a cloud storage product and not enterprise SaaS.
 
-_The visual direction is being re-explored. See `docs/DESIGN.md` once it exists._
+The visual system is `docs/DESIGN.md`: warm paper, ink, and a folder-tab colour per category.
 
 ---
 
