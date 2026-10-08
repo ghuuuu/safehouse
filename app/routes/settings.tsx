@@ -1,4 +1,4 @@
-import { data, Form, Link, useNavigation } from "react-router";
+import { data, Form, useNavigation } from "react-router";
 
 import type { Route } from "./+types/settings";
 import { auth, listDevices, MIN_PASSWORD, signOutDevice } from "../auth.server";
@@ -162,13 +162,10 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 p-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-medium tracking-tight">Settings</h1>
-        <Link className="text-sm underline" to="/">Home</Link>
-      </div>
+      <h1 className="text-2xl font-medium tracking-tight">Settings</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Account</h2>
+        <h2 className="text-base font-medium">Account</h2>
         <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
           <dt className="text-gray-500">Name</dt><dd>{user.name}</dd>
           <dt className="text-gray-500">Email</dt><dd>{user.email}</dd>
@@ -186,7 +183,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Security</h2>
+        <h2 className="text-base font-medium">Security</h2>
 
         <div className={card}>
           <h3 className="text-sm font-medium">Two-factor sign-in</h3>
@@ -195,7 +192,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
               <p>
                 In your authenticator app, add an account by typing this key. Then type the six digits it shows.
               </p>
-              <code className="break-all rounded bg-gray-100 p-2 text-base tracking-wider dark:bg-gray-800">{setup.secret}</code>
+              <code className="break-all rounded bg-gray-100 p-2 text-base tracking-wider">{setup.secret}</code>
               <p>
                 Keep these backup codes somewhere safe and offline. Each one signs you in once if you lose your phone,
                 and they are not shown again:
@@ -265,7 +262,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
       </section>
 
       <section id="notifications" className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Notifications</h2>
+        <h2 className="text-base font-medium">Notifications</h2>
         {delivery ? (
           <p className="text-sm">
             {delivery.channel
@@ -296,7 +293,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
 
       {settings ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">Household</h2>
+          <h2 className="text-base font-medium">Household</h2>
           <Form method="post" className={card}>
             <input type="hidden" name="intent" value="household" />
             <fieldset disabled={!isAdmin || busy} className="flex flex-col gap-3 text-sm">

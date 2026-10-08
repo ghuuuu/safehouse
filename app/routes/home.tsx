@@ -2,6 +2,7 @@ import { Form, Link } from "react-router";
 
 import type { Route } from "./+types/home";
 import { MODES, type Mode } from "../dashboard";
+import { CategoryMark } from "../folder-tab";
 import { getDashboard } from "../dashboard.server";
 import { openWindow, openWindows } from "../emergency.server";
 import { keys } from "../keys.server";
@@ -94,29 +95,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
-      <header className="flex flex-wrap items-baseline justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight">Safehouse</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Signed in as {user.name} ({user.role}).
-          </p>
-        </div>
-        <nav className="flex flex-wrap gap-4 text-sm">
-          <Link className="underline" to="/vault">Vault</Link>
-          <Link className="underline" to="/search">Search</Link>
-          <Link className="underline" to="/people">People</Link>
-          <Link className="underline" to="/tree">Family tree</Link>
-          <Link className="underline" to="/upload">File a document</Link>
-          <Link className="underline" to="/bulk">File many</Link>
-          {user.role === "admin" && (
-            <Link className="underline" to="/access">Access</Link>
-          )}
-          <Link className="underline" to="/settings">Settings</Link>
-          <Form method="post" action="/sign-out">
-            <button className="text-gray-500 underline" type="submit">Sign out</button>
-          </Form>
-        </nav>
-      </header>
+      <h1 className="text-2xl font-medium tracking-tight">Dashboard</h1>
 
       {user.role === "emergency" ? (
         <BreakGlass open={windows[0] ?? null} error={actionData && "error" in actionData ? (actionData.error ?? null) : null} />
@@ -156,7 +135,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             aria-current={mode === m ? "page" : undefined}
             className={
               mode === m
-                ? "rounded-md bg-gray-900 px-4 py-1.5 text-white dark:bg-gray-100 dark:text-gray-900"
+                ? "rounded-md bg-gray-900 px-4 py-1.5 text-white"
                 : "rounded-md px-4 py-1.5 text-gray-600"
             }
           >
@@ -192,31 +171,6 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           </ul>
         ) : null}
       </Form>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">
-          {mode === "individuals" ? "The family" : "Businesses"}
-        </h2>
-        {mode === "individuals" ? (
-          tree.people.length > 0 ? (
-            <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} />
-          ) : (
-            <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">
-              Nobody in the family tree that you can see.
-            </p>
-          )
-        ) : (
-          <Owners owners={tree.businesses} empty="No businesses that you can see." vaultFor={vaultFor} />
-        )}
-        {mode === "individuals" && tree.households.length > 0 ? (
-          <p className="text-sm">
-            Household papers:{" "}
-            {tree.households.map((h) => (
-              <Link key={h.ownerId} className="underline" to={vaultFor(h.ownerId)}>{h.name}</Link>
-            ))}
-          </p>
-        ) : null}
-      </section>
 
       <div className="grid gap-8 md:grid-cols-2">
         <section className="flex flex-col gap-2">
@@ -259,15 +213,21 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               <li key={category}>
                 {count > 0 ? (
                   <Link
-                    className="flex items-baseline justify-between rounded-lg border border-gray-200 p-3 hover:border-gray-400"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3 hover:border-gray-400"
                     to={`/vault#${category}`}
                   >
-                    <span className="capitalize">{category}</span>
+                    <span className="flex items-center gap-2 capitalize">
+                      <CategoryMark category={category} />
+                      {category}
+                    </span>
                     <span className="text-gray-500">{count}</span>
                   </Link>
                 ) : (
-                  <span className="flex items-baseline justify-between rounded-lg border border-dashed border-gray-200 p-3 text-gray-400">
-                    <span className="capitalize">{category}</span>
+                  <span className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-gray-300 p-3 text-gray-500">
+                    <span className="flex items-center gap-2 capitalize">
+                      <CategoryMark category={category} />
+                      {category}
+                    </span>
                     <span>0</span>
                   </span>
                 )}
@@ -279,6 +239,31 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           </p>
         </section>
       </div>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium">
+          {mode === "individuals" ? "The family" : "Businesses"}
+        </h2>
+        {mode === "individuals" ? (
+          tree.people.length > 0 ? (
+            <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} />
+          ) : (
+            <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">
+              Nobody in the family tree that you can see.
+            </p>
+          )
+        ) : (
+          <Owners owners={tree.businesses} empty="No businesses that you can see." vaultFor={vaultFor} />
+        )}
+        {mode === "individuals" && tree.households.length > 0 ? (
+          <p className="text-sm">
+            Household papers:{" "}
+            {tree.households.map((h) => (
+              <Link key={h.ownerId} className="underline" to={vaultFor(h.ownerId)}>{h.name}</Link>
+            ))}
+          </p>
+        ) : null}
+      </section>
     </main>
   );
 }
@@ -328,7 +313,7 @@ function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error
         <input name="reason" required minLength={3} maxLength={500} className="rounded border border-gray-300 p-2" />
       </label>
       {error ? <p role="alert" className="text-red-700">{error}</p> : null}
-      <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-white">Open an emergency window</button>
+      <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-red-50">Open an emergency window</button>
     </Form>
   );
 }

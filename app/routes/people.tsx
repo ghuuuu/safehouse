@@ -1,4 +1,4 @@
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
 
 import type { Route } from "./+types/people";
 import { ACTIONS, record } from "../activity.server";
@@ -242,7 +242,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
       <div>
         <h1 className="text-2xl font-medium tracking-tight">People</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Everyone and everything documents can be filed to. <Link className="underline" to="/">Home</Link>
+          Everyone and everything documents can be filed to.
         </p>
       </div>
 

@@ -1,6 +1,7 @@
 import { Form, Link } from "react-router";
 
 import type { Route } from "./+types/search";
+import { CategoryMark } from "../folder-tab";
 import { runSearch } from "../search.server";
 import { resolveViewContext } from "../view-as.server";
 
@@ -32,12 +33,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-medium tracking-tight">Search</h1>
-        <Link className="text-sm underline" to="/">
-          Home
-        </Link>
-      </div>
+      <h1 className="text-2xl font-medium tracking-tight">Search</h1>
 
       {viewing ? (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
@@ -88,8 +84,9 @@ export default function Search({ loaderData }: Route.ComponentProps) {
                 {hit.ownerName ? <span className="text-gray-500"> — {hit.ownerName}</span> : null}
                 {hit.isCurrent ? null : <span className="text-gray-500"> (an earlier version)</span>}
               </span>
-              <span className="text-gray-500">
+              <span className="flex items-center gap-2 text-gray-500">
                 {hit.matchedNumber ? "matched its number · " : ""}
+                <CategoryMark category={hit.category} />
                 {hit.category}
               </span>
             </li>

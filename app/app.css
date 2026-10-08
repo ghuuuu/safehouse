@@ -1,15 +1,119 @@
+/*! Safehouse visual contract (impeccable, 2026-10-08)
+THESIS: a well-kept home filing cabinet. Papers on a desk, filed in folders with
+coloured tabs, written in ink. Refuses cloud-storage chrome and SaaS grey.
+OWN-WORLD: warm paper ground, a lighter sheet for anything you write on, ink
+text, ruled lines for edges. The six categories are folder-tab colours and the
+only colour in the app besides warnings. At night, the inside of the drawer.
+STORY: open it, see whose papers and what is running out, find one, get out.
+FIRST VIEWPORT: the sidebar index (Find / File / Household) on the left, the
+dashboard on the paper to its right.
+FORM: user-pinned "warm paper"; no seed roll (the brief pinned the world).
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md
+*/
 @import "tailwindcss";
 
+/*
+ * The grey scale is ink on paper, and it changes with the light.
+ *
+ * Every `gray-*` and `white` class in the app reads these, so the whole app is
+ * one palette with no per-page colour decisions to drift. Low numbers are paper
+ * and ruled lines, high numbers are ink. In dark mode the scale turns over: the
+ * paper goes dark and the ink goes light, so a class means the same role in both
+ * ("gray-500" is always muted text, "gray-900" always the strongest ink), and no
+ * component needs a `dark:` variant for a grey. Contrast of every text step
+ * against every ground is at least 4.5:1 in both modes.
+ */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+
+  --color-white: var(--sheet);
+  --color-paper: var(--paper);
+  --color-gray-50: var(--g50);
+  --color-gray-100: var(--g100);
+  --color-gray-200: var(--g200);
+  --color-gray-300: var(--g300);
+  --color-gray-400: var(--g400);
+  --color-gray-500: var(--g500);
+  --color-gray-600: var(--g600);
+  --color-gray-700: var(--g700);
+  --color-gray-800: var(--g800);
+  --color-gray-900: var(--g900);
+  --color-gray-950: var(--g950);
+}
+
+:root {
+  --paper: #f5f1e8;
+  --sheet: #fffdf8;
+  --g50: #eee8dc;
+  --g100: #e7e0d2;
+  --g200: #dcd3c2;
+  --g300: #c8bda8;
+  --g400: #9c907d;
+  --g500: #6b6052;
+  --g600: #574d41;
+  --g700: #433b31;
+  --g800: #322b23;
+  --g900: #231e18;
+  --g950: #17130f;
+
+  /* Folder tabs (PRODUCT.md, Taxonomy). Each passes 4.5:1 as text on paper. */
+  --cat-personal: #3b6788;
+  --cat-medical: #4a7655;
+  --cat-business: #585c8c;
+  --cat-financial: #8f6418;
+  --cat-legal: #86372f;
+  --cat-general: #74654f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #17140f;
+    --sheet: #211d17;
+    --g50: #1d1913;
+    --g100: #2a251e;
+    --g200: #363027;
+    --g300: #4b4338;
+    --g400: #7d7262;
+    --g500: #a89d8c;
+    --g600: #c0b6a6;
+    --g700: #d4cbbd;
+    --g800: #e2dacd;
+    --g900: #ece5d8;
+    --g950: #f7f2e8;
+
+    --cat-personal: #93b9d6;
+    --cat-medical: #95c2a0;
+    --cat-business: #a6aad8;
+    --cat-financial: #dcb36c;
+    --cat-legal: #d9928a;
+    --cat-general: #c2b199;
+  }
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-paper text-gray-900;
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
+/* Anything you write on is a sheet, lighter than the paper it lies on. */
+@layer base {
+  input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]),
+  select,
+  textarea {
+    background-color: var(--sheet);
   }
+}
+
+/* Checkboxes, radios and the like, in ink rather than the browser's blue. */
+:root {
+  accent-color: var(--g900);
+}
+
+/* A visible focus ring on every control, in ink, never removed. */
+:focus-visible {
+  outline: 2px solid var(--g900);
+  outline-offset: 2px;
 }

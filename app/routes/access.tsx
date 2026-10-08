@@ -11,6 +11,7 @@ import {
 } from "../access.server";
 import { CATEGORIES } from "../documents";
 import { revokeWindows } from "../emergency.server";
+import { roleLabel } from "../roles";
 import { withVault } from "../session.server";
 import { resolveViewContext } from "../view-as.server";
 import { When } from "../when";
@@ -99,13 +100,6 @@ export async function action({ request }: Route.ActionArgs) {
 
 class GrantProblem extends Error {}
 
-const LABEL: Record<string, string> = {
-  admin: "administrator",
-  individual: "household member",
-  third_party: "third party",
-  emergency: "emergency contact",
-};
-
 export default function Access({ loaderData }: Route.ComponentProps) {
   const { roster, actorId, matrix, panel } = loaderData;
 
@@ -119,9 +113,6 @@ export default function Access({ loaderData }: Route.ComponentProps) {
           </Link>
           <Link className={matrix ? "font-medium" : "underline"} to="/access?view=matrix">
             Everyone at once
-          </Link>
-          <Link className="underline" to="/">
-            Home
           </Link>
         </nav>
       </div>
@@ -146,7 +137,7 @@ export default function Access({ loaderData }: Route.ComponentProps) {
                   )}
                   <span className="text-gray-500">
                     {" "}
-                    · {LABEL[entry.role] ?? entry.role}
+                    · {roleLabel(entry.role)}
                     {entry.disabled ? ", disabled" : ""}
                   </span>
                 </li>
@@ -176,13 +167,16 @@ function PanelView({ panel }: { panel: Panel }) {
       <div>
         <h2 className="text-lg font-medium">{subject.name}</h2>
         <p className="text-sm text-gray-500">
-          {LABEL[subject.role] ?? subject.role}
+          {roleLabel(subject.role)}
           {subject.disabled ? ", disabled: reaches nothing until re-enabled" : ""}
         </p>
       </div>
 
       <div className="flex flex-col gap-1">
-        <meter className="h-3 w-full" min={0} max={Math.max(reachable, 1)} value={reach} />
+        {/* The sentence below says the numbers; this bar only shows them. */}
+        <div aria-hidden className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="h-full rounded-full bg-gray-900" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
+        </div>
         <p className="text-sm">
           {subject.name} reaches <strong className="font-medium">{reach} of the {reachable}</strong>{" "}
           documents you can see.{" "}
@@ -385,7 +379,7 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
                   <Link className="whitespace-nowrap underline decoration-gray-300" to={`/access?as=${row.user.id}`}>
                     {row.user.name}
                   </Link>
-                  <span className="block text-xs text-gray-500">{LABEL[row.user.role] ?? row.user.role}</span>
+                  <span className="block text-xs text-gray-500">{roleLabel(row.user.role)}</span>
                 </th>
                 <td className="whitespace-nowrap p-2">
                   {row.total} of {matrix.reachable}
@@ -423,7 +417,7 @@ function WindowNotice({ panel }: { panel: Panel }) {
       </p>
       <input type="hidden" name="intent" value="revoke-window" />
       <input type="hidden" name="userId" value={panel.subject.id} />
-      <button type="submit" className="self-start rounded-lg bg-red-700 px-3 py-1.5 text-white">Close it now</button>
+      <button type="submit" className="self-start rounded-lg bg-red-700 px-3 py-1.5 text-red-50">Close it now</button>
       {result && result.kind === "window" && "error" in result ? <p>{result.error}</p> : null}
     </Form>
   );

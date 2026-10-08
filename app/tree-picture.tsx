@@ -84,7 +84,7 @@ export function TreePicture({
         ref={svg}
         role="group"
         aria-label="Family tree"
-        className="h-[32rem] w-full cursor-grab touch-none select-none rounded-lg border border-gray-200 bg-white active:cursor-grabbing dark:bg-gray-950"
+        className="h-[32rem] w-full cursor-grab touch-none select-none rounded-lg border border-gray-200 bg-white active:cursor-grabbing"
         viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
         onPointerDown={(event) => {
           drag.current = { x: event.clientX, y: event.clientY, moved: false };
@@ -143,14 +143,14 @@ export function TreePicture({
                 rx={8}
                 className={
                   "stroke-gray-300 group-hover:stroke-gray-900 group-focus-visible:stroke-blue-600 group-focus-visible:[stroke-width:3] " +
-                  (person.deceased ? "fill-gray-100 dark:fill-gray-800" : "fill-white dark:fill-gray-900")
+                  (person.deceased ? "fill-gray-100" : "fill-white")
                 }
               />
               <text
                 x={at.x + 12}
                 y={at.y + NODE_HEIGHT / 2}
                 dominantBaseline="central"
-                className={"text-[13px] " + (person.deceased ? "fill-gray-500" : "fill-gray-900 dark:fill-gray-100")}
+                className={"text-[13px] " + (person.deceased ? "fill-gray-500" : "fill-gray-900")}
               >
                 {truncate(person.name)}
                 {person.deceased ? " †" : ""}
@@ -187,7 +187,7 @@ function Edge({ edge, layout, lane }: { edge: TreeEdge; layout: Layout; lane: nu
   if (!from || !to) return null;
 
   const style = edge.ended
-    ? "stroke-gray-300 [stroke-dasharray:6_4] dark:stroke-gray-700"
+    ? "stroke-gray-300 [stroke-dasharray:6_4]"
     : "stroke-gray-500";
 
   if (edge.kind === "spouse_of") {

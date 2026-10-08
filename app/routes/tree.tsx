@@ -77,7 +77,6 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
         <nav className="flex gap-4 text-sm">
-          <Link className="underline" to="/">Home</Link>
           <Link className="underline" to={`/vault${as ? `?${as}` : ""}`}>Vault</Link>
           <Link className="underline" to="/people">People</Link>
         </nav>

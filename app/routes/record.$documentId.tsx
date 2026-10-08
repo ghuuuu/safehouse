@@ -3,6 +3,7 @@ import { Form, Link, useFetcher } from "react-router";
 import type { Route } from "./+types/record.$documentId";
 import { ACTIONS, record as logEvent } from "../activity.server";
 import { findFile, readFileContents } from "../download.server";
+import { CategoryMark } from "../folder-tab";
 import { readDocument } from "../ocr.server";
 import {
   EDITABLE_FIELDS,
@@ -149,8 +150,10 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">{view.title}</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {view.ownerName ?? "owner not shown to you"} · {view.category}
+        <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
+          {view.ownerName ?? "owner not shown to you"} ·
+          <CategoryMark category={view.category} />
+          {view.category}
           {view.subcategory ? ` · ${view.subcategory}` : ""}
           {view.isPrivate ? " · private" : ""}
           {view.document.isCurrent ? "" : ` · superseded (v${view.document.versionNo})`}
@@ -158,7 +161,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
       </div>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+        <h2 className="text-base font-medium">
           Pages
         </h2>
         {view.pages.length === 0 ? (
@@ -186,7 +189,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+        <h2 className="text-base font-medium">
           What it says
         </h2>
 
@@ -214,7 +217,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           <div className="flex items-baseline gap-3 text-sm">
             <span>Number</span>
             {reveal.data?.revealed ? (
-              <code className="rounded bg-gray-100 px-2 py-1 dark:bg-gray-800">
+              <code className="rounded bg-gray-100 px-2 py-1">
                 {reveal.data.revealed}
               </code>
             ) : view.document.hasIdentifier ? (
@@ -263,7 +266,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
       {facts.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+          <h2 className="text-base font-medium">
             What your insurer wrote
           </h2>
           <p className="text-xs text-gray-500">
@@ -290,7 +293,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
       {signposts.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+          <h2 className="text-base font-medium">
             Where the conditions are
           </h2>
           <p className="text-xs text-gray-500">
@@ -313,7 +316,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
       {view.versions.length > 1 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+          <h2 className="text-base font-medium">
             Versions
           </h2>
           <ul className="rounded-lg border border-gray-200 text-sm">

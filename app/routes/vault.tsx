@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/vault";
 import { ACTIONS, record } from "../activity.server";
+import { FolderTab } from "../folder-tab";
+import { roleLabel } from "../roles";
 import { forOwner, VAULT_LIST_SQL } from "../vault.server";
 import {
   resolveViewContext,
@@ -156,7 +158,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           <p>
             You are seeing the vault as{" "}
             <strong className="font-medium">{viewedUser.name}</strong> (
-            {viewedUser.role}
+            {roleLabel(viewedUser.role)}
             {viewedUser.disabled ? ", disabled" : null}). They reach{" "}
             <strong className="font-medium">
               {reachedByViewed} of the {reachable}
@@ -206,7 +208,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
               .filter((entry) => entry.id !== actor.id)
               .map((entry) => (
                 <option key={entry.id} value={entry.id}>
-                  {entry.name} ({entry.role}
+                  {entry.name} ({roleLabel(entry.role)}
                   {entry.disabled ? ", disabled" : ""})
                 </option>
               ))}
@@ -230,11 +232,9 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
 
       {groups.map(([category, rows]) => (
         // The id is where the dashboard's category overview lands.
-        <section key={category} id={category} className="flex scroll-mt-4 flex-col gap-2">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
-            {category}
-          </h2>
-          <ul className="rounded-lg border border-gray-200 text-sm">
+        <section key={category} id={category} className="flex scroll-mt-4 flex-col">
+          <FolderTab category={category}>{category}</FolderTab>
+          <ul className="rounded-lg rounded-tl-none border border-gray-200 bg-white text-sm">
             {rows.map((document) => (
               <li
                 key={document.id}
@@ -291,9 +291,6 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             File a document
           </Link>
         )}
-        <Link className="text-gray-500 underline" to="/">
-          Back to the dashboard
-        </Link>
       </div>
     </main>
   );

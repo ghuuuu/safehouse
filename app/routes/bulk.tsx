@@ -117,7 +117,6 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
         <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
           Your account can read the vault but not add to it.
         </p>
-        <Link className="text-sm underline" to="/">Home</Link>
       </main>
     );
   }
@@ -133,7 +132,6 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
         <nav className="flex gap-4 text-sm">
-          <Link className="underline" to="/">Home</Link>
           <Link className="underline" to="/upload">File one</Link>
         </nav>
       </div>
