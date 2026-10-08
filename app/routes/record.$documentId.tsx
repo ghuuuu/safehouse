@@ -220,12 +220,15 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
             ) : view.document.hasIdentifier ? (
               <>
                 <span className="text-gray-500">•••••••• on file</span>
-                <reveal.Form method="post">
-                  <input type="hidden" name="intent" value="reveal" />
-                  <button type="submit" className="underline">
-                    {reveal.state === "submitting" ? "checking…" : "reveal"}
-                  </button>
-                </reveal.Form>
+                {/* A button, not a form: this sits inside the fields' form, and a
+                    form inside a form is invalid HTML that broke hydration. */}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
+                >
+                  {reveal.state === "submitting" ? "checking…" : "reveal"}
+                </button>
               </>
             ) : (
               <span className="text-gray-500">none recorded</span>
