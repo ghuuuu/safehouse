@@ -14,7 +14,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { ROSTER_SQL } from "../view-as.server";
-import { forOwner, VAULT_LIST_SQL } from "../vault.server";
+import { forOwner, latestVersions, VAULT_LIST_SQL } from "../vault.server";
 import { DOCUMENT, FILE, OWNER, USER } from "./fixture";
 import { asUser, closeTestDatabase, prepareTestDatabase } from "./test-harness";
 
@@ -190,6 +190,54 @@ describe("narrowing the list to one owner", () => {
     // tree's click-through is exactly this combination.
     expect(await listedToFor(USER.daniel, OWNER.theo)).toEqual(["theoPassport"]);
     expect(await listedToFor(USER.maya, OWNER.theo)).toEqual([]);
+  });
+});
+
+describe("one row per record, the older versions behind it", () => {
+  type Row = { id: string; recordId: string; versionNo: number; isCurrent: boolean };
+  async function stackedFor(userId: string) {
+    const rows = (await asUser(userId, (sql) => sql.unsafe(VAULT_LIST_SQL))) as unknown as Row[];
+    return { rows, stacked: latestVersions(rows) };
+  }
+
+  test("the current version stands for its record, counting what is behind it", async () => {
+    const { rows, stacked } = await stackedFor(USER.priya);
+    const passport = stacked.filter((row) => row.recordId === rows.find((r) => r.id === DOCUMENT.mayaPassport)?.recordId);
+
+    expect(passport).toHaveLength(1);
+    expect(passport[0].id).toBe(DOCUMENT.mayaPassport);
+    expect(passport[0].olderVersions).toBe(1);
+    // Nothing older is in the list on its own any more.
+    expect(stacked.some((row) => row.id === DOCUMENT.mayaPassportOld)).toBe(false);
+    expect(stacked.every((row) => row.isCurrent)).toBe(true);
+    expect(stacked).toHaveLength(rows.filter((row) => row.isCurrent).length);
+  });
+
+  test("counts only versions the viewer was already given", async () => {
+    // Narrowing, like forOwner: the count is of rows the policies returned, so
+    // it cannot tell anyone about a version they may not see.
+    const { rows, stacked } = await stackedFor(USER.maya);
+    const older = stacked.reduce((n, row) => n + row.olderVersions, 0);
+
+    expect(older + stacked.length).toBe(rows.length);
+  });
+
+  test("a record seen only by an older version still shows, as that version", () => {
+    const stacked = latestVersions([
+      { id: "a1", recordId: "a", versionNo: 1, isCurrent: false },
+      { id: "a2", recordId: "a", versionNo: 2, isCurrent: false },
+    ]);
+
+    expect(stacked.map((row) => [row.id, row.olderVersions])).toEqual([["a2", 1]]);
+  });
+
+  test("the version marked current wins, whatever its number", () => {
+    const stacked = latestVersions([
+      { id: "b2", recordId: "b", versionNo: 2, isCurrent: false },
+      { id: "b1", recordId: "b", versionNo: 1, isCurrent: true },
+    ]);
+
+    expect(stacked.map((row) => [row.id, row.olderVersions])).toEqual([["b1", 1]]);
   });
 });
 

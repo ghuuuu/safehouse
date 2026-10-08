@@ -33,6 +33,7 @@ export const VAULT_LIST_SQL = `
     -- From owners, not records.owner_id, so it is null exactly when the name
     -- is: a per-record grant does not get to learn who its owner is (D17).
     o.id as "ownerId",
+    d.record_id as "recordId",
     d.version_no as "versionNo",
     d.is_current as "isCurrent",
     d.expires_on as "expiresOn",
@@ -73,4 +74,30 @@ export function forOwner<T extends { ownerId: string | null }>(
   ownerId: string,
 ): T[] {
   return rows.filter((row) => row.ownerId !== null && row.ownerId === ownerId);
+}
+
+/**
+ * One row per record: the current version, with how many older ones sit
+ * behind it (PRODUCT.md, Versioning). A renewed passport is one entry, not two.
+ *
+ * Narrowing, not permission, like `forOwner`: it only drops rows and counts
+ * rows the policies already returned, so the count cannot mention a version
+ * the viewer may not see. A record reached only through an older version
+ * still shows, as the newest one there is.
+ */
+export function latestVersions<T extends { recordId: string; versionNo: number; isCurrent: boolean }>(
+  rows: T[],
+): (T & { olderVersions: number })[] {
+  const byRecord = new Map<string, T & { olderVersions: number }>();
+  for (const row of rows) {
+    const shown = byRecord.get(row.recordId);
+    if (!shown) {
+      byRecord.set(row.recordId, { ...row, olderVersions: 0 });
+    } else if (row.isCurrent || (!shown.isCurrent && row.versionNo > shown.versionNo)) {
+      byRecord.set(row.recordId, { ...row, olderVersions: shown.olderVersions + 1 });
+    } else {
+      shown.olderVersions += 1;
+    }
+  }
+  return [...byRecord.values()];
 }

@@ -6,7 +6,7 @@ import { ACTIONS, record } from "../activity.server";
 import { FolderTab } from "../folder-tab";
 import { roleLabel } from "../roles";
 import { longDate } from "../when";
-import { forOwner, VAULT_LIST_SQL } from "../vault.server";
+import { forOwner, latestVersions, VAULT_LIST_SQL } from "../vault.server";
 import {
   resolveViewContext,
   withActorVault,
@@ -19,6 +19,7 @@ export function meta() {
 
 type DocumentRow = {
   id: string;
+  recordId: string;
   category: string;
   title: string;
   /** Null when the viewer reached the document without reaching its owner. */
@@ -49,6 +50,10 @@ type DocumentRow = {
  * decides that in `resolveViewContext` before either transaction opens. See
  * `app/view-as.server.ts`.
  *
+ * `latestVersions` folds each record's versions into one row, on the server,
+ * so older versions are counted but never sent: it drops rows the policies
+ * returned and counts only those.
+ *
  * `?owner=` (where a tree click lands) narrows the list further, here on the
  * server, using `forOwner`. It removes rows and never adds any. The owner's
  * name for the heading is read through `owners_read`, so an owner the viewer
@@ -72,14 +77,14 @@ export async function loader({ request }: Route.LoaderArgs) {
           sql`select display_name as name from owners where id::text = ${ownerId}`,
         )
       : [];
-    return { all: [...rows], ownerName: owner?.name ?? null };
+    return { all: latestVersions([...rows]), ownerName: owner?.name ?? null };
   });
 
   const documents = ownerId ? forOwner(all, ownerId) : all;
 
-  // The denominator in "14 of 36", counted as the actor rather than as a raw
-  // total — an admin who could not see everything must not be told how much
-  // everything is.
+  // The denominator in "14 of 36", counted in records like the list, and as
+  // the actor rather than as a raw total — an admin who could not see
+  // everything must not be told how much everything is.
   if (view.isViewingAs) {
     // Recorded in the actor's own transaction, because the viewed one is
     // read-only (and because the line is about what the admin did, not about
@@ -97,7 +102,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const reachable = view.isViewingAs
     ? await withActorVault(view, async (db) => {
         const [row] = await db.execute<{ n: number }>(
-          sql`select count(*)::int as n from documents`,
+          sql`select count(distinct record_id)::int as n from documents`,
         );
         return row.n;
       })
@@ -117,8 +122,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-function groupByCategory(documents: DocumentRow[]) {
-  const groups = new Map<string, DocumentRow[]>();
+function groupByCategory<T extends DocumentRow>(documents: T[]) {
+  const groups = new Map<string, T[]>();
 
   for (const document of documents) {
     const group = groups.get(document.category);
@@ -143,7 +148,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
 
   const canViewAs = actor.role === "admin";
   const groups = groupByCategory(documents);
-  const superseded = documents.filter((d) => !d.isCurrent).length;
+  const older = documents.reduce((n, d) => n + d.olderVersions, 0);
   // Keeps whose eyes you are using when clearing the owner filter.
   const everything = isViewingAs && viewedUser ? `/vault?as=${viewedUser.id}` : "/vault";
 
@@ -178,7 +183,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           {documents.length === 1
             ? "One document"
             : `${documents.length} documents`}
-          {superseded > 0 ? `, ${superseded} of them older versions` : null}
+          {older > 0 ? `, with ${older} older ${older === 1 ? "version" : "versions"} behind them` : null}
           {isViewingAs ? null : `, as ${actor.name}`}.
         </p>
         {owner ? (
@@ -266,9 +271,12 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                     </Link>
                   ) : null}
                   {document.isPrivate ? <span>private</span> : null}
-                  {document.isCurrent ? null : (
-                    <span>superseded (v{document.versionNo})</span>
-                  )}
+                  {document.isCurrent ? null : <span>an older version</span>}
+                  {document.olderVersions > 0 ? (
+                    <span>
+                      {document.olderVersions} older {document.olderVersions === 1 ? "version" : "versions"}
+                    </span>
+                  ) : null}
                   {document.expiresOn ? (
                     document.expired ? (
                       <span className="font-medium text-red-700 dark:text-red-400">expired {longDate(document.expiresOn)}</span>

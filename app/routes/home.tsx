@@ -224,7 +224,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             ))}
           </ul>
           <p className="text-xs text-gray-500 max-w-prose">
-            Current versions you can see; the vault also lists older ones.
+            Current versions you can see.
           </p>
         </section>
       </div>
