@@ -340,7 +340,8 @@ app is not good enough. A push webhook covers that without a mail server.
 
 ## D14 — Record field values are readable in the database
 
-**Decided.**
+**Superseded by D35** (2026-10-08). Kept as written, because the reasoning is
+what D35 answers.
 
 Passport numbers, licence numbers and similar identifiers are stored as ordinary
 readable columns. They are masked in API responses per D1, and the protection
@@ -1213,9 +1214,58 @@ already find out. The wording is there for the day an admin can be narrowed:
 
 ---
 
+## D35 — Identifiers are sealed, and found by keyed fingerprint
+
+**Decision.** This replaces D14. The household chose the alternative D14
+recorded. `documents.identifier` (passport, licence, policy and permit numbers)
+is stored as three columns:
+
+- `identifier_sealed`: AES-256-GCM, with the document id as authenticated
+  data. Format: version ‖ keyId ‖ nonce ‖ ciphertext ‖ tag.
+- `identifier_fp`: HMAC-SHA256 of the normalized whole number (NFKC, upper
+  case, letters and digits only).
+- `identifier_last4_fp`: HMAC-SHA256 of its last four characters, labelled
+  apart from the whole-number fingerprint.
+
+The sealing key and the fingerprint key are derived from the KEK with HKDF
+under two labels. Neither is the key that wraps document keys, and all of it is
+node:crypto (CLAUDE.md: nothing hand-rolled).
+
+**Why.** Under D14, a copy of the database was a copy of every number in the
+household. That covered a stolen volume, a dump left lying around, or anyone
+able to run `select` as the owner role. Encrypted backups and keeping Postgres
+off the network were the only protection. For something meant to run in other
+households' homes, that was the wrong default. The cost is search: a number is
+found whole, or by its last four, and never by a fragment from its middle.
+
+**Consequences.**
+- A match on a number is logged (`field.matched`) before the results are
+  returned. A last-four search tells the searcher four characters of a masked
+  value, which is what D14 obliged us to log. The reveal stays as it was:
+  step-up, then a log line, then the value.
+- The old column is held empty by `identifier_is_sealed`, a constraint 0013
+  added as NOT VALID so that the migration could run without the key. `npm run
+  db:migrate` then runs `identifiers:seal`, which seals with the key and
+  validates the constraint. Restoring a backup taken before D35 needs
+  `identifiers:seal` again. The column is dropped by a later migration.
+- Fingerprints are deterministic, so the database can tell that two documents
+  share a number, or share the last four, without learning what it is.
+- Rotating the KEK has to re-seal and re-fingerprint every identifier. No
+  rotation command exists yet; whichever one is built owes that.
+- `documents.details` must never hold an identifier. The fixture's title number
+  was taken out of it. Anything number-like that should be searchable belongs
+  in `identifier`.
+- The boot key check (D31) still looks only at files. A wrong key on a vault
+  with numbers but no files fails at the first reveal or search, and it fails
+  by name.
+- The backup drill opens every sealed identifier, and fails on one that will
+  not open under the right key.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D34 record what building
+None. D9–D21 closed the list that stood here; D22 to D35 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 
@@ -1225,8 +1275,6 @@ Worth revisiting deliberately rather than by drift:
   job. Revisit when that becomes a nuisance rather than a rarity.
 - **Key custody** (D12) — passphrase-unlock is designed for and not built. Decide
   again once real documents are in and the operational rhythm is known.
-- **Readable identifiers** (D14) — an accepted risk with a documented alternative,
-  not a closed question.
 - **Per-owner category grants** (D18) — revisit if the per-record exception stops
   being exceptional.
 - **Reading a document somewhere else** (D26) — allowed only per document,

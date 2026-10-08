@@ -61,7 +61,10 @@ without it.
 # typecheck:  npm run typecheck
 # whole app:  docker compose up --build  → http://localhost:4020
 # migrations: npm run db:generate  writes a migration from app/db/schema.ts
-#             npm run db:migrate   creates the app role, applies migrations
+#             npm run db:migrate   creates the app role, applies migrations,
+#                                  then seals any readable identifier (D35)
+#             npm run identifiers:seal  that last part on its own; run it
+#                                  after restoring a backup from before D35
 #             npm run db:setup     the app role on its own (db:migrate runs it)
 # dev data:   npm run db:seed      the fixture household, and a way back in
 # the key:    npm run key:make     once per deployment, before the first upload

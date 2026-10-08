@@ -30,9 +30,10 @@ behind a step-up check, the append-only activity log, and backups with a drill
 that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
-check that refuses the wrong key, the family tree, and the access console.
+check that refuses the wrong key, the family tree, the access console, and
+search over sealed identifiers.
 
-Not built: search, the
+Not built: the
 dashboard, bulk operations, settings, outbound notification delivery, and the
 operations docs. The notifications table has a read policy and no writer, on
 purpose (D30).
@@ -423,6 +424,40 @@ four digits, which survives a stolen database but cannot do arbitrary substring
 search. Choosing it after search ships is a migration; choosing it before is a
 design.
 
+**Landed.** The household chose the alternative (D35, replacing D14).
+`documents.identifier` is now three columns: the number sealed with
+AES-256-GCM, plus keyed fingerprints of the whole number and its last four
+characters. Both keys are derived from the KEK. A dump of the dev database
+holds no readable number. `npm run db:migrate` runs `identifiers:seal`, which
+sealed the 22 dev numbers and validated a constraint that keeps the old column
+empty. `/search?q=` matches words against titles, kinds, subcategories and
+owner names, and a number by its fingerprint. It reads through the policies,
+supports view-as, and logs every match on a number. The backup drill now opens
+every sealed number too.
+
+**Acceptance, as met.**
+- `app/field-crypto.server.test.ts`: a value opens only in its own row and
+  only under its own key; tampering is refused; the fingerprint ignores
+  spacing and case; the last-four fingerprint is not the whole-number one.
+- `app/db/record.test.ts`: no readable number anywhere in the documents table.
+  A typed, proposed or cleared number keeps all three columns together, and
+  the old column refuses a write.
+- `app/db/search.test.ts`: results stay within reach, for both words and
+  numbers. An exact number for a document out of reach answers nothing. A
+  middle fragment finds nothing. No hit carries the number. Matches are logged
+  as the actor, with the viewed user under view-as. Four mutations each turned
+  a test red.
+- In a browser: Priya found Maya's passport by its number typed loosely, and
+  by its last four. Reveal opened it under the dev key. Maya got nothing for
+  Nadia's number.
+
+**Also fixed.** The reveal button on the Record screen was a form nested
+inside the fields' form. That is invalid HTML, and it broke hydration and
+swallowed the click. It is now a button.
+
+**Not done.** Substring search inside a number (the trade). Dropping the empty
+`identifier` column (a later migration). Tags, which do not exist yet.
+
 **Size.** M. **Depends on.** Step 8.
 
 ### Step 14 — Dashboard
@@ -494,7 +529,7 @@ lost (nothing — say so, loudly, before it happens rather than after).
 | Open question 4 — does a per-record grant carry its owner's name | Step 7 | A third party cannot tell two identically-titled documents apart |
 | ~~Which local reading engine~~ | settled | D27: Tesseract as a system package, with the PDF text layer read before it |
 | Open question 5 — is the admin's reach the right denominator | settled | D34: yes, worded "of the M you can see", and shown to admins only |
-| D14's alternative — encrypted values plus keyed fingerprints | Step 13 | Choosing it after search ships is a migration rather than a design |
+| D14's alternative — encrypted values plus keyed fingerprints | settled: D35 | Choosing it after search ships is a migration rather than a design |
 | Open question 6 — fixture size | settled | Thirty-six documents, and Rose reaches fourteen of them |
 
 ## Not in this roadmap
