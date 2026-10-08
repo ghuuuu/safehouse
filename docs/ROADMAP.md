@@ -31,10 +31,9 @@ that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
 check that refuses the wrong key, the family tree, the access console, and
-search over sealed identifiers.
+search over sealed identifiers, and the dashboard.
 
-Not built: the
-dashboard, bulk operations, settings, outbound notification delivery, and the
+Not built: bulk operations, settings, outbound notification delivery, and the
 operations docs. The notifications table has a read policy and no writer, on
 purpose (D30).
 
@@ -366,7 +365,7 @@ added migration 0011 and a field on the add-member form.
 - In a browser: Priya, and Priya viewing as Maya, with click-through, tabs,
   Tab and Enter, and a drag that pans rather than navigating.
 
-**Not done.** The dashboard's Individuals/Businesses switch is Step 14, and
+**Not done.** The Individuals/Businesses switch landed with Step 14, and
 editing or ending a relationship from the tree has no surface yet.
 
 **Size.** L. **Depends on.** Step 10.
@@ -464,6 +463,30 @@ swallowed the click. It is now a button.
 
 The tree, expiring-soon, category overview, quick-search chips. The
 expiring-soon list is Step 9's query, given a home.
+
+**Landed.** `/` is the dashboard. An Individuals / Businesses switch
+(`/?mode=businesses`) splits it by owner kind; a record whose owner the viewer
+cannot see counts under Individuals. Individuals draws the tree (the `/tree`
+drawing, now `app/tree-picture.tsx`) and links the household's papers;
+Businesses lists the businesses. Both show expiring-soon for that mode, a
+six-category overview whose tiles land on that section of the vault, a search
+box, and up to eight chips built from the subcategories the viewer has
+documents in. All of it comes from `getDashboard` in one `withVault`
+transaction, with no permission logic and no identifier.
+
+**Acceptance, as met.**
+- `app/db/dashboard.test.ts`: the admin's counts in each mode equal the owner
+  connection's count of current documents by owner kind. The expiring list
+  splits by mode, and its two halves are the whole list. Maya has no
+  businesses. Daniel sees the one he was granted. Sam's hidden-owner will
+  counts under Individuals. An unattached account gets an empty dashboard. No
+  number is in the payload. Three mutations each turned a test red.
+- In a browser: Priya in both modes. The switch, a chip (Permits found the
+  trading permit) and a category tile (landed on `#financial`) all work.
+  Maya sees her five people, no Access link, and no businesses.
+
+**Not done.** The switch governs the dashboard only; the vault and search keep
+their own filters. View-as is on the vault, tree and search, not here.
 
 **Size.** M. **Depends on.** Steps 9, 11, 13.
 
