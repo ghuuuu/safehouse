@@ -32,10 +32,10 @@ layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
 check that refuses the wrong key, the family tree, the access console, and
 search over sealed identifiers, the dashboard, bulk intake, settings and
-two-factor, and break-glass with alerts delivered by webhook.
+two-factor, break-glass with alerts delivered by webhook, and operations: an
+upgrade command, drills the dashboard watches, and the runbook.
 
-Not built: the operations docs (Step 19), and first run for an empty
-household (Step 18, deferred).
+Not built: first run for an empty household (Step 18, deferred).
 
 In one line: **a document goes in encrypted, comes out to exactly whoever may
 see it, gets read for what it says, and the vault volunteers what is running
@@ -628,11 +628,57 @@ is ever installed somewhere else.
 
 **Size.** L. **Depends on.** Steps 10, 11, 15.
 
-### Step 19 — Operations
+### Step 19 — Operations — **done**
 
 Upgrade path across schema changes on a live vault with real documents in it;
 the restore drill from Step 6 on a schedule; what to do when the key file is
 lost (nothing — say so, loudly, before it happens rather than after).
+
+**Landed** (D38). `docs/OPERATIONS.md` is the runbook: what to keep, the key,
+backups on a schedule and off the machine, upgrading and going back, putting a
+vault back, and a lost second factor. `npm run upgrade` runs backup, drill and
+migrate in that order. A passed drill records itself in the vault, and the
+admin's dashboard warns when the newest proven backup is over eight days old.
+The dashboard also asks, until an admin answers for the current key, whether
+the key is written down somewhere else. The documents moved to a host
+directory so that backups reach them, and the server refuses to start when it
+cannot write there.
+
+**Found on the way.** Two bugs, both fixed:
+- **Restores came back without their grants.** Backups were dumped without
+  privileges, so a restored vault refused the app everything and nobody could
+  sign in. The drill had passed, because it read the copy as the owner.
+- **Compose backups held no documents.** The store was a Docker volume that
+  `npm run backup` on the host could not see.
+
+**Acceptance, as met.**
+- `app/db/safekeeping.test.ts`:
+  - drills are read by an admin and nobody else, and written by nobody the app
+    connects as;
+  - the key copy is a key id and nothing else, set by an admin only;
+  - overdue is measured by when the backup was taken;
+  - a confirmation counts for its own key only;
+  - mutations turned tests red: the read policy, the key-id check, a
+    staleness measured by drill date, and any key counting. The read policy
+    and an insert grant are also refused by the migration's own pinned check.
+- **The drill:** an old backup fails it, by name. A new one passes, and its
+  pass shows on the dashboard.
+- **A restored copy's privileges:** the two app roles' privileges were
+  compared line by line with the live vault and are identical, 140 each, with
+  no `perm` USAGE.
+- **`npm run upgrade`** ran on the dev vault across the migration that added
+  `backup_drills`, drilling before the table existed.
+- **The container:**
+  - it ran as uid 1000 against the bind-mounted store, and served sign-in;
+  - pointed at a directory it could not create, it refused to start and said
+    why.
+- **In a browser:** an aged drill and the key reminder both showed. Pressing
+  the button recorded the key id and logged it, and the reminder went.
+
+**Not done.**
+- **A command to check a written-down key** against the file.
+- **A screen for a lost second factor.**
+- **A webhook alert for an overdue drill.** It is on the dashboard only.
 
 **Size.** M. **Depends on.** Step 6.
 

@@ -1361,9 +1361,67 @@ disagree.
 
 ---
 
+## D38 — The vault knows whether it is being kept safe
+
+**Decision.**
+- **Drills report in.** A passed `npm run backup:drill` writes a row to
+  `backup_drills` in the live vault, as the owner. The application can read
+  the rows and cannot write them, and only an admin reads them. The admin's
+  dashboard warns when the newest backup proven to restore was taken more than
+  eight days ago, or never.
+- **The key copy is asked for.** Until an admin says the key is written down
+  somewhere else, every admin's dashboard says what losing it means. The answer
+  is stored as the key's id (`settings.key_copy_confirmed_for`), so a replaced
+  key asks again.
+- **Backups keep their grants.** `pg_dump` runs without `--no-privileges`, and
+  `npm run restore` creates the application's roles before it restores. The
+  drill fails a backup whose restore leaves the app and sign-in roles without
+  their grants.
+- **The documents are a host directory.** Compose bind-mounts
+  `SAFEHOUSE_STORAGE_DIR` rather than using a named volume. The server refuses
+  to start when it cannot write there.
+- **Upgrading is one command.** `npm run upgrade` runs backup, then drill, then
+  migrate, stopping at the first failure. `docs/OPERATIONS.md` is the runbook.
+
+**Why.**
+- **The jobs that keep the vault safe happen outside it,** in cron and on
+  paper, where nothing notices when they stop. The app cannot run them: it has
+  no owner credentials (D22). It can notice that they have not happened, and
+  that is what turns a nightly job that died in March into a warning in March
+  rather than a discovery on the worst day.
+- **The backup's age, not the drill's:** a month-old backup drilled today
+  proves last month's vault restores, and nothing about this week's.
+- **The grants were found missing in Step 19.** Every grant the two
+  application roles hold was made by a migration, and migrations do not run
+  again on restore. Backups taken with `--no-privileges` restored a vault with
+  every policy in place and nobody able to sign in to it. The drill read the
+  restored copy as the owner, so it passed. A restored copy now carries exactly
+  the live vault's privileges, all 140, compared line by line, and none on
+  `perm`.
+- **The named volume was out of the host's reach.** `npm run backup` copies
+  `SAFEHOUSE_STORAGE_DIR` on the host, and under Compose the documents were in
+  a Docker volume it could not see. A backup of a Compose deployment held the
+  database and none of the files.
+
+**Consequences.**
+- **Backups from before D38 fail the drill**, by name. They restore, but into a
+  vault the app cannot use. Take a new one.
+- **The drill writes one row to the live database.** It still never touches
+  the live store.
+- **The key copy is somebody's word.** It silences a reminder and unlocks
+  nothing, so the settings update policy (admins only) is enough.
+- **On Linux, the store directory must belong to uid 1000** before the first
+  `up`. Docker creates a missing one as root, and the boot check says so.
+- **Lost key:** nothing to build. The server refuses to start (D31), and the
+  runbook says so before it happens, in as many words.
+- **Lost second factor:** an owner-run SQL fix, in the runbook, until there is
+  a screen for it.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D37 record what building
+None. D9–D21 closed the list that stood here; D22 to D38 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 

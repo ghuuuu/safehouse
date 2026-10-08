@@ -71,7 +71,11 @@ without it.
 # backup:     npm run backup       database encrypted, documents copied as-is
 #             npm run backup:drill prove one restores, into a throwaway database
 #             npm run restore      put one back (refuses a vault with accounts)
+# upgrade:    npm run upgrade      backup, drill, then migrate; stops at the first failure
 ```
+
+Running a real vault — schedules, upgrades, restoring, the key — is
+`docs/OPERATIONS.md`.
 
 First run, and after any schema change: `docker compose up -d db` then
 `npm run db:migrate`. The app container has no owner credentials and cannot
@@ -96,7 +100,10 @@ key, which is no backup at all.
 
 Run `npm run backup:drill` after any change to the schema or the storage
 layout. D6 asks for restore to be tested rather than assumed, and the drill
-restores into a throwaway database and opens a real document out of it.
+restores into a throwaway database and opens a real document out of it. With no
+argument it drills the newest backup in `./backups`, and a pass is recorded in
+the vault so the admin's dashboard can notice when drills stop (D38). A grant
+added by a migration must survive a restore: the drill checks that it does.
 
 `npm run dev` prints future-flag warnings about React Router v8 and one Vite
 deprecation notice. Those are expected — see D9. Anything else in that output is
