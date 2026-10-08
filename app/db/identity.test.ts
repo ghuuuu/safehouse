@@ -45,6 +45,7 @@ describe("the sign-in role cannot read the vault", () => {
     "notifications",
     "settings",
     "subcategories",
+    "backup_drills",
   ];
 
   test.each(vaultTables)("it is refused %s outright", async (table) => {

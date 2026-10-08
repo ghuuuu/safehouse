@@ -438,6 +438,8 @@ export const settings = pgTable(
       .default(60),
     /** An idle page signs itself out after this long (0014). */
     autoLockMinutes: integer("auto_lock_minutes").notNull().default(15),
+    /** The key id an admin said is written down elsewhere (0016, D38). */
+    keyCopyConfirmedFor: text("key_copy_confirmed_for"),
   },
   (t) => [check("settings_singleton", sql`${t.id} = 1`)],
 );
@@ -477,4 +479,12 @@ export const notifications = pgTable("notifications", {
   deliveryAttempts: integer("delivery_attempts").notNull().default(0),
   deliveryError: text("delivery_error"),
   deliveredChannels: text("delivered_channels").array().notNull().default([]),
+});
+
+/** One row per passed restore drill, written by the drill as the owner (0016, D38). */
+export const backupDrills = pgTable("backup_drills", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
+  backupId: text("backup_id").notNull(),
+  backupTakenAt: timestamp("backup_taken_at", { withTimezone: true }).notNull(),
 });

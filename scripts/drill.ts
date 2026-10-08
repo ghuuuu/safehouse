@@ -9,14 +9,18 @@
  * the bytes against the digest recorded when it was filed, and drops the
  * throwaway afterwards.
  *
- * It never touches the live database or the live store. The one-line summary
- * at the end is the only thing worth reading when this runs unattended.
+ * It never touches the live store, and writes one row to the live database: a
+ * pass, in `backup_drills`, which is how the admin's dashboard knows the
+ * schedule is still running (D38). The one-line summary at the end is the only
+ * thing worth reading when this runs unattended.
+ *
+ *   npm run backup:drill    → the newest backup in ./backups
  */
 
 import "dotenv/config";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import postgres from "postgres";
@@ -59,12 +63,20 @@ function run(command: string, args: string[], input?: Buffer): Promise<string> {
   });
 }
 
-const backupDir = resolve(process.argv[2] ?? "");
+// The newest in ./backups unless told which, so a schedule is one line:
+// `npm run backup && npm run backup:drill`. Backup ids sort by time.
+const newest = (await readdir("./backups").catch(() => []))
+  .filter((name) => name.startsWith("safehouse-"))
+  .sort()
+  .at(-1);
+const target = process.argv[2] ?? (newest && join("./backups", newest));
 
-if (!process.argv[2]) {
+if (!target) {
   console.error("Which backup? npm run backup:drill -- ./backups/safehouse-...");
   process.exit(1);
 }
+
+const backupDir = resolve(target);
 
 const provider = keyProviderFromFile(required("SAFEHOUSE_KEY_FILE"));
 const ownerUrl = required("DATABASE_URL");
@@ -101,6 +113,29 @@ await run(
   dump,
 );
 console.log(`  restored into ${DRILL_DATABASE}`);
+
+// 2b. With the grants the app signs in and reads with. They were made by
+// migrations, which do not run again on restore, so a dump without them
+// restores a vault nobody can sign in to. Backups from before D38 are like that.
+{
+  const restored = postgres(withDatabase(ownerUrl, DRILL_DATABASE), { max: 1, onnotice: () => {} });
+  try {
+    const [{ granted }] = await restored`
+      select has_table_privilege('safehouse_app', 'public.documents', 'SELECT')
+         and has_table_privilege('safehouse_auth', 'public.users', 'SELECT') as granted
+    `;
+    if (!granted) {
+      console.error(
+        "Drill FAILED: this backup restores without the grants the app connects with,\n" +
+          "so nobody could sign in to it. It predates D38; take a new backup.",
+      );
+      process.exit(1);
+    }
+  } finally {
+    await restored.end();
+  }
+}
+console.log("  the app's grants came back with it");
 
 // 3. A real document comes back out of it, byte for byte.
 const drill = postgres(withDatabase(ownerUrl, DRILL_DATABASE), { max: 1, onnotice: () => {} });
@@ -222,6 +257,23 @@ if (checked === 0 && missing + retired > 0) {
       `could be opened and checked.`,
   );
   process.exit(1);
+}
+
+// Tell the vault, so the admin's dashboard knows backups are being proven and
+// notices when they stop (D38). The one write this makes to the live database.
+const live = postgres(ownerUrl, { max: 1, onnotice: () => {} });
+try {
+  await live`
+    insert into backup_drills (backup_id, backup_taken_at)
+    values (${manifest.backupId}, ${manifest.createdAt})
+  `;
+} catch (error) {
+  // A vault from before 0016, mid-upgrade: `npm run upgrade` drills before it
+  // migrates. The drill still passed; there is just nowhere to say so yet.
+  if ((error as { code?: string }).code !== "42P01") throw error;
+  console.log("  (not recorded: this vault predates backup_drills)");
+} finally {
+  await live.end();
 }
 
 console.log(

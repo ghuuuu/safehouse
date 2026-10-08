@@ -4,7 +4,9 @@ import type { Route } from "./+types/home";
 import { MODES, type Mode } from "../dashboard";
 import { getDashboard } from "../dashboard.server";
 import { openWindow, openWindows } from "../emergency.server";
+import { keys } from "../keys.server";
 import { deliverNow, deliveryStatus } from "../notify.server";
+import { confirmKeyCopy, readSafekeeping, type Safekeeping as SafekeepingState } from "../safekeeping.server";
 import { withVault } from "../session.server";
 import type { OwnerLink } from "../tree";
 import { TreePicture } from "../tree-picture";
@@ -35,8 +37,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     // Open break-glass windows: an admin sees everybody's, a contact their own.
     windows: await openWindows(db),
     delivery: user.role === "admin" ? await deliveryStatus(db) : null,
+    safekeeping: user.role === "admin" ? await readSafekeeping(db, keyIdHex()) : null,
   }));
 }
+
+const keyIdHex = () => keys().keyId().toString("hex");
 
 /**
  * Breaking the glass (D19). Only an emergency contact gets the form, and only
@@ -45,6 +50,14 @@ export async function loader({ request }: Route.LoaderArgs) {
  */
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
+
+  // The admin's word that the key is written down off this machine (D38).
+  // Settings' update policy is what refuses anybody else.
+  if (form.get("intent") === "key-copied") {
+    await withVault(request, (db) => confirmKeyCopy(db, keyIdHex()));
+    return { keyCopied: true };
+  }
+
   if (form.get("intent") !== "break-glass") return { error: "Nothing to do." };
 
   try {
@@ -74,7 +87,7 @@ function when(daysLeft: number): string {
 const MODE_LABEL: Record<Mode, string> = { individuals: "Individuals", businesses: "Businesses" };
 
 export default function Home({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, mode, dashboard, windows, delivery } = loaderData;
+  const { user, mode, dashboard, windows, delivery, safekeeping } = loaderData;
   const { tree, expiring, categories, chips } = dashboard;
   const vaultFor = (ownerId: string) => `/vault?owner=${ownerId}`;
   const total = categories.reduce((sum, c) => sum + c.count, 0);
@@ -132,6 +145,8 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           {delivery.stale ? <p>Notifications have not been checked for over an hour. Restart Safehouse if this stays.</p> : null}
         </div>
       ) : null}
+
+      {safekeeping ? <Safekeeping {...safekeeping} /> : null}
 
       <nav aria-label="Mode" className="flex w-fit rounded-lg border border-gray-200 p-1 text-sm">
         {MODES.map((m) => (
@@ -314,5 +329,41 @@ function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error
       {error ? <p role="alert" className="text-red-700">{error}</p> : null}
       <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-white">Open an emergency window</button>
     </Form>
+  );
+}
+
+/**
+ * The two jobs that happen outside the app (D38), said until they are done.
+ * Amber, not red: nothing is wrong yet, which is the only time to fix it.
+ */
+function Safekeeping({ drilledBackupAt, drillOverdue, keyCopyConfirmed }: SafekeepingState) {
+  if (!drillOverdue && keyCopyConfirmed) return null;
+  return (
+    <div role="alert" className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      {drillOverdue ? (
+        <p>
+          {drilledBackupAt ? (
+            <>The newest backup proven to restore was taken <When at={drilledBackupAt} />. </>
+          ) : (
+            <>No backup of this vault has been proven to restore. </>
+          )}
+          Run <code>npm run backup</code> and <code>npm run backup:drill</code> on the server, and schedule them
+          weekly (docs/OPERATIONS.md).
+        </p>
+      ) : null}
+      {keyCopyConfirmed ? null : (
+        <Form method="post" className="flex flex-col gap-2">
+          <p>
+            Every document here is unreadable without the key file, and nothing else holds a copy of it: not the
+            database, not a backup. If it is lost, the documents are gone and nobody can get them back. Write it down
+            and keep it somewhere that is not this server.
+          </p>
+          <input type="hidden" name="intent" value="key-copied" />
+          <button type="submit" className="self-start rounded-lg border border-amber-400 px-3 py-1">
+            I have a copy of the key somewhere else
+          </button>
+        </Form>
+      )}
+    </div>
   );
 }

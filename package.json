@@ -21,7 +21,8 @@
     "key:make": "node scripts/make-key.mjs",
     "backup": "vite-node scripts/backup.ts",
     "backup:drill": "vite-node scripts/drill.ts",
-    "restore": "vite-node scripts/restore.ts"
+    "restore": "vite-node scripts/restore.ts",
+    "upgrade": "npm run backup && npm run backup:drill && npm run db:migrate"
   },
   "dependencies": {
     "@react-router/node": "^7.18.2",

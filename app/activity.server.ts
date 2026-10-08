@@ -59,6 +59,8 @@ export const ACTIONS = {
   /** Break-glass (D19): a window opened by its contact, or closed by an admin. */
   emergencyOpened: "emergency.opened",
   emergencyRevoked: "emergency.revoked",
+  /** An admin said the key is written down off this machine (D38). */
+  keyCopyConfirmed: "key.copy-confirmed",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
