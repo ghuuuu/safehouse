@@ -183,6 +183,12 @@ Gently rounded: 8px on cards, lists and inputs, 6px on nav items and tabs, full 
 - **Style:** the sidebar index on shelf. Inactive items in muted ink; hover lays a rule-coloured wash; the current page sits on a sheet with a 1px ruled ring.
 - **Phone:** the tab bar on shelf, 64px tall, labels only. The current tab is ink and semi-bold with a short ink bar above its label.
 
+### Switch
+Two or three views of the same page (Individuals / Businesses, Family / Businesses / Household, One account / Everyone at once) are one segmented control, `app/segmented.tsx`: a ruled outline holding links, the current one in ink. Each option is a link, so the view is in the URL.
+
+### Dates
+A calendar date is "5 May 2034" (`longDate` in `app/when.tsx`), a moment is that plus a time in the reader's zone, and what is soon is "in 10 days". Never an ISO date on screen.
+
 ### Folder tab (signature)
 The category's name on a tab tinted 12% toward its colour, with a 3px top edge in the colour, above the list of papers it holds. The dashboard uses the small square mark instead.
 
