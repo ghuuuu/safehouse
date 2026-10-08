@@ -157,9 +157,9 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             {viewedUser.role}
             {viewedUser.disabled ? ", disabled" : null}). They reach{" "}
             <strong className="font-medium">
-              {reachedByViewed} of {reachable}
+              {reachedByViewed} of the {reachable}
             </strong>{" "}
-            documents.
+            documents you can see.
           </p>
           <Link className="underline" to="/vault">
             Back to your own view

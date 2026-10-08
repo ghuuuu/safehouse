@@ -10,6 +10,9 @@ export default [
   route("people", "routes/people.tsx"),
   // The family tree; a click opens /vault?owner= for that person.
   route("tree", "routes/tree.tsx"),
+  // Who can see what, admin only: /access?as=<userId> for one account's panel
+  // (the only place grants are edited), /access?view=matrix for the audit grid.
+  route("access", "routes/access.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
   // One record: its fields, its pages, its versions.

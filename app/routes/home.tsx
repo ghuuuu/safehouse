@@ -125,6 +125,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Link className="underline" to="/upload">
           File a document
         </Link>
+        {user.role === "admin" && (
+          <Link className="underline" to="/access">
+            Access
+          </Link>
+        )}
       </nav>
 
       <p className="text-sm text-gray-500">
