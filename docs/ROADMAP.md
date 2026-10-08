@@ -31,11 +31,11 @@ that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
 check that refuses the wrong key, the family tree, the access console, and
-search over sealed identifiers, the dashboard, and bulk intake.
+search over sealed identifiers, the dashboard, bulk intake, settings and
+two-factor, and break-glass with alerts delivered by webhook.
 
-Not built: settings, outbound notification delivery, and the
-operations docs. The notifications table has a read policy and no writer, on
-purpose (D30).
+Not built: the operations docs (Step 19), and first run for an empty
+household (Step 18, deferred).
 
 In one line: **a document goes in encrypted, comes out to exactly whoever may
 see it, gets read for what it says, and the vault volunteers what is running
@@ -536,6 +536,31 @@ Account, Security, Notifications panels. Two-factor, auto-lock interval, active
 devices, and the emergency ceiling — which stays a constant in code, with the
 setting able to be raised only up to it (D19).
 
+**Landed** (D36). `/settings` has Account (change password), Security
+(two-factor from better-auth's own plugin, signed-in devices, auto-lock), a
+Notifications list, and Household: lead days, emergency hours and auto-lock
+minutes. Only an admin can change the household numbers. The emergency ceiling
+is 72 hours, held in `app/settings.ts` and in a check constraint, and a test
+keeps the two equal. Sign-in gains `/sign-in/code` when two-factor is on.
+
+**Acceptance, as met.**
+- `app/db/settings.test.ts`: the admin changes each number within range. Out
+  of range, past the ceiling, the row id and a second row are all refused.
+  Members, third parties, emergency contacts, a nameless transaction and a
+  disabled admin change nothing. A loosened policy turned four tests red.
+- `app/two-factor.test.ts`: enabling needs the password and a working code. A
+  password alone then gets no session, and a wrong code gets nothing. A backup
+  code works once. Turning it off needs the password. The secret is stored
+  encrypted, and the vault role cannot read it. The device list holds only the
+  caller's own sessions and no token, and someone else's session cannot be
+  signed out.
+- In a browser: the settings page as Priya. 73 hours was refused with the
+  ceiling named, and 48 saved and was put back.
+
+**Not done.** A QR code for the authenticator (a dependency). An admin
+rescue for a member who has lost their phone and backup codes. Auto-lock
+enforced on the server.
+
 **Size.** M. **Depends on.** Step 10.
 
 ### Step 17 — Notifications beyond the app
@@ -548,6 +573,47 @@ field values: an expiry reminder says a document is expiring and says to open
 Safehouse. Delivery failure is itself visible in the app, because a silently
 broken relay must not silently disable alerts. Break-glass activation alerts
 the admin (D19).
+
+**Landed** (D37).
+- **Break-glass:** an emergency contact opens their own window from the
+  dashboard, with a reason. A trigger alerts every active admin in the same
+  transaction, and the admin closes it from the access console. Migration 0015
+  holds the rules.
+- **Delivery:** one channel, `SAFEHOUSE_NOTIFY_WEBHOOK`. A sweep runs at boot
+  and every 15 minutes; it writes `expiry.soon` rows for admins, once per
+  document, and delivers anything undelivered. A break-glass alert goes out at
+  once.
+- **Visible failures:** every attempt is recorded on its row, and the
+  dashboard warns about failed deliveries and about a sweep that has stopped.
+
+**Acceptance, as met.**
+- `app/db/emergency.test.ts`:
+  - only an emergency contact opens a window, only for themselves, with a
+    reason, not backdated and not over the setting;
+  - the admins' alert is written by the database;
+  - only an admin closes one, in their own name; nobody extends one; nothing
+    is deleted;
+  - four mutations, including a trigger that does nothing, each turned a test
+    red.
+- `app/db/notifications.test.ts`: one reminder per document, never for
+  somebody else, never about a document they cannot see. The application
+  cannot forge an emergency alert. Delivery errors are short, and nothing is
+  deleted.
+- `app/db/notify.test.ts`, against a local HTTP server:
+  - every message is checked for titles and names;
+  - a second sweep sends nothing;
+  - HTTP 502 and a timeout are recorded as statuses, never the far end's body;
+  - retries stop at five, and an unreachable URL is not quoted in the error.
+- In a browser, with a local webhook:
+  - five messages went out on the first sweep;
+  - Lapsed opened a window, reached 10 medical and legal documents, and Priya
+    was alerted at once;
+  - Priya saw the reason on the dashboard and closed the window; both acts
+    are in the log.
+
+**Not done.** Email (SMTP needs a dependency). Members' reminders outside the
+app. Upload and access-change alerts and the weekly digest (D13 lists them;
+nothing writes them yet).
 
 **Size.** M. **Depends on.** Steps 9, 16.
 

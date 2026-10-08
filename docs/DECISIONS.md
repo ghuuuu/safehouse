@@ -1263,9 +1263,107 @@ found whole, or by its last four, and never by a fragment from its middle.
 
 ---
 
+## D36 — Settings: a second factor from the library, a ceiling in two places
+
+**Decision.** `/settings` has four parts:
+- **Account:** change your password. The library does this and signs out
+  every other device.
+- **Two-factor:** better-auth's own `twoFactor` plugin, already installed. It
+  provides TOTP from an authenticator app, ten single-use backup codes, and its
+  own lockout. Turning it on takes the password and then a working code.
+  Signing in then stops after the password at `/sign-in/code`.
+- **Devices:** the account's own sessions, signed out one at a time or all
+  but this one.
+- **Household:** three numbers, editable by an active admin only.
+
+Auto-lock signs out a page nobody has touched for the household's interval.
+
+**Why.** Two-factor is exactly what CLAUDE.md says not to hand-roll, and the
+library already ships it. No QR code is drawn, because drawing one is a new
+dependency: the setup screen shows the key to type into the app instead. The
+emergency ceiling (D19) is `EMERGENCY_CEILING_HOURS = 72` in `app/settings.ts`
+and a check constraint in 0014. `settings.test.ts` fails if the two ever
+disagree.
+
+**Consequences.**
+- `two_factors` is a credential table. It is readable by the auth role only,
+  like `accounts`, and the library encrypts the secret before writing it.
+- The devices list is read over the auth connection, for the caller's own id.
+  Session tokens never reach the page. A device is signed out by id, and an id
+  that is not the caller's is no row.
+- Settings change through a column-level grant (the three numbers, never `id`)
+  and an admin-only update policy. Every change is logged as
+  `settings.changed`.
+- Auto-lock is enforced by the page, so a sleeping laptop locks when it wakes,
+  not on the minute. The session's own lifetime is the backstop. Enforcing
+  idleness on the server would mean touching the session on every request.
+- Turning two-factor off needs the password. A household member who loses
+  their phone and their backup codes needs the admin to reset their password,
+  which does not turn two-factor off. That rescue path does not exist yet; it
+  is a direct database change today.
+
+---
+
+## D37 — Break-glass is opened by its contact; alerts leave the house by webhook
+
+**Decision.**
+- **Opening and closing a window.** An emergency contact opens their own
+  window from the dashboard, giving a reason. The window lasts the household's
+  setting. Only an active admin closes one early; nobody extends one; nothing
+  is deleted.
+- **Alerting.** Opening a window writes an `emergency.activated` notification
+  to every active admin, by a database trigger in the same transaction.
+- **Delivery.** Notifications leave the app through one channel: a webhook,
+  `SAFEHOUSE_NOTIFY_WEBHOOK` (an ntfy topic, a Telegram bot, anything that
+  takes a POST).
+- **The sweep.** At boot and every 15 minutes, it writes one `expiry.soon` row
+  per admin per expiring document, then delivers whatever is undelivered. A
+  break-glass is delivered at once.
+
+**Why.**
+- **Who opens it:** break-glass exists for the day the admin cannot be
+  reached, so the contact opens it, and the policy is what makes that safe.
+  Only an emergency contact, only for themselves, stamped now, with a reason,
+  and no longer than the setting. The setting itself can never exceed the
+  ceiling (D36).
+- **A trigger for the alert:** no code path can open a window without
+  alerting, and the application cannot forge an alert, because it may insert
+  only `expiry.soon` rows.
+- **A webhook, not mail:** it needs no mail server (D13). SMTP would need a
+  new dependency and is not here.
+- **The URL lives in the environment:** a topic or bot URL is a secret, and
+  the settings row is readable by everybody signed in.
+
+**Consequences.**
+- **What leaves the house** is a sentence with no title, no name and no value:
+  "Safehouse: a document expires in 9 days. Open Safehouse to see which." A
+  test checks the actual messages for names and titles.
+- **Failure is visible, not silent.**
+  - Every attempt is recorded on its row, as a status ("HTTP 502", "timed
+    out", "could not connect"). The far end's body is never stored, and the
+    URL never appears in an error.
+  - After five failures a row stops being retried and stays visible.
+  - The admin's dashboard warns about undelivered rows, and about a sweep that
+    has not finished in an hour.
+- **Expiry reminders go to admins only.** Members keep the live list on the
+  dashboard (D30). One reminder per document per admin, ever. Renewing the
+  document is what makes the in-app list go quiet; the outside world is told
+  once.
+- **D30 narrowed further.** Expiry rows now exist, because delivery needs
+  something to mark as sent. The in-app list is still the live query, not
+  these rows.
+- **The sweep is an in-process timer,** which fits one container (D3). A
+  second container would sweep twice; the unique index keeps that to one row
+  per document, but a message could go out twice.
+- **The admin closes a window** from the contact's access-console panel. The
+  dashboard shows every open window with the contact's reason. Opening and
+  closing are both logged (`emergency.opened`, `emergency.revoked`).
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D35 record what building
+None. D9–D21 closed the list that stood here; D22 to D37 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 
