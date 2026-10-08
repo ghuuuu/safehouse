@@ -1,4 +1,5 @@
-import { Form, Link, NavLink, Outlet } from "react-router";
+import { useEffect, useRef } from "react";
+import { Form, Link, NavLink, Outlet, useLocation } from "react-router";
 
 import type { Route } from "./+types/shell";
 import { roleLabel } from "../roles";
@@ -48,60 +49,152 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
+/** On a phone, the four things done most, in reach of a thumb; the rest is under More. */
+const TABS: Item[] = [
+  { to: "/", label: "Dashboard" },
+  { to: "/vault", label: "Vault" },
+  { to: "/search", label: "Search" },
+  { to: "/upload", label: "File" },
+];
+
 export default function Shell({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
   // Signed out: the page's own loader has already redirected to sign-in.
   if (!user) return <Outlet />;
 
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || user.role === "admin"),
+  }));
+
   return (
     <div className="min-h-screen md:grid md:grid-cols-[13rem_1fr]">
-      <aside className="flex flex-col gap-4 border-b border-gray-200 bg-gray-50 px-4 py-4 md:sticky md:top-0 md:h-screen md:gap-8 md:border-r md:border-b-0 md:px-5 md:py-8">
+      <aside className="sticky top-0 hidden h-screen flex-col gap-8 border-r border-gray-200 bg-gray-50 px-5 py-8 md:flex">
         <Link to="/" className="text-lg font-semibold tracking-tight">
           Safehouse
         </Link>
-
-        <nav aria-label="Safehouse" className="flex flex-wrap gap-x-1 gap-y-1 md:flex-col md:gap-6">
-          {GROUPS.map((group) => (
-            <div key={group.title} className="contents md:block">
-              <h2 className="mb-1 hidden px-2 text-xs font-medium text-gray-500 md:block">{group.title}</h2>
-              <ul className="contents md:flex md:flex-col md:gap-0.5">
-                {group.items
-                  .filter((item) => !item.adminOnly || user.role === "admin")
-                  .map((item) => (
-                    <li key={item.to}>
-                      <NavLink
-                        to={item.to}
-                        end={item.to === "/"}
-                        className={({ isActive }) =>
-                          "block rounded-md px-2 py-1.5 text-sm " +
-                          (isActive ? "bg-white font-medium ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100")
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ))}
+        <nav aria-label="Safehouse" className="flex flex-col gap-6">
+          <Groups groups={groups} />
         </nav>
-
-        <div className="flex items-center justify-between gap-2 text-sm md:mt-auto md:flex-col md:items-start">
-          <p className="text-gray-600">
-            {user.name}
-            <span className="block text-xs text-gray-500">{roleLabel(user.role)}</span>
-          </p>
-          <Form method="post" action="/sign-out">
-            <button className="rounded-md px-2 py-1.5 text-gray-600 underline hover:bg-gray-100" type="submit">
-              Sign out
-            </button>
-          </Form>
+        <div className="mt-auto flex flex-col items-start gap-2 text-sm">
+          <Who user={user} />
         </div>
       </aside>
 
-      <div className="min-w-0">
+      {/* Room for the tab bar, so it never covers the end of a page. */}
+      <div className="min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <Outlet />
       </div>
+
+      <TabBar groups={groups} user={user} />
     </div>
+  );
+}
+
+function Groups({ groups }: { groups: { title: string; items: Item[] }[] }) {
+  return groups.map((group) => (
+    <div key={group.title}>
+      <h2 className="mb-1 px-2 text-xs font-medium text-gray-500">{group.title}</h2>
+      <ul className="flex flex-col gap-0.5">
+        {group.items.map((item) => (
+          <li key={item.to}>
+            <NavLink
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) =>
+                "block rounded-md px-2 py-2.5 text-sm md:py-1.5 " +
+                (isActive ? "bg-white font-medium ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100")
+              }
+            >
+              {item.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ));
+}
+
+function Who({ user }: { user: { name: string; role: string } }) {
+  return (
+    <>
+      <p className="px-2 text-gray-600">
+        {user.name}
+        <span className="block text-xs text-gray-500">{roleLabel(user.role)}</span>
+      </p>
+      <Form method="post" action="/sign-out">
+        <button className="rounded-md px-2 py-2 text-gray-600 underline hover:bg-gray-100" type="submit">
+          Sign out
+        </button>
+      </Form>
+    </>
+  );
+}
+
+/**
+ * The phone's navigation: four tabs and More. More is a native disclosure, so
+ * it works before the page's script has loaded; it closes itself when a link
+ * in it is followed, or on Escape.
+ */
+function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; user: { name: string; role: string } }) {
+  const more = useRef<HTMLDetailsElement>(null);
+  const location = useLocation();
+  useEffect(() => {
+    more.current?.removeAttribute("open");
+  }, [location.pathname, location.search]);
+
+  const tabTargets = new Set(TABS.map((t) => t.to));
+  const inMore = groups.some((g) => g.items.some((i) => !tabTargets.has(i.to) && location.pathname.startsWith(i.to)));
+  const tab = "flex h-16 flex-col items-center justify-center text-xs";
+
+  return (
+    <nav
+      aria-label="Safehouse"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-gray-50 pb-[env(safe-area-inset-bottom)] md:hidden"
+    >
+      <ul className="grid grid-cols-5">
+        {TABS.map((item) => (
+          <li key={item.to}>
+            <NavLink
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-gray-900" : "text-gray-600"}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${isActive ? "bg-gray-900" : "bg-transparent"}`} />
+                  {item.label}
+                </>
+              )}
+            </NavLink>
+          </li>
+        ))}
+        <li>
+          <details
+            ref={more}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") more.current?.removeAttribute("open");
+            }}
+          >
+            <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "font-semibold text-gray-900" : "text-gray-600"}`}>
+              <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${inMore ? "bg-gray-900" : "bg-transparent"}`} />
+              More
+            </summary>
+            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto border-t border-gray-200 bg-gray-50 px-4 py-4">
+              <div className="flex flex-col gap-4">
+                <Groups
+                  groups={groups
+                    .map((g) => ({ ...g, items: g.items.filter((i) => !tabTargets.has(i.to)) }))
+                    .filter((g) => g.items.length > 0)}
+                />
+                <div className="flex items-center justify-between gap-2 border-t border-gray-200 pt-3 text-sm">
+                  <Who user={user} />
+                </div>
+              </div>
+            </div>
+          </details>
+        </li>
+      </ul>
+    </nav>
   );
 }
