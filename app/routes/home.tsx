@@ -11,6 +11,7 @@ import { confirmKeyCopy, readSafekeeping, type Safekeeping as SafekeepingState }
 import { withVault } from "../session.server";
 import type { OwnerLink } from "../tree";
 import { TreePicture } from "../tree-picture";
+import { Segmented } from "../segmented";
 import { When } from "../when";
 
 export function meta() {
@@ -127,22 +128,10 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
       {safekeeping ? <Safekeeping {...safekeeping} /> : null}
 
-      <nav aria-label="Mode" className="flex w-fit rounded-lg border border-gray-200 p-1 text-sm">
-        {MODES.map((m) => (
-          <Link
-            key={m}
-            to={m === "individuals" ? "/" : `/?mode=${m}`}
-            aria-current={mode === m ? "page" : undefined}
-            className={
-              mode === m
-                ? "rounded-md bg-gray-900 px-4 py-1.5 text-white"
-                : "rounded-md px-4 py-1.5 text-gray-600"
-            }
-          >
-            {MODE_LABEL[m]}
-          </Link>
-        ))}
-      </nav>
+      <Segmented
+        label="Mode"
+        options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
+      />
 
       <Form method="get" action="/search" role="search" className="flex flex-col gap-2">
         <div className="flex gap-2">

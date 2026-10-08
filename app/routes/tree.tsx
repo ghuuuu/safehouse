@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/tree";
 import type { OwnerLink } from "../tree";
+import { Segmented } from "../segmented";
 import { TreePicture } from "../tree-picture";
 import { getFamilyTree } from "../tree.server";
 import { resolveViewContext, withViewedVault } from "../view-as.server";
@@ -82,22 +83,10 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
         </nav>
       </div>
 
-      <nav aria-label="What to show" className="flex gap-1 border-b border-gray-200 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t.value}
-            to={tabHref(t.value)}
-            aria-current={tab === t.value ? "page" : undefined}
-            className={
-              tab === t.value
-                ? "-mb-px border-b-2 border-gray-900 px-3 py-2 font-medium"
-                : "px-3 py-2 text-gray-500"
-            }
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      <Segmented
+        label="What to show"
+        options={TABS.map((t) => ({ to: tabHref(t.value), label: t.label, current: tab === t.value }))}
+      />
 
       {tab === "family" ? (
         tree.people.length === 0 ? (

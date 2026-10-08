@@ -12,6 +12,7 @@ import {
 import { CATEGORIES } from "../documents";
 import { revokeWindows } from "../emergency.server";
 import { roleLabel } from "../roles";
+import { Segmented } from "../segmented";
 import { withVault } from "../session.server";
 import { resolveViewContext } from "../view-as.server";
 import { When } from "../when";
@@ -107,14 +108,13 @@ export default function Access({ loaderData }: Route.ComponentProps) {
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-2xl font-medium tracking-tight">Access</h1>
-        <nav className="flex gap-4 text-sm">
-          <Link className={"py-2 " + (matrix ? "underline" : "font-medium")} to="/access">
-            One account
-          </Link>
-          <Link className={"py-2 " + (matrix ? "font-medium" : "underline")} to="/access?view=matrix">
-            Everyone at once
-          </Link>
-        </nav>
+        <Segmented
+          label="View"
+          options={[
+            { to: "/access", label: "One account", current: !matrix },
+            { to: "/access?view=matrix", label: "Everyone at once", current: !!matrix },
+          ]}
+        />
       </div>
 
       {matrix ? (
