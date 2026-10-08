@@ -30,9 +30,9 @@ behind a step-up check, the append-only activity log, and backups with a drill
 that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
-check that refuses the wrong key, and the family tree.
+check that refuses the wrong key, the family tree, and the access console.
 
-Not built: the access console, search, the
+Not built: search, the
 dashboard, bulk operations, settings, outbound notification delivery, and the
 operations docs. The notifications table has a read policy and no writer, on
 purpose (D30).
@@ -384,6 +384,31 @@ which is a write policy, and which the Step 5 log records.
 Gated by spec open question 5 — whether the admin's reach stays the denominator
 in "N of M" — because the reach bar is that number drawn.
 
+**Landed.** Open question 5 is closed by D34: the denominator stays the admin's
+own reach, worded "of the 36 you can see", and shown to admins only.
+`/access?as=` is one account's panel. It shows their reach as a bar, the owners
+they can see (granted ones marked), and a form per grant list.
+`/access?view=matrix` is the read-only grid, and every cell opens that row's
+panel. `0012_grant_writes.sql` makes the three grant tables insert-and-delete
+for the admin only. Each change is logged with what it changed, in typed
+columns.
+
+**Acceptance, as met.**
+- `app/db/grants.test.ts`: the admin adds and removes each kind. A member, a
+  third party, an emergency contact, an unattached account, a nameless
+  transaction and a disabled admin are all refused. A refused delete leaves
+  the row in place. A per-record grant opens a private record, and removing it
+  closes it. Four policy mutations each turned a test red.
+- `app/db/access.test.ts`: the console's matrix equals `matrix.txt` for every
+  account. Each change is logged, and saving an unchanged list logs nothing. A
+  non-admin gets 403 from the panel and the matrix.
+- In a browser: Priya widened Sam's access (Rose: 9, unchanged; plus Legal: 10),
+  the matrix agreed, and she put it back. The four log lines are in the dev
+  database. Maya signed in herself: no link, 403 on every console URL, and a
+  hand-posted grant was refused.
+
+**Not done.** Roles, disabling, and emergency windows (D34).
+
 **Size.** M. **Depends on.** Steps 3, 5.
 
 ### Step 13 — Search
@@ -468,7 +493,7 @@ lost (nothing — say so, loudly, before it happens rather than after).
 |---|---|---|
 | Open question 4 — does a per-record grant carry its owner's name | Step 7 | A third party cannot tell two identically-titled documents apart |
 | ~~Which local reading engine~~ | settled | D27: Tesseract as a system package, with the PDF text layer read before it |
-| Open question 5 — is the admin's reach the right denominator | Step 12 | "N of M" quietly changes meaning the day an admin cannot see everything |
+| Open question 5 — is the admin's reach the right denominator | settled | D34: yes, worded "of the M you can see", and shown to admins only |
 | D14's alternative — encrypted values plus keyed fingerprints | Step 13 | Choosing it after search ships is a migration rather than a design |
 | Open question 6 — fixture size | settled | Thirty-six documents, and Rose reaches fourteen of them |
 

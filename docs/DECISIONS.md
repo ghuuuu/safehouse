@@ -1174,9 +1174,48 @@ not imply otherwise.
 
 ---
 
+## D34 — "N of M" is out of what the admin can see, and only an admin sees it
+
+**Decision.** Closes view-as open question 5. Everywhere a reach is shown,
+the denominator stays the admin's own reach, counted in the admin's own
+transaction. The wording now says so: "Sam reaches 9 of the 36 documents you
+can see", never "of 36". The total goes to administrators only. The access
+console (`/access`) refuses anybody else outright, and the vault banner renders
+only behind the view-as gate, which only an admin passes.
+
+Grants are edited in the console and nowhere else (D21). They are written by
+the admin only: `0012_grant_writes.sql` allows insert and delete on the three
+grant tables under policies that name `current_user_is_admin()`, and asserts
+that text. Every change is one log line in the same transaction: the account
+as subject, and what changed in `target_id` / `target_category`. Those columns
+are typed, so the log cannot hold free text.
+
+**Why.** The household raised it: a count of the whole vault tells whoever
+reads it that more exists than they can see. Counting as the admin and showing
+it only to the admin means the number never says more than its reader could
+already find out. The wording is there for the day an admin can be narrowed:
+"of the 36 you can see" stays true then; "of 36" would quietly become a lie.
+
+**Consequences.**
+- Nobody but an admin is ever sent a document count other than their own.
+  `app/db/access.test.ts` checks that the console refuses a member. Nothing
+  else computes a total.
+- The console reads reach the way view-as does: one read-only transaction per
+  account, behind `gateViewAs`. Its matrix is tested against `matrix.txt`, so
+  the console cannot disagree with the policies (D21).
+- Which grant lists the panel offers depends on role: owners and records for a
+  member; owners, categories and records for a third party; none for an admin
+  or an emergency contact. That is presentation only, and the policies do not
+  care.
+- Not here: changing a role, disabling an account, opening or revoking an
+  emergency window. Each is its own escalation path and gets its own policy
+  when it is built.
+
+---
+
 ## Open decisions
 
-None. D9–D21 closed the list that stood here; D22 to D33 record what building
+None. D9–D21 closed the list that stood here; D22 to D34 record what building
 the schema, the sign-in path, the permission layer, reading a scan and saying
 what expires forced into the open.
 

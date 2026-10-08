@@ -337,8 +337,9 @@ Two things the browser pass found that nothing else would have:
    Owner: the maintainer.** Nothing is blocked on it — the page says "owner not
    shown to you", which is honest under either answer. The cost of leaving it
    is that a third party cannot tell two identically-titled documents apart.
-5. **Is the admin's reach the right denominator?** **Open. Owner: the
-   maintainer.** "N of M" where M is the admin's own reach reads as "of
+5. **Is the admin's reach the right denominator?** **Closed by D34:** yes,
+   worded "of the M you can see", and shown to admins only. The question as
+   first asked: "N of M" where M is the admin's own reach reads as "of
    everything", and today that is true — admins see all, and the browser pass
    shows "3 of 12" against a fixture of exactly 12. D1 does not promise it
    stays true. If an admin ever cannot see everything, the number silently
