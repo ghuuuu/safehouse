@@ -191,7 +191,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
                     {item.title}
                     {item.ownerName ? ` — ${item.ownerName}` : ""}
                   </Link>
-                  <span className={item.daysLeft < 0 ? "text-red-700" : "text-gray-500"}>
+                  <span className={item.daysLeft < 0 ? "text-red-700 dark:text-red-400" : "text-gray-500"}>
                     {when(item.daysLeft)}
                   </span>
                 </li>
@@ -312,7 +312,7 @@ function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error
         Why do you need it?
         <input name="reason" required minLength={3} maxLength={500} className="rounded border border-gray-300 p-2" />
       </label>
-      {error ? <p role="alert" className="text-red-700">{error}</p> : null}
+      {error ? <p role="alert" className="text-red-700 dark:text-red-400">{error}</p> : null}
       <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-red-50">Open an emergency window</button>
     </Form>
   );

@@ -149,7 +149,7 @@ const button = "self-start rounded-lg border border-gray-300 px-4 py-2 text-sm";
 
 function Note({ result, section }: { result: Result | undefined; section: string }) {
   if (!result || result.section !== section) return null;
-  if (result.error) return <p role="alert" className="text-sm text-red-700">{result.error}</p>;
+  if (result.error) return <p role="alert" className="text-sm text-red-700 dark:text-red-400">{result.error}</p>;
   if (result.ok) return <p className="text-sm text-gray-600">{result.ok}</p>;
   return null;
 }
@@ -280,7 +280,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
                 <span>{n.text.replace(/^Safehouse: /, "")}</span>
                 <span className="text-xs text-gray-500">
                   <When at={n.createdAt} /> ·{" "}
-                  {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700">not sent: {n.error}</span> : "in the app only"}
+                  {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700 dark:text-red-400">not sent: {n.error}</span> : "in the app only"}
                 </span>
               </li>
             ))}

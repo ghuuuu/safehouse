@@ -94,7 +94,7 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
         </label>
 
         {actionData?.error ? (
-          <p className="text-sm text-red-700">{actionData.error}</p>
+          <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
         ) : null}
 
         <button

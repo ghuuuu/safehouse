@@ -254,7 +254,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                             </span>
                           </span>
                         ) : null}
-                        {row.status === "refused" ? <span className="text-red-700">{row.message}</span> : null}
+                        {row.status === "refused" ? <span className="text-red-700 dark:text-red-400">{row.message}</span> : null}
                       </td>
                       <td className="p-2">
                         {locked ? null : (

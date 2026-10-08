@@ -71,7 +71,7 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
         </label>
 
         {actionData?.error ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
             {actionData.error}
           </p>
         ) : null}

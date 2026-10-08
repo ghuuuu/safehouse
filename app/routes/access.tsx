@@ -254,7 +254,7 @@ function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNod
         <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white" type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save access"}
         </button>
-        {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700">{mine.error}</span> : null}
+        {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700 dark:text-red-400">{mine.error}</span> : null}
         {mine && "saved" in mine ? (
           <span className="text-sm text-gray-500">
             {mine.saved === 0 ? "Nothing changed." : `Saved, ${mine.saved} ${mine.saved === 1 ? "change" : "changes"} logged.`}

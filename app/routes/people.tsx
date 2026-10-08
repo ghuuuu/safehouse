@@ -217,7 +217,7 @@ function SignInControls({
           </button>
         </>
       )}
-      {result?.error ? <span className="text-red-700">{result.error}</span> : null}
+      {result?.error ? <span className="text-red-700 dark:text-red-400">{result.error}</span> : null}
     </Form>
   );
 }
@@ -409,7 +409,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             )}
 
             {actionData && !("ownerId" in actionData) && "error" in actionData && actionData.error ? (
-              <p className="text-sm text-red-700">{actionData.error}</p>
+              <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
             ) : null}
 
             {actionData && "added" in actionData ? (
