@@ -3,22 +3,12 @@ import { Form, Link, redirect, useSearchParams } from "react-router";
 import type { Route } from "./+types/sign-in";
 import { auth, noUsersYet } from "../auth.server";
 import { getSignedInUser } from "../session.server";
+import { safeNext } from "../next";
 
 export function meta() {
   return [{ title: "Sign in — Safehouse" }];
 }
 
-/**
- * Only somewhere inside this application, never somewhere else.
- *
- * `next` arrives in the query string, so it is attacker-controlled: without
- * this a link to `/sign-in?next=https://elsewhere.example` would send somebody
- * away from the vault the moment they typed their password.
- */
-function safeNext(value: FormDataEntryValue | string | null): string {
-  const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
 
 export async function loader({ request }: Route.LoaderArgs) {
   if (await getSignedInUser(request)) throw redirect("/");
@@ -45,8 +35,17 @@ export async function action({ request }: Route.ActionArgs) {
     return { error: "That email and password do not match." };
   }
 
-  const cookie = response.headers.get("set-cookie");
-  return redirect(next, cookie ? { headers: { "set-cookie": cookie } } : {});
+  // With two-factor on, the password earns no session yet: only a short-lived
+  // cookie that lets the next page ask for a code (D36).
+  const body = (await response.clone().json().catch(() => ({}))) as { twoFactorRedirect?: boolean };
+  const headers = new Headers();
+  for (const cookie of response.headers.getSetCookie()) headers.append("set-cookie", cookie);
+
+  if (body.twoFactorRedirect) {
+    return redirect(`/sign-in/code?next=${encodeURIComponent(next)}`, { headers });
+  }
+
+  return redirect(next, { headers });
 }
 
 export default function SignIn({ loaderData, actionData }: Route.ComponentProps) {

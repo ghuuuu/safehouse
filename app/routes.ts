@@ -27,6 +27,10 @@ export default [
   route("file/:fileId", "routes/file.$fileId.tsx"),
   route("verify", "routes/verify.tsx"),
   route("sign-in", "routes/sign-in.tsx"),
+  // The second half of signing in, when two-factor is on (D36).
+  route("sign-in/code", "routes/sign-in.code.tsx"),
+  // Account, two-factor, devices, and (admin) the household's settings.
+  route("settings", "routes/settings.tsx"),
   // Where an invite or reset link lands. Public: the link is the credential.
   route("set-password", "routes/set-password.tsx"),
   route("sign-out", "routes/sign-out.tsx"),
