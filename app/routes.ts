@@ -15,6 +15,10 @@ export default [
   route("access", "routes/access.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
+  // Many files at once, sorted in the browser, sent one per request to
+  // bulk/file (JSON), each read by the Step 8 reader on the way in.
+  route("bulk", "routes/bulk.tsx"),
+  route("bulk/file", "routes/bulk.file.ts"),
   // Words and numbers, through the policies; /search?q=…&as=<userId> for view-as.
   route("search", "routes/search.tsx"),
   // One record: its fields, its pages, its versions.
