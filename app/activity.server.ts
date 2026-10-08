@@ -29,6 +29,11 @@ export const ACTIONS = {
   documentFiled: "document.filed",
   vaultViewedAs: "vault.viewed-as",
   fieldRevealed: "field.revealed",
+  /**
+   * A search matched a document by its number (D35). Logged like a reveal,
+   * because a last-four match tells the searcher part of a masked value.
+   */
+  fieldMatched: "field.matched",
   documentRead: "document.read",
   /**
    * Somebody was added to the tree. Logged because a tree edge is read by

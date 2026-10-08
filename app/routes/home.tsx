@@ -116,6 +116,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <Link className="underline" to="/vault">
           Vault
         </Link>
+        <Link className="underline" to="/search">
+          Search
+        </Link>
         <Link className="underline" to="/people">
           People
         </Link>

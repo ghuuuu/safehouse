@@ -166,7 +166,7 @@ export async function withViewedVault<T>(
  * has exactly one user set.
  */
 export async function withActorVault<T>(
-  context: ViewContext,
+  context: Pick<ViewContext, "actor">,
   work: (db: VaultTransaction) => Promise<T>,
 ): Promise<T> {
   return asUser(context.actor.id, work);

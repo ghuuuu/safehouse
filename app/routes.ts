@@ -15,6 +15,8 @@ export default [
   route("access", "routes/access.tsx"),
   // Filing a document: the only surface that writes to the vault.
   route("upload", "routes/upload.tsx"),
+  // Words and numbers, through the policies; /search?q=…&as=<userId> for view-as.
+  route("search", "routes/search.tsx"),
   // One record: its fields, its pages, its versions.
   route("record/:documentId", "routes/record.$documentId.tsx"),
   // The bytes themselves, behind a step-up password check (D4).
