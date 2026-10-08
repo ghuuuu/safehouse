@@ -35,6 +35,8 @@ export type Expiring = {
   category: string;
   /** Null when the viewer reached the record without its owner (D17). */
   ownerName: string | null;
+  /** Null exactly when `ownerName` is. The dashboard splits on it. */
+  ownerKind: "person" | "business" | "household" | null;
   expiresOn: string;
   /** Negative once it has already gone. */
   daysLeft: number;
@@ -67,6 +69,7 @@ export async function findExpiring(
       r.title,
       r.category,
       o.display_name as "ownerName",
+      o.kind::text as "ownerKind",
       -- Rendered by Postgres rather than parsed back from a Date, so a
       -- timezone between here and the browser cannot move it a day.
       to_char(d.expires_on, 'YYYY-MM-DD') as "expiresOn",
