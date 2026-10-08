@@ -172,9 +172,9 @@ export async function saveFields(
   db: VaultTransaction,
   documentId: string,
   values: Partial<Record<EditableField, string>>,
-): Promise<void> {
+): Promise<boolean> {
   const given = EDITABLE_FIELDS.filter((field) => field in values);
-  if (given.length === 0) return;
+  if (given.length === 0) return false;
 
   const confirmed = given.filter((field) => (values[field] ?? "").trim() !== "");
   const cleared = given.filter((field) => (values[field] ?? "").trim() === "");
@@ -193,7 +193,10 @@ export async function saveFields(
   // Both lists arrive as jsonb rather than as a Postgres array, because an
   // empty text[] parameter renders as `()` and is a syntax error — and the
   // empty case is the ordinary one here.
-  await db.execute(sql`
+  // Zero rows is what a refusal looks like under row-level security: somebody
+  // who may see the document but not change it. Said, so the page does not
+  // tell them it was saved.
+  const updated = await db.execute(sql`
     update documents
     set ${sql.join(assignments, sql`, `)},
         confirmed_fields = (
@@ -206,7 +209,9 @@ export async function saveFields(
           )
         )
     where id = ${documentId}
+    returning 1
   `);
+  return updated.length > 0;
 }
 
 /**

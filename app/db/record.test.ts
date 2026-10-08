@@ -195,6 +195,21 @@ describe("saving what a person typed", () => {
 
     expect(row.place_of_issue).toBeNull();
   });
+
+  test("says whether anything was saved, so the screen does not claim it was", async () => {
+    // Sam sees the permit through his grant and may not change it: a refused
+    // update is zero rows, not an error, and "Saved." would be a lie.
+    const refused = await asUser(USER.sam, (db) =>
+      saveFields(db, DOCUMENT.halePermit, { place_of_issue: "Elsewhere" }),
+    );
+    const visible = await asUser(USER.sam, (db) => findRecordView(db, DOCUMENT.halePermit));
+    const allowed = await asUser(USER.maya, (db) =>
+      saveFields(db, DOCUMENT.mayaPassport, { place_of_issue: "" }),
+    );
+
+    expect(visible).not.toBeNull();
+    expect([refused, allowed]).toEqual([false, true]);
+  });
 });
 
 describe("the number at rest (D35)", () => {
