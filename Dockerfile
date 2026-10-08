@@ -34,10 +34,12 @@ RUN apk add --no-cache \
 # refuses rather than guessing with the English model.
 COPY tessdata/ /usr/share/safehouse-tessdata/
 
-# The document store, created in the image so the named volume mounted over it
-# inherits this ownership on first use. A vault that writes its documents as
-# root is one container escape away from being a worse problem than it needs to
-# be, and the application writes nowhere else.
+# The document store's mount point. Compose mounts a host directory over it
+# (D38), which keeps the host's ownership, so that directory must belong to
+# uid 1000, the `node` user below; the server checks at boot and says so. A
+# vault that writes its documents as root is one container escape away from
+# being a worse problem than it needs to be, and the application writes
+# nowhere else.
 RUN mkdir -p /var/lib/safehouse/documents && chown -R node:node /var/lib/safehouse
 USER node
 

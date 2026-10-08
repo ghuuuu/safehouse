@@ -13,7 +13,7 @@
  * impossible to honour.
  */
 
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
 import { requireEnv } from "./config.server";
@@ -35,6 +35,24 @@ export function storageKeyFor(fileId: string): string {
 
 export function storageDir(): string {
   return requireEnv("SAFEHOUSE_STORAGE_DIR");
+}
+
+/**
+ * Run at boot, so a store this server cannot write stops it now rather than
+ * failing the first upload. Under Compose the store is a host directory (D38),
+ * and Docker creates a missing one owned by root.
+ */
+export async function checkStoreAtBoot(): Promise<void> {
+  const dir = storageDir();
+  try {
+    await mkdir(dir, { recursive: true });
+    await access(dir, constants.W_OK);
+  } catch {
+    throw new Error(
+      `The document store ${dir} is not writable by this server. Refusing to start. ` +
+        `Under Docker Compose: chown 1000:1000 the host directory (docs/OPERATIONS.md).`,
+    );
+  }
 }
 
 /**

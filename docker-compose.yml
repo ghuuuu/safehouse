@@ -20,10 +20,9 @@ services:
       # .../data — the older path makes the container refuse to start.
       - db-data:/var/lib/postgresql
     ports:
-      # Loopback only, so `npm run dev` on this machine can reach the database.
-      # DELETE THIS BLOCK WHEN DEPLOYING TO A SERVER — D14 accepts readable
-      # identifiers in the database on the condition that Postgres is never
-      # reachable from outside the container network.
+      # Loopback only, so `npm run dev` and the backup, drill and migrate
+      # commands on this machine can reach the database. Never widen it to
+      # 0.0.0.0: Postgres stays unreachable from outside this machine.
       - "127.0.0.1:5435:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U safehouse -d safehouse"]
@@ -58,7 +57,11 @@ services:
     secrets:
       - safehouse_key
     volumes:
-      - documents:/var/lib/safehouse/documents
+      # A host directory, not a named volume, so `npm run backup` and
+      # `npm run restore` on the host reach the same files the app writes
+      # (D38). The app runs as uid 1000; create the directory before the first
+      # `up` and give it to that uid, or the server refuses to start.
+      - ${SAFEHOUSE_STORAGE_DIR:-./storage}:/var/lib/safehouse/documents
     ports:
       - "4020:3000"
     depends_on:
@@ -71,7 +74,7 @@ secrets:
     file: ./keys/safehouse.key
 
 volumes:
+  # The documents are not here: they are the host directory above. A backup
+  # of one without the other is useless, and both without the key file are
+  # useless (D6, D12).
   db-data:
-  # Separate from db-data on purpose: a backup of one without the other is
-  # useless, and both without the key file are useless (D6, D12).
-  documents:

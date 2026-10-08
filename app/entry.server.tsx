@@ -9,12 +9,15 @@ import { renderToPipeableStream } from "react-dom/server";
 
 import { startSweeper } from "./notify.server";
 import { checkKeyAtBoot } from "./key-check.server";
+import { checkStoreAtBoot } from "./storage.server";
 
 // React Router's default server entry, with this line added and the unused
 // load-context parameter dropped to satisfy lint. The server
 // imports this module when it starts, so a throw here means it never starts:
 // no key file, or a key that opens none of the vault, stops it by name (D31).
 await checkKeyAtBoot();
+// And a document store it cannot write stops it too (D38).
+await checkStoreAtBoot();
 
 // Expiry reminders and break-glass alerts beyond the app (D37): now, and every
 // 15 minutes. Not in tests, which call the sweep themselves.
