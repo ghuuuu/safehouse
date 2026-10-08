@@ -67,23 +67,37 @@ export async function action({ request }: Route.ActionArgs) {
       : { kind: "window" as const, error: "There was no open window to close." };
   }
 
-  const kind = KINDS.find((k) => k === form.get("kind"));
-  if (!kind) return { kind: null, error: "Nothing to save." };
-
-  // Unchecked boxes are simply absent, so what arrives is the whole list as
-  // the admin wants it, and the empty choice of the "add" select is dropped.
-  const desired = form.getAll("value").map(String).filter(Boolean);
+  // The lists the panel showed, and only those: an account offered no record
+  // grants keeps whatever it has rather than losing them to an absent list.
+  const kinds = KINDS.filter((k) => form.getAll("kind").includes(k));
+  if (kinds.length === 0) return { kind: "grants" as const, error: "Nothing to save." };
 
   try {
-    const result = await withVault(request, (db) => setGrants(db, userId, kind, desired));
-    return result.ok ? { kind, saved: result.changed } : { kind, error: result.problem };
+    // One transaction for every list, so a refusal in one undoes the others
+    // rather than keeping half of what the admin pressed Save on.
+    const saved = await withVault(request, async (db) => {
+      let changed = 0;
+      for (const kind of kinds) {
+        // Unchecked boxes are simply absent, so what arrives is the whole list
+        // as the admin wants it, and the empty choice of "add one" is dropped.
+        const desired = form.getAll(kind).map(String).filter(Boolean);
+        const result = await setGrants(db, userId, kind, desired);
+        if (!result.ok) throw new GrantProblem(result.problem);
+        changed += result.changed;
+      }
+      return changed;
+    });
+    return { kind: "grants" as const, saved };
   } catch (error) {
+    if (error instanceof GrantProblem) return { kind: "grants" as const, error: error.message };
     const code = (error as { cause?: { code?: string } })?.cause?.code;
-    if (code === "42501") return { kind, error: "Only the household administrator can change access." };
-    if (code === "23503") return { kind, error: "That account, or what you picked, no longer exists." };
+    if (code === "42501") return { kind: "grants" as const, error: "Only the household administrator can change access." };
+    if (code === "23503") return { kind: "grants" as const, error: "That account, or what you picked, no longer exists." };
     throw error;
   }
 }
+
+class GrantProblem extends Error {}
 
 const LABEL: Record<string, string> = {
   admin: "administrator",
@@ -212,42 +226,34 @@ function PanelView({ panel }: { panel: Panel }) {
               : "Nothing can be granted to this account."}
         </p>
       ) : (
-        <>
+        <GrantForm panel={panel}>
           {grantable.includes("owner") && <OwnerGrants panel={panel} />}
           {grantable.includes("category") && <CategoryGrants panel={panel} />}
           {grantable.includes("record") && <RecordGrants panel={panel} />}
-        </>
+        </GrantForm>
       )}
     </section>
   );
 }
 
-/** One form per list: what is ticked when it is saved is the list. */
-function GrantForm({
-  panel,
-  kind,
-  title,
-  children,
-}: {
-  panel: Panel;
-  kind: GrantKind;
-  title: string;
-  children: React.ReactNode;
-}) {
+/**
+ * One form and one Save: what is ticked in every list when it is saved is the
+ * account's access. A Save per list lost a tick in one list to a press of
+ * another list's button.
+ */
+function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNode }) {
   const result = useActionData<typeof action>();
   const navigation = useNavigation();
-  const busy = navigation.state !== "idle" && navigation.formData?.get("kind") === kind;
-  const mine = result && result.kind === kind ? result : null;
+  const busy = navigation.state !== "idle" && navigation.formData?.has("kind") === true;
+  const mine = result && result.kind === "grants" ? result : null;
 
   return (
-    <Form method="post" className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4">
-      <h3 className="text-sm font-medium">{title}</h3>
+    <Form method="post" className="flex flex-col gap-4">
       <input type="hidden" name="userId" value={panel.subject.id} />
-      <input type="hidden" name="kind" value={kind} />
       {children}
       <div className="flex items-center gap-3">
-        <button className="rounded border border-gray-300 px-3 py-1 text-sm" type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Save"}
+        <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white" type="submit" disabled={busy}>
+          {busy ? "Saving…" : "Save access"}
         </button>
         {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700">{mine.error}</span> : null}
         {mine && "saved" in mine ? (
@@ -260,36 +266,47 @@ function GrantForm({
   );
 }
 
+/** One list in the form. The hidden `kind` tells the action it was shown. */
+function GrantList({ kind, title, children }: { kind: GrantKind; title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4">
+      <legend className="px-1 text-sm font-medium">{title}</legend>
+      <input type="hidden" name="kind" value={kind} />
+      {children}
+    </fieldset>
+  );
+}
+
 function OwnerGrants({ panel }: { panel: Panel }) {
   const granted = new Set(panel.grants.owners);
   return (
-    <GrantForm panel={panel} kind="owner" title="Owners granted by hand">
+    <GrantList kind="owner" title="Owners granted by hand">
       <div className="grid gap-1 text-sm sm:grid-cols-2">
         {panel.options.owners.map((owner) => (
           <label key={owner.id} className="flex items-center gap-2">
-            <input type="checkbox" name="value" value={owner.id} defaultChecked={granted.has(owner.id)} />
+            <input type="checkbox" name="owner" value={owner.id} defaultChecked={granted.has(owner.id)} />
             {owner.name}
             {owner.kind !== "person" ? <span className="text-gray-500">({owner.kind})</span> : null}
           </label>
         ))}
       </div>
-    </GrantForm>
+    </GrantList>
   );
 }
 
 function CategoryGrants({ panel }: { panel: Panel }) {
   const granted = new Set<string>(panel.grants.categories);
   return (
-    <GrantForm panel={panel} kind="category" title="Kinds of document">
+    <GrantList kind="category" title="Kinds of document">
       <div className="flex flex-wrap gap-4 text-sm">
         {CATEGORIES.map((category) => (
           <label key={category} className="flex items-center gap-2 capitalize">
-            <input type="checkbox" name="value" value={category} defaultChecked={granted.has(category)} />
+            <input type="checkbox" name="category" value={category} defaultChecked={granted.has(category)} />
             {category}
           </label>
         ))}
       </div>
-    </GrantForm>
+    </GrantList>
   );
 }
 
@@ -300,7 +317,7 @@ function recordLabel(record: RecordOption): string {
 function RecordGrants({ panel }: { panel: Panel }) {
   const granted = new Set(panel.grants.records.map((r) => r.id));
   return (
-    <GrantForm panel={panel} kind="record" title="Single records">
+    <GrantList kind="record" title="Single records">
       {panel.grants.records.length === 0 ? (
         <p className="text-sm text-gray-500">None. A private record is reachable only this way.</p>
       ) : (
@@ -308,7 +325,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
           {panel.grants.records.map((record) => (
             <li key={record.id}>
               <label className="flex items-center gap-2">
-                <input type="checkbox" name="value" value={record.id} defaultChecked />
+                <input type="checkbox" name="record" value={record.id} defaultChecked />
                 {recordLabel(record)}
               </label>
             </li>
@@ -317,7 +334,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
       )}
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-gray-500">Add one</span>
-        <select name="value" defaultValue="" className="rounded border border-gray-300 p-1">
+        <select name="record" defaultValue="" className="rounded border border-gray-300 p-1">
           <option value="">—</option>
           {panel.options.records
             .filter((record) => !granted.has(record.id))
@@ -328,7 +345,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
             ))}
         </select>
       </label>
-    </GrantForm>
+    </GrantList>
   );
 }
 

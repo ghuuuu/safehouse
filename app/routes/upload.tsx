@@ -106,8 +106,16 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
             <select
               name="ownerId"
               required
+              // Nothing pre-chosen when there is a choice: a default here is
+              // how a passport gets filed under whoever sorts first.
+              defaultValue={owners.length === 1 ? owners[0].id : ""}
               className="rounded-lg border border-gray-300 p-2"
             >
+              {owners.length === 1 ? null : (
+                <option value="" disabled>
+                  Choose a person, business or the household
+                </option>
+              )}
               {owners.map((owner) => (
                 <option key={owner.id} value={owner.id}>
                   {owner.displayName}
@@ -133,9 +141,12 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
             <select
               name="category"
               required
-              defaultValue="general"
+              defaultValue=""
               className="rounded-lg border border-gray-300 p-2"
             >
+              <option value="" disabled>
+                Choose a kind
+              </option>
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
