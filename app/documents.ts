@@ -21,6 +21,15 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 /**
+ * What a document is called when nobody said. Never the file's own name, which
+ * is not stored anywhere (`upload.server.ts`): "maya-passport-X1234567.pdf" is
+ * a field value wearing a file name.
+ */
+export function untitled(category: Category): string {
+  return `${category[0].toUpperCase()}${category.slice(1)} document`;
+}
+
+/**
  * Twenty-five megabytes. A scanned passport page is under one; a long contract
  * scanned at high resolution is a few. Sealing buffers the whole file in
  * memory, so this is also the ceiling on what one upload costs the server.
