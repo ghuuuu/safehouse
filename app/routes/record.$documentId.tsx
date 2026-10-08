@@ -1,4 +1,4 @@
-import { Form, Link, useFetcher } from "react-router";
+import { Form, Link, redirect, useFetcher, useNavigation } from "react-router";
 
 import type { Route } from "./+types/record.$documentId";
 import { ACTIONS, record as logEvent } from "../activity.server";
@@ -37,17 +37,29 @@ export function meta({ data }: Route.MetaArgs) {
  * not happen (D14).
  *
  * Edits go through `withVault`, never the viewed vault, and the update policy
- * re-checks the document against the same predicate on the way in.
+ * re-checks the document against the same predicate on the way in. `canEdit`
+ * only decides whether to offer the Edit button; a third party who posts the
+ * form anyway changes nothing, and is told so.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  return withVault(request, async (db) => {
+  const url = new URL(request.url);
+
+  return withVault(request, async (db, user) => {
     const view = await findRecordView(db, params.documentId);
 
     if (!view) {
       throw new Response("No such document.", { status: 404 });
     }
 
-    return { view };
+    // The same roles `documents_update` lets through (0007, may_file).
+    const canEdit = user.role === "admin" || user.role === "individual";
+
+    return {
+      view,
+      canEdit,
+      editing: canEdit && url.searchParams.has("edit"),
+      saved: url.searchParams.has("saved"),
+    };
   });
 }
 
@@ -108,9 +120,11 @@ export async function action({ request, params }: Route.ActionArgs) {
     ]),
   );
 
-  await withVault(request, (db) => saveFields(db, params.documentId, values));
+  const changed = await withVault(request, (db) => saveFields(db, params.documentId, values));
+  if (!changed) return { error: "You can read this document but not change it." };
 
-  return { saved: true };
+  // Back to reading, so what was just saved is what is shown.
+  return redirect(`/record/${params.documentId}?saved`);
 }
 
 const LABELS: Record<string, string> = {
@@ -124,9 +138,20 @@ const LABELS: Record<string, string> = {
 
 const DATES = new Set(["document_date", "issued_on", "expires_on"]);
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/**
+ * "31 January 2029" from "2029-01-31". By hand rather than `toLocaleString`,
+ * so the server and the browser print the same thing (see `app/when.tsx`).
+ */
+function longDate(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
 export default function RecordScreen({ loaderData, actionData }: Route.ComponentProps) {
-  const { view } = loaderData;
-  const reveal = useFetcher<{ revealed: string | null }>();
+  const { view, canEdit, editing, saved } = loaderData;
+  const here = `/record/${view.document.id}`;
 
   // The reader's notes, which are notes and not facts about the world: the
   // vault quotes them and never asserts them (D28).
@@ -145,6 +170,11 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
     place_of_issue: view.document.placeOfIssue,
     original_location_note: view.document.originalLocationNote,
   };
+  const unconfirmed = Object.keys(LABELS).filter(
+    (field) => values[field] && !view.document.confirmedFields.includes(field),
+  );
+  const current = view.versions.find((version) => version.isCurrent);
+  const expired = view.versions.find((version) => version.id === view.document.id)?.expired ?? false;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
@@ -156,20 +186,93 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           {view.category}
           {view.subcategory ? ` · ${view.subcategory}` : ""}
           {view.isPrivate ? " · private" : ""}
-          {view.document.isCurrent ? "" : ` · superseded (v${view.document.versionNo})`}
         </p>
+        {!view.document.isCurrent && current ? (
+          <p className="mt-3 text-sm">
+            This is an older version (version {view.document.versionNo}).{" "}
+            <Link className="underline" to={`/record/${current.id}`}>
+              See the current one
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">
-          Pages
-        </h2>
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="text-base font-medium">What it says</h2>
+          {canEdit && !editing ? (
+            <Link className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" to={`${here}?edit`}>
+              Edit
+            </Link>
+          ) : null}
+        </div>
+
+        {saved && !editing ? <p role="status" className="text-sm text-gray-500">Saved.</p> : null}
+
+        {editing ? (
+          <EditDetails
+            values={values}
+            confirmed={view.document.confirmedFields}
+            cancel={here}
+            hasPages={view.pages.length > 0}
+            message={actionData && "read" in actionData ? actionData.read : null}
+            error={actionData && "error" in actionData ? actionData.error : null}
+          />
+        ) : (
+          <>
+            {unconfirmed.length > 0 ? (
+              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                {unconfirmed.length === 1 ? "One detail was" : `${unconfirmed.length} details were`} read from the scan
+                and nobody has checked {unconfirmed.length === 1 ? "it" : "them"} yet.{" "}
+                {canEdit ? (
+                  <Link className="underline" to={`${here}?edit`}>
+                    Check {unconfirmed.length === 1 ? "it" : "them"}
+                  </Link>
+                ) : null}
+              </p>
+            ) : null}
+
+            <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white text-sm">
+              {Object.entries(LABELS).map(([field, label]) => {
+                const value = values[field];
+                return (
+                  <div key={field} className="flex flex-col gap-0.5 px-4 py-3 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-4">
+                    <dt className="text-gray-500">{label}</dt>
+                    <dd className="flex flex-wrap items-baseline gap-x-2">
+                      {value ? (
+                        <span className="font-medium">{DATES.has(field) ? longDate(value) : value}</span>
+                      ) : (
+                        <span className="text-gray-500">Not recorded</span>
+                      )}
+                      {field === "expires_on" && value && expired ? (
+                        <span className="text-xs font-medium text-red-700 dark:text-red-400">expired</span>
+                      ) : null}
+                      {value && unconfirmed.includes(field) ? (
+                        <span className="text-xs text-amber-700 dark:text-amber-400">unconfirmed</span>
+                      ) : null}
+                    </dd>
+                  </div>
+                );
+              })}
+              <div className="flex flex-col gap-0.5 px-4 py-3 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-4">
+                <dt className="text-gray-500">Number</dt>
+                <dd>
+                  <MaskedNumber hasIdentifier={view.document.hasIdentifier} />
+                </dd>
+              </div>
+            </dl>
+          </>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-base font-medium">Pages</h2>
         {view.pages.length === 0 ? (
           <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
             Nothing scanned behind this one yet.
           </p>
         ) : (
-          <ul className="rounded-lg border border-gray-200 text-sm">
+          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
             {view.pages.map((page) => (
               <li
                 key={page.id}
@@ -188,93 +291,15 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">
-          What it says
-        </h2>
-
-        <Form method="post" className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4">
-          {Object.entries(LABELS).map(([field, label]) => (
-            <label key={field} className="flex flex-col gap-1 text-sm">
-              <span className="flex items-baseline gap-2">
-                {label}
-                {view.document.confirmedFields.includes(field) ? null : values[field] ? (
-                  // Step 8 will put values here that nobody has agreed with yet.
-                  <em className="text-xs not-italic text-amber-700 dark:text-amber-400">
-                    unconfirmed
-                  </em>
-                ) : null}
-              </span>
-              <input
-                name={field}
-                type={DATES.has(field) ? "date" : "text"}
-                defaultValue={values[field] ?? ""}
-                className="rounded-lg border border-gray-300 p-2"
-              />
-            </label>
-          ))}
-
-          <div className="flex items-baseline gap-3 text-sm">
-            <span>Number</span>
-            {reveal.data?.revealed ? (
-              <code className="rounded bg-gray-100 px-2 py-1">
-                {reveal.data.revealed}
-              </code>
-            ) : view.document.hasIdentifier ? (
-              <>
-                <span className="text-gray-500">•••••••• on file</span>
-                {/* A button, not a form: this sits inside the fields' form, and a
-                    form inside a form is invalid HTML that broke hydration. */}
-                <button
-                  type="button"
-                  className="-my-2 px-1 py-2 underline"
-                  onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
-                >
-                  {reveal.state === "submitting" ? "checking…" : "reveal"}
-                </button>
-              </>
-            ) : (
-              <span className="text-gray-500">none recorded</span>
-            )}
-          </div>
-
-          {actionData && "saved" in actionData ? (
-            <p className="text-sm text-gray-500">Saved.</p>
-          ) : null}
-          {actionData && "read" in actionData ? (
-            <p className="text-sm text-gray-500">{actionData.read}</p>
-          ) : null}
-
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
-            >
-              Save
-            </button>
-            <button
-              type="submit"
-              name="intent"
-              value="read"
-              className="py-2 text-sm text-gray-500 underline"
-            >
-              Read it from the scan
-            </button>
-          </div>
-        </Form>
-      </section>
-
       {facts.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">
-            What your insurer wrote
-          </h2>
+          <h2 className="text-base font-medium">What your insurer wrote</h2>
           <p className="text-xs text-gray-500">
             Quoted exactly, with their own wording and the page. Nothing here is
             added up or interpreted — where a policy states several figures, all
             of them are shown.
           </p>
-          <ul className="rounded-lg border border-gray-200 text-sm">
+          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
             {facts.map((fact, index) => (
               <li
                 key={`${fact.label}-${index}`}
@@ -293,9 +318,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
       {signposts.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">
-            Where the conditions are
-          </h2>
+          <h2 className="text-base font-medium">Where the conditions are</h2>
           <p className="text-xs text-gray-500">
             Headings found in the document. Safehouse does not read these for
             you — it tells you which page to turn to.
@@ -304,7 +327,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
             {signposts.map((signpost, index) => (
               <li
                 key={`${signpost.heading}-${index}`}
-                className="rounded-lg border border-gray-200 px-3 py-2"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2"
               >
                 {signpost.heading}
                 <span className="ml-2 text-xs text-gray-500">p. {signpost.page}</span>
@@ -316,10 +339,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
       {view.versions.length > 1 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">
-            Versions
-          </h2>
-          <ul className="rounded-lg border border-gray-200 text-sm">
+          <h2 className="text-base font-medium">Versions</h2>
+          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
             {view.versions.map((version) => (
               <li
                 key={version.id}
@@ -334,7 +355,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                 </Link>
                 <span className="text-xs text-gray-500">
                   {version.pageCount} {version.pageCount === 1 ? "page" : "pages"}
-                  {version.expiresOn ? ` · ${version.expired ? "expired" : "expires"} ${version.expiresOn}` : ""}
+                  {version.expiresOn ? ` · ${version.expired ? "expired" : "expires"} ${longDate(version.expiresOn)}` : ""}
                 </span>
               </li>
             ))}
@@ -346,5 +367,94 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         Back to the vault
       </Link>
     </main>
+  );
+}
+
+/** The masked number, and the step-up reveal (D14, D35). Its own request, never the page's. */
+function MaskedNumber({ hasIdentifier }: { hasIdentifier: boolean }) {
+  const reveal = useFetcher<{ revealed: string | null }>();
+
+  if (reveal.data?.revealed) {
+    return <code className="rounded bg-gray-100 px-2 py-1">{reveal.data.revealed}</code>;
+  }
+  if (!hasIdentifier) return <span className="text-gray-500">Not recorded</span>;
+
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2">
+      <span className="text-gray-500">•••••••• on file</span>
+      <button
+        type="button"
+        className="-my-2 px-1 py-2 underline"
+        onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
+      >
+        {reveal.state === "submitting" ? "checking…" : "reveal"}
+      </button>
+    </span>
+  );
+}
+
+function EditDetails({
+  values,
+  confirmed,
+  cancel,
+  hasPages,
+  message,
+  error,
+}: {
+  values: Record<string, string | null>;
+  confirmed: string[];
+  cancel: string;
+  hasPages: boolean;
+  message: string | null;
+  error: string | null;
+}) {
+  const busy = useNavigation().state !== "idle";
+
+  return (
+    // Keyed on the values, so a read from the scan that filled fields in
+    // shows them rather than what the inputs held before.
+    <Form
+      key={JSON.stringify(values)}
+      method="post"
+      className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4"
+    >
+      <p className="text-sm text-gray-500">
+        Saving confirms every detail left filled in. Clear anything that is wrong rather than leave it.
+      </p>
+
+      {Object.entries(LABELS).map(([field, label]) => (
+        <label key={field} className="flex flex-col gap-1 text-sm">
+          <span className="flex items-baseline gap-2">
+            {label}
+            {values[field] && !confirmed.includes(field) ? (
+              <em className="text-xs not-italic text-amber-700 dark:text-amber-400">unconfirmed</em>
+            ) : null}
+          </span>
+          <input
+            name={field}
+            type={DATES.has(field) ? "date" : "text"}
+            defaultValue={values[field] ?? ""}
+            className="rounded-lg border border-gray-300 p-2"
+          />
+        </label>
+      ))}
+
+      {message ? <p role="status" className="text-sm text-gray-500">{message}</p> : null}
+      {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={busy} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">
+          Save
+        </button>
+        <Link className="rounded-lg border border-gray-300 px-4 py-2 text-sm" to={cancel}>
+          Cancel
+        </Link>
+        {hasPages ? (
+          <button type="submit" name="intent" value="read" className="py-2 text-sm text-gray-500 underline">
+            Read it from the scan
+          </button>
+        ) : null}
+      </div>
+    </Form>
   );
 }
