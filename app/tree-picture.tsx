@@ -12,6 +12,12 @@ import type { TreeEdge, TreePerson } from "./tree";
 import { layoutTree, NODE_HEIGHT, NODE_WIDTH, type Layout } from "./tree-layout";
 
 const PAD = 40;
+/**
+ * The smallest scale the tree opens at: names stay about 11px and a person is
+ * about 40px tall, which a thumb can hit. A wider tree than that opens on its
+ * left edge and is panned, rather than shrunk until nobody can read it.
+ */
+const MIN_SCALE = 0.85;
 const SEX_MARK = { female: "♀", male: "♂" } as const;
 
 /**
@@ -37,14 +43,25 @@ export function TreePicture({
     const taken = [...lanes].filter(([id]) => layout.positions[id]?.y === row).length;
     lanes.set(edge.from, taken % 4);
   }
-  const home = {
+  const whole = {
     x: -PAD,
     y: -PAD,
     w: Math.max(layout.width + PAD * 2, 600),
     h: layout.height + PAD * 2,
   };
-  const [box, setBox] = useState(home);
   const svg = useRef<SVGSVGElement>(null);
+  // The server cannot know the screen, so it draws the whole tree; the first
+  // render in the browser narrows it when the whole tree would be unreadable.
+  const fit = () => {
+    const element = svg.current;
+    if (!element || element.clientWidth === 0) return whole;
+    const scale = Math.min(element.clientWidth / whole.w, element.clientHeight / whole.h);
+    if (scale >= MIN_SCALE) return whole;
+    return { x: whole.x, y: whole.y, w: element.clientWidth / MIN_SCALE, h: element.clientHeight / MIN_SCALE };
+  };
+  const [box, setBox] = useState(whole);
+  // Once, on mount: after that the reader is in charge of where it looks.
+  useEffect(() => setBox(fit()), []);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const navigate = useNavigate();
 
@@ -74,17 +91,20 @@ export function TreePicture({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <button type="button" className="rounded border border-gray-300 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
-        <button type="button" className="rounded border border-gray-300 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
-        <button type="button" className="rounded border border-gray-300 px-2" onClick={() => setBox(home)}>Reset</button>
-        <span className="text-xs text-gray-500">Drag to move around.</span>
+        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
+        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
+        <button type="button" className="min-h-9 rounded border border-gray-300 px-3" onClick={() => setBox(fit())}>Reset</button>
+        <span className="text-xs text-gray-500">
+          <span className="pointer-coarse:hidden">Drag to move around.</span>
+          <span className="hidden pointer-coarse:inline">Swipe sideways to move along.</span>
+        </span>
       </div>
 
       <svg
         ref={svg}
         role="group"
         aria-label="Family tree"
-        className="h-[32rem] w-full cursor-grab touch-none select-none rounded-lg border border-gray-200 bg-white active:cursor-grabbing"
+        className="h-[24rem] w-full cursor-grab touch-pan-y select-none md:h-[32rem] pointer-fine:touch-none rounded-lg border border-gray-200 bg-white active:cursor-grabbing"
         viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
         onPointerDown={(event) => {
           drag.current = { x: event.clientX, y: event.clientY, moved: false };
@@ -101,6 +121,8 @@ export function TreePicture({
           start.y = event.clientY;
           setBox((b) => ({ ...b, x: b.x - toSvgUnits(dx), y: b.y - toSvgUnits(dy) }));
         }}
+        // The browser took the gesture over to scroll the page (touch-pan-y).
+        onPointerCancel={() => (drag.current = null)}
         onPointerUp={() => {
           // A drag that ends on a person is not a click on them.
           setTimeout(() => (drag.current = null), 0);
