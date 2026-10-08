@@ -420,6 +420,9 @@ export const activityEvents = pgTable(
     action: text("action").notNull(),
     subjectType: text("subject_type"),
     subjectId: uuid("subject_id"),
+    /** What a grant line granted (0012). Typed, so it can never hold a value. */
+    targetId: uuid("target_id"),
+    targetCategory: category("target_category"),
   },
   (t) => [index("activity_at_idx").on(t.at)],
 );
