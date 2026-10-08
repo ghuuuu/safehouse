@@ -3,7 +3,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { and, count, eq, or } from "drizzle-orm";
+import { twoFactor } from "better-auth/plugins";
+import { and, count, eq, isNull, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -227,6 +228,84 @@ export async function setPasswordWithLink(
   }
 }
 
+/**
+ * Who the delivery sweep works on behalf of: every active admin.
+ *
+ * Read over the auth connection because the sweep runs with nobody signed in,
+ * and `users_read` would give a nameless transaction nothing. Ids only.
+ */
+export async function activeAdminIds(): Promise<string[]> {
+  const rows = await authDb()
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(eq(schema.users.role, "admin"), isNull(schema.users.disabledAt)));
+  return rows.map((row) => row.id);
+}
+
+/** One signed-in device, as the settings page shows it. Never the token. */
+export type Device = {
+  id: string;
+  /** The browser's own description of itself, shortened. */
+  device: string;
+  ipAddress: string | null;
+  signedInAt: Date;
+  lastSeenAt: Date;
+  current: boolean;
+};
+
+/**
+ * The signed-in account's own sessions.
+ *
+ * Read over the auth connection, the only one that can see `sessions` (D24),
+ * and only the caller's rows. A session token is a password with a time
+ * limit, so it never leaves this module; the page gets ids.
+ */
+export async function listDevices(headers: Headers): Promise<Device[]> {
+  const session = await auth.api.getSession({ headers });
+  if (!session) return [];
+
+  const rows = await authDb()
+    .select()
+    .from(schema.sessions)
+    .where(eq(schema.sessions.userId, session.user.id));
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      device: describeDevice(row.userAgent),
+      ipAddress: row.ipAddress,
+      signedInAt: row.createdAt,
+      lastSeenAt: row.updatedAt,
+      current: row.id === session.session.id,
+    }))
+    .sort((a, b) => Number(b.current) - Number(a.current) || +b.lastSeenAt - +a.lastSeenAt);
+}
+
+/** Sign out one of the caller's own devices, by id. Somebody else's id is no row. */
+export async function signOutDevice(headers: Headers, sessionId: string): Promise<boolean> {
+  const session = await auth.api.getSession({ headers });
+  if (!session) return false;
+
+  const [row] = await authDb()
+    .select({ token: schema.sessions.token })
+    .from(schema.sessions)
+    .where(and(eq(schema.sessions.id, sessionId), eq(schema.sessions.userId, session.user.id)));
+  if (!row) return false;
+
+  await auth.api.revokeSession({ headers, body: { token: row.token } });
+  return true;
+}
+
+/** "Firefox on Windows", from a user agent, without a parsing library. */
+function describeDevice(userAgent: string | null): string {
+  if (!userAgent) return "Unknown device";
+  // Order matters: Edge says Chrome too, and Chrome says Safari.
+  const pick = (pairs: [RegExp, string][]) => pairs.find(([pattern]) => pattern.test(userAgent))?.[1];
+  const name = pick([[/Edg\//, "Edge"], [/Firefox\//, "Firefox"], [/Chrome\//, "Chrome"], [/Safari\//, "Safari"]]) ?? "A browser";
+  const os = pick([[/Windows/, "Windows"], [/iPhone|iPad/, "iOS"], [/Android/, "Android"], [/Mac OS X/, "macOS"], [/Linux/, "Linux"]]);
+  return os ? `${name} on ${os}` : name;
+}
+
 export const auth = betterAuth({
   secret: requireEnv("BETTER_AUTH_SECRET"),
   baseURL: requireEnv("BETTER_AUTH_URL"),
@@ -242,6 +321,7 @@ export const auth = betterAuth({
       session: schema.sessions,
       account: schema.accounts,
       verification: schema.verifications,
+      twoFactor: schema.twoFactors,
     },
   }),
 
@@ -254,6 +334,13 @@ export const auth = betterAuth({
 
   // No usage data leaves this machine. A document vault phones nobody.
   telemetry: { enabled: false },
+
+  // A second factor, from the library (D36): TOTP from an authenticator app,
+  // ten single-use backup codes, and its own lockout after repeated wrong
+  // codes. Turning it on needs the password and a working code, so a stolen
+  // session cannot quietly enrol an attacker's phone. Secrets are encrypted by
+  // the library before they reach `two_factors`, which only this role can read.
+  plugins: [twoFactor({ issuer: "Safehouse" })],
 
   emailAndPassword: {
     enabled: true,

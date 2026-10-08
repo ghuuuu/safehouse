@@ -52,6 +52,9 @@ services:
       SAFEHOUSE_KEY_FILE: /run/secrets/safehouse_key
       # Encrypted document files. Sealed before they get here.
       SAFEHOUSE_STORAGE_DIR: /var/lib/safehouse/documents
+      # Optional: expiry and break-glass alerts beyond the app (D37). Empty
+      # keeps them in the app only.
+      SAFEHOUSE_NOTIFY_WEBHOOK: ${SAFEHOUSE_NOTIFY_WEBHOOK:-}
     secrets:
       - safehouse_key
     volumes:

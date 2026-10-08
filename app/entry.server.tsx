@@ -7,6 +7,7 @@ import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
 
+import { startSweeper } from "./notify.server";
 import { checkKeyAtBoot } from "./key-check.server";
 
 // React Router's default server entry, with this line added and the unused
@@ -14,6 +15,10 @@ import { checkKeyAtBoot } from "./key-check.server";
 // imports this module when it starts, so a throw here means it never starts:
 // no key file, or a key that opens none of the vault, stops it by name (D31).
 await checkKeyAtBoot();
+
+// Expiry reminders and break-glass alerts beyond the app (D37): now, and every
+// 15 minutes. Not in tests, which call the sweep themselves.
+if (process.env.NODE_ENV !== "test") startSweeper();
 
 export const streamTimeout = 5_000;
 
