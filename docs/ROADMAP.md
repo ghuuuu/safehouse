@@ -31,9 +31,9 @@ that restores one. Then the Record screen, the local reader (MRZ, PDF text
 layer, Tesseract), insurance classification and quoting, page straightening,
 and the expiry list. Then the people roster with invites and resets, a boot
 check that refuses the wrong key, the family tree, the access console, and
-search over sealed identifiers, and the dashboard.
+search over sealed identifiers, the dashboard, and bulk intake.
 
-Not built: bulk operations, settings, outbound notification delivery, and the
+Not built: settings, outbound notification delivery, and the
 operations docs. The notifications table has a read policy and no writer, on
 purpose (D30).
 
@@ -496,6 +496,33 @@ The triage surface for a large intake across people and categories at once. D20
 is explicit that a 200-file intake creates 200 records, and that this is the
 intended card model rather than an accident. Step 8 runs over each of them,
 which is what makes a 200-file intake survivable.
+
+**Landed.** `/bulk` (linked from the dashboard as "File many"). You pick many
+files and sort them in one table in the browser: owner, kind and title per
+row, plus "apply to all". Nothing is sent until every row has an owner. Files
+then go one per request to `/bulk/file`, which answers in JSON, so every row
+shows its own outcome and one refusal does not stop the batch. Each file is
+read by the Step 8 reader on the uploaded bytes, outside any transaction. It
+is then filed together with what the reader proposed, in one transaction
+(`app/bulk.server.ts`). Proposals stay unconfirmed and numbers are sealed. A
+blank title becomes "<Kind> document", and the file's name is never stored.
+
+**Acceptance, as met.**
+- `app/db/bulk.test.ts`: a filed document arrives with its proposals, none
+  confirmed, and the number is sealed. A reader that throws still files the
+  document. A third party, or a member filing outside their circle, is refused
+  by the database and leaves no row and no blob. A proposal that cannot be
+  saved takes the filing back and deletes its blob. One log line per
+  document. Three mutations each turned a test red.
+- In a browser, as Maya, with four fictional files: two PDFs and a PNG filed,
+  and a .txt refused by type. The gym card's "Valid until 31/12/2027" was
+  proposed as an unconfirmed expiry date. A hand-posted filing for Nadia got
+  a 403 and wrote nothing.
+
+**Not done.** Re-sorting after filing: moving a record to another owner
+changes who can see it, and needs its own write policy. Pictures inside PDFs
+are still not read (Step 8). Files go in one at a time; that is deliberate, so
+a home server is not running several Tesseract reads at once.
 
 **Size.** L. **Depends on.** Steps 3, 8.
 
