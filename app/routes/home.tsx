@@ -3,9 +3,12 @@ import { Form, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { MODES, type Mode } from "../dashboard";
 import { getDashboard } from "../dashboard.server";
+import { openWindow, openWindows } from "../emergency.server";
+import { deliverNow, deliveryStatus } from "../notify.server";
 import { withVault } from "../session.server";
 import type { OwnerLink } from "../tree";
 import { TreePicture } from "../tree-picture";
+import { When } from "../when";
 
 export function meta() {
   return [{ title: "Safehouse" }];
@@ -29,7 +32,33 @@ export async function loader({ request }: Route.LoaderArgs) {
     user,
     mode,
     dashboard: await getDashboard(db, mode),
+    // Open break-glass windows: an admin sees everybody's, a contact their own.
+    windows: await openWindows(db),
+    delivery: user.role === "admin" ? await deliveryStatus(db) : null,
   }));
+}
+
+/**
+ * Breaking the glass (D19). Only an emergency contact gets the form, and only
+ * the policy in 0015 decides whether the window opens; the database alerts the
+ * admins in the same transaction, and the alert is pushed out at once.
+ */
+export async function action({ request }: Route.ActionArgs) {
+  const form = await request.formData();
+  if (form.get("intent") !== "break-glass") return { error: "Nothing to do." };
+
+  try {
+    const result = await withVault(request, (db) => openWindow(db, String(form.get("reason") ?? "")));
+    if (!result.ok) return { error: result.problem };
+  } catch (error) {
+    if ((error as { cause?: { code?: string } })?.cause?.code === "42501") {
+      return { error: "Only an emergency contact can open an emergency window." };
+    }
+    throw error;
+  }
+
+  deliverNow();
+  return { opened: true };
 }
 
 /** "in 12 days", "today", "40 days ago" — the only thing worth reading twice. */
@@ -44,8 +73,8 @@ function when(daysLeft: number): string {
 
 const MODE_LABEL: Record<Mode, string> = { individuals: "Individuals", businesses: "Businesses" };
 
-export default function Home({ loaderData }: Route.ComponentProps) {
-  const { user, mode, dashboard } = loaderData;
+export default function Home({ loaderData, actionData }: Route.ComponentProps) {
+  const { user, mode, dashboard, windows, delivery } = loaderData;
   const { tree, expiring, categories, chips } = dashboard;
   const vaultFor = (ownerId: string) => `/vault?owner=${ownerId}`;
   const total = categories.reduce((sum, c) => sum + c.count, 0);
@@ -69,11 +98,40 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           {user.role === "admin" && (
             <Link className="underline" to="/access">Access</Link>
           )}
+          <Link className="underline" to="/settings">Settings</Link>
           <Form method="post" action="/sign-out">
             <button className="text-gray-500 underline" type="submit">Sign out</button>
           </Form>
         </nav>
       </header>
+
+      {user.role === "emergency" ? (
+        <BreakGlass open={windows[0] ?? null} error={actionData && "error" in actionData ? (actionData.error ?? null) : null} />
+      ) : null}
+
+      {user.role === "admin" && windows.length > 0 ? (
+        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+          {windows.map((w) => (
+            <p key={w.id}>
+              <strong className="font-medium">{w.name ?? "An emergency contact"}</strong> has an emergency window open
+              until <When at={w.expiresAt} />.{w.reason ? <> They said: &ldquo;{w.reason}&rdquo;.</> : null}{" "}
+              <Link className="underline" to={`/access?as=${w.userId}`}>Review or close it</Link>
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {delivery && (delivery.failing > 0 || delivery.stale) ? (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          {delivery.failing > 0 ? (
+            <p>
+              {delivery.failing} notification{delivery.failing === 1 ? "" : "s"} could not be sent to your phone.{" "}
+              <Link className="underline" to="/settings#notifications">See why</Link>
+            </p>
+          ) : null}
+          {delivery.stale ? <p>Notifications have not been checked for over an hour. Restart Safehouse if this stays.</p> : null}
+        </div>
+      ) : null}
 
       <nav aria-label="Mode" className="flex w-fit rounded-lg border border-gray-200 p-1 text-sm">
         {MODES.map((m) => (
@@ -229,5 +287,32 @@ function Owners({
         </li>
       ))}
     </ul>
+  );
+}
+
+function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error: string | null }) {
+  if (open) {
+    return (
+      <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+        Your emergency window is open until <When at={open.expiresAt} />. You can see medical and
+        legal papers until then. The administrator has been told, and every document you open is recorded.
+      </div>
+    );
+  }
+  return (
+    <Form method="post" className="flex flex-col gap-3 rounded-lg border border-red-300 p-4 text-sm">
+      <h2 className="font-medium">Emergency access</h2>
+      <p>
+        Opening a window lets you see the household&apos;s medical and legal papers for a limited time. The
+        administrator is told straight away, with the reason you give, and can close it.
+      </p>
+      <input type="hidden" name="intent" value="break-glass" />
+      <label className="flex flex-col gap-1">
+        Why do you need it?
+        <input name="reason" required minLength={3} maxLength={500} className="rounded border border-gray-300 p-2" />
+      </label>
+      {error ? <p role="alert" className="text-red-700">{error}</p> : null}
+      <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-white">Open an emergency window</button>
+    </Form>
   );
 }

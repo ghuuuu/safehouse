@@ -10,8 +10,10 @@ import {
   type RecordOption,
 } from "../access.server";
 import { CATEGORIES } from "../documents";
+import { revokeWindows } from "../emergency.server";
 import { withVault } from "../session.server";
 import { resolveViewContext } from "../view-as.server";
+import { When } from "../when";
 
 export function meta() {
   return [{ title: "Access — Safehouse" }];
@@ -55,6 +57,16 @@ const KINDS: GrantKind[] = ["owner", "category", "record"];
 export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const userId = String(form.get("userId") ?? "");
+
+  if (form.get("intent") === "revoke-window") {
+    // `emergency_activations_revoke` (0015) is the check: an active admin, in
+    // their own name. Anybody else closes nothing.
+    const closed = await withVault(request, (db) => revokeWindows(db, userId));
+    return closed > 0
+      ? { kind: "window" as const, saved: closed }
+      : { kind: "window" as const, error: "There was no open window to close." };
+  }
+
   const kind = KINDS.find((k) => k === form.get("kind"));
   if (!kind) return { kind: null, error: "Nothing to save." };
 
@@ -188,6 +200,8 @@ function PanelView({ panel }: { panel: Panel }) {
               : null}
         </p>
       </div>
+
+      {panel.window ? <WindowNotice panel={panel} /> : null}
 
       {grantable.length === 0 ? (
         <p className="text-sm text-gray-500">
@@ -378,5 +392,22 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
         &ldquo;Of {matrix.reachable}&rdquo; is what you can see yourself, not a count of the database.
       </p>
     </section>
+  );
+}
+
+function WindowNotice({ panel }: { panel: Panel }) {
+  const result = useActionData<typeof action>();
+  const window = panel.window!;
+  return (
+    <Form method="post" className="flex flex-col gap-2 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+      <p>
+        Emergency window open until <When at={window.expiresAt} />.
+        {window.reason ? <> They said: &ldquo;{window.reason}&rdquo;.</> : null}
+      </p>
+      <input type="hidden" name="intent" value="revoke-window" />
+      <input type="hidden" name="userId" value={panel.subject.id} />
+      <button type="submit" className="self-start rounded-lg bg-red-700 px-3 py-1.5 text-white">Close it now</button>
+      {result && result.kind === "window" && "error" in result ? <p>{result.error}</p> : null}
+    </Form>
   );
 }

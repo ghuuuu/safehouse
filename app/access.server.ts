@@ -18,6 +18,7 @@ import { sql } from "drizzle-orm";
 import { ACTIONS, record } from "./activity.server";
 import { asUser, type VaultTransaction } from "./db.server";
 import { CATEGORIES, type Category } from "./documents";
+import { openWindows, type Window } from "./emergency.server";
 import type { SignedInUser } from "./session.server";
 import {
   gateViewAs,
@@ -50,6 +51,8 @@ export type Panel = {
   grants: { owners: string[]; categories: Category[]; records: RecordOption[] };
   grantable: GrantKind[];
   options: { owners: OwnerOption[]; records: RecordOption[] };
+  /** An emergency contact's open break-glass window, if any (D19). */
+  window: Window | null;
 };
 
 export type MatrixRow = {
@@ -125,6 +128,7 @@ export async function getPanel(view: ViewContext): Promise<Panel> {
     );
 
     return {
+      window: (await openWindows(db)).find((w) => w.userId === subject.id) ?? null,
       reachable: await count(db),
       grants: { owners, categories, records: allRecords.filter((r) => recordIds.has(r.id)) },
       options: { owners: [...(await db.execute<OwnerOption>(OWNERS_SQL))], records: allRecords },
@@ -141,6 +145,7 @@ export async function getPanel(view: ViewContext): Promise<Panel> {
     grants: ours.grants,
     grantable: grantableFor(subject.role),
     options: ours.options,
+    window: ours.window,
   };
 }
 
