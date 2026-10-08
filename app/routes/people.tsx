@@ -13,7 +13,9 @@ import { sql } from "drizzle-orm";
 
 import { inviteToSignIn, NotAllowed, signInLinkFor } from "../auth.server";
 import { addPerson, listAnchors, listHousehold } from "../people.server";
+import { roleLabel } from "../roles";
 import { withVault } from "../session.server";
+import { longDate } from "../when";
 
 export function meta() {
   return [{ title: "People — Safehouse" }];
@@ -260,7 +262,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                   <span>
                     {row.displayName}
                     {row.diedOn ? (
-                      <span className="text-gray-500"> · died {row.diedOn}</span>
+                      <span className="text-gray-500"> · died {longDate(row.diedOn)}</span>
                     ) : null}
                     {row.archived ? (
                       <span className="text-gray-500"> · archived</span>
@@ -281,7 +283,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                     {row.recordCount} {row.recordCount === 1 ? "record" : "records"}
                     <br />
                     {row.account
-                      ? `${row.account.role}${row.account.disabled ? ", disabled" : ""}`
+                      ? `${roleLabel(row.account.role)}${row.account.disabled ? ", disabled" : ""}`
                       : "no sign-in"}
                   </span>
                 </li>

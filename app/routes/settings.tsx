@@ -3,6 +3,7 @@ import { data, Form, useNavigation } from "react-router";
 import type { Route } from "./+types/settings";
 import { auth, listDevices, MIN_PASSWORD, signOutDevice } from "../auth.server";
 import { requireUser, withVault } from "../session.server";
+import { roleLabel } from "../roles";
 import { LIMITS } from "../settings";
 import { readSettings, saveSettings } from "../settings.server";
 import { deliveryStatus, message } from "../notify.server";
@@ -169,7 +170,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
         <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
           <dt className="text-gray-500">Name</dt><dd>{user.name}</dd>
           <dt className="text-gray-500">Email</dt><dd>{user.email}</dd>
-          <dt className="text-gray-500">Role</dt><dd>{user.role}</dd>
+          <dt className="text-gray-500">Role</dt><dd>{roleLabel(user.role)}</dd>
         </dl>
 
         <Form method="post" className={card}>

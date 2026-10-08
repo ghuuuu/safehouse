@@ -5,6 +5,7 @@ import type { Route } from "./+types/vault";
 import { ACTIONS, record } from "../activity.server";
 import { FolderTab } from "../folder-tab";
 import { roleLabel } from "../roles";
+import { longDate } from "../when";
 import { forOwner, VAULT_LIST_SQL } from "../vault.server";
 import {
   resolveViewContext,
@@ -270,9 +271,9 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                   )}
                   {document.expiresOn ? (
                     document.expired ? (
-                      <span className="font-medium text-red-700 dark:text-red-400">expired {document.expiresOn}</span>
+                      <span className="font-medium text-red-700 dark:text-red-400">expired {longDate(document.expiresOn)}</span>
                     ) : (
-                      <span>expires {document.expiresOn}</span>
+                      <span>expires {longDate(document.expiresOn)}</span>
                     )
                   ) : null}
                 </span>

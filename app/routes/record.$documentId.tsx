@@ -15,6 +15,7 @@ import {
 } from "../record.server";
 import { withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
+import { longDate } from "../when";
 
 export function meta({ data }: Route.MetaArgs) {
   return [{ title: data ? `${data.view.title} — Safehouse` : "Safehouse" }];
@@ -138,17 +139,6 @@ const LABELS: Record<string, string> = {
 
 const DATES = new Set(["document_date", "issued_on", "expires_on"]);
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-/**
- * "31 January 2029" from "2029-01-31". By hand rather than `toLocaleString`,
- * so the server and the browser print the same thing (see `app/when.tsx`).
- */
-function longDate(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
-
 export default function RecordScreen({ loaderData, actionData }: Route.ComponentProps) {
   const { view, canEdit, editing, saved } = loaderData;
   const here = `/record/${view.document.id}`;
@@ -183,7 +173,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
           {view.ownerName ?? "owner not shown to you"} ·
           <CategoryMark category={view.category} />
-          {view.category}
+          <span className="capitalize">{view.category}</span>
           {view.subcategory ? ` · ${view.subcategory}` : ""}
           {view.isPrivate ? " · private" : ""}
         </p>

@@ -87,7 +87,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
               <span className="flex items-center gap-2 text-gray-500">
                 {hit.matchedNumber ? "matched its number · " : ""}
                 <CategoryMark category={hit.category} />
-                {hit.category}
+                <span className="capitalize">{hit.category}</span>
               </span>
             </li>
           ))}
