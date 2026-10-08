@@ -70,7 +70,7 @@ describe("the sign-in role cannot read the vault", () => {
 });
 
 describe("the vault role cannot read credentials", () => {
-  test.each(["accounts", "sessions", "verifications"])(
+  test.each(["accounts", "sessions", "verifications", "two_factors"])(
     "%s is out of reach, policy or no policy",
     async (table) => {
       const error = await refusal(() =>

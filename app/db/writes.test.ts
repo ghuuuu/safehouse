@@ -246,10 +246,10 @@ describe("what stays out of reach entirely", () => {
   // admin a way to add somebody to the household. They have their own policies
   // and their own file now, which is what the comment below always promised:
   // app/db/people.test.ts. The three grant tables left with 0012 for the same
-  // reason, to app/db/grants.test.ts. Everything still here has no grant at all.
+  // reason, to app/db/grants.test.ts, and emergency_activations with 0015, to
+  // app/db/emergency.test.ts. Everything still here has no grant at all.
   const forbidden = [
     ["users", (sql: Sql) => sql`insert into users (email, name, role) values ('x@example.invalid', 'X', 'admin')`],
-    ["emergency_activations", (sql: Sql) => sql`insert into emergency_activations (user_id, expires_at) values (${USER.lapsed}, now() + interval '1 day')`],
   ] as const;
 
   test.each(forbidden)(

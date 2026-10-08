@@ -128,6 +128,8 @@ export const users = pgTable("users", {
     .notNull()
     .defaultNow(),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  /** Owned by the auth library's two-factor plugin (0014). */
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
 });
 
 /**
@@ -189,6 +191,26 @@ export const accounts = pgTable(
     unique("accounts_issuer_account_unique").on(t.issuer, t.accountId),
     index("accounts_user_idx").on(t.userId),
   ],
+);
+
+/**
+ * Two-factor secrets and backup codes (0014). A credential: the auth role
+ * only, and the library encrypts the secret before writing it.
+ */
+export const twoFactors = pgTable(
+  "two_factors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    verified: boolean("verified").notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [index("two_factors_user_idx").on(t.userId)],
 );
 
 /** Short-lived tokens: email verification, password reset. */
@@ -414,6 +436,8 @@ export const settings = pgTable(
     expiryReminderLeadDays: integer("expiry_reminder_lead_days")
       .notNull()
       .default(60),
+    /** An idle page signs itself out after this long (0014). */
+    autoLockMinutes: integer("auto_lock_minutes").notNull().default(15),
   },
   (t) => [check("settings_singleton", sql`${t.id} = 1`)],
 );
@@ -448,5 +472,9 @@ export const notifications = pgTable("notifications", {
     .notNull()
     .defaultNow(),
   readAt: timestamp("read_at", { withTimezone: true }),
+  /** Delivery outside the app (0015). The error is a status, never a body. */
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  deliveryAttempts: integer("delivery_attempts").notNull().default(0),
+  deliveryError: text("delivery_error"),
   deliveredChannels: text("delivered_channels").array().notNull().default([]),
 });

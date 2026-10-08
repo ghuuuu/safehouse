@@ -54,6 +54,11 @@ export const ACTIONS = {
    */
   grantAdded: "grant.added",
   grantRemoved: "grant.removed",
+  /** The household's settings changed, the emergency window among them. */
+  settingsChanged: "settings.changed",
+  /** Break-glass (D19): a window opened by its contact, or closed by an admin. */
+  emergencyOpened: "emergency.opened",
+  emergencyRevoked: "emergency.revoked",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -62,7 +67,8 @@ export type Event = {
   action: Action;
   /** The table the subject lives in: "document", "record", "user". */
   subjectType: string;
-  subjectId: string;
+  /** Null for the one thing that has no id: the household's settings row. */
+  subjectId: string | null;
   /** Whose eyes the actor was using, when they were not their own. */
   actingAsUserId?: string | null;
   /** What a grant line granted: an owner or record id, or a category. */
