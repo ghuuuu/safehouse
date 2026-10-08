@@ -94,8 +94,9 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 function Groups({ groups }: { groups: { title: string; items: Item[] }[] }) {
   return groups.map((group) => (
     <div key={group.title}>
-      <h2 className="mb-1 px-2 text-xs font-medium text-gray-500">{group.title}</h2>
-      <ul className="flex flex-col gap-0.5">
+      {/* Not a heading: the page's own h1 is the first heading a reader meets. */}
+      <p aria-hidden className="mb-1 px-2 text-xs font-medium text-gray-500">{group.title}</p>
+      <ul aria-label={group.title} className="flex flex-col gap-0.5">
         {group.items.map((item) => (
           <li key={item.to}>
             <NavLink

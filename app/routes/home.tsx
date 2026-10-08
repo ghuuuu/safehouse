@@ -170,7 +170,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               {expiring.leadDays ? ` in the next ${expiring.leadDays} days` : ""}.
             </p>
           ) : (
-            <ul className="rounded-lg border border-gray-200 text-sm">
+            <ul className="rounded-lg border border-gray-200 bg-white text-sm">
               {expiring.soon.map((item) => (
                 <li
                   key={item.documentId}
@@ -187,7 +187,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               ))}
             </ul>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 max-w-prose">
             Dates somebody has confirmed. A date a reader proposed and nobody checked is not counted.
           </p>
         </section>
@@ -223,7 +223,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
               </li>
             ))}
           </ul>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 max-w-prose">
             Current versions you can see; the vault also lists older ones.
           </p>
         </section>
@@ -270,7 +270,7 @@ function Owners({
     return <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">{empty}</p>;
   }
   return (
-    <ul className="rounded-lg border border-gray-200 text-sm">
+    <ul className="rounded-lg border border-gray-200 bg-white text-sm">
       {owners.map((owner) => (
         <li key={owner.ownerId} className="border-b border-gray-100 p-4 last:border-b-0">
           <Link className="underline" to={vaultFor(owner.ownerId)}>{owner.name}</Link>

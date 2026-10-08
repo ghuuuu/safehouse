@@ -42,7 +42,7 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Your code</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           The six digits your authenticator app shows for Safehouse.
         </p>
       </div>
@@ -77,7 +77,7 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
           <button className="self-start rounded-lg border border-gray-300 px-4 py-2" type="submit">
             Use backup code
           </button>
-          <p className="text-xs text-gray-500">Each backup code works once.</p>
+          <p className="text-xs text-gray-500 max-w-prose">Each backup code works once.</p>
         </Form>
       </details>
 

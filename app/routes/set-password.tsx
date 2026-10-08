@@ -47,7 +47,7 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Set your password</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           Then sign in with your email and this password.
         </p>
       </div>

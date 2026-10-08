@@ -284,7 +284,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
       {facts.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-base font-medium">What your insurer wrote</h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 max-w-prose">
             Quoted exactly, with their own wording and the page. Nothing here is
             added up or interpreted — where a policy states several figures, all
             of them are shown.
@@ -309,7 +309,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
       {signposts.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-base font-medium">Where the conditions are</h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 max-w-prose">
             Headings found in the document. Safehouse does not read these for
             you — it tells you which page to turn to.
           </p>
@@ -408,7 +408,7 @@ function EditDetails({
       method="post"
       className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4"
     >
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 max-w-prose">
         Saving confirms every detail left filled in. Clear anything that is wrong rather than leave it.
       </p>
 

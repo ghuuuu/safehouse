@@ -53,7 +53,7 @@ export default function Setup({ actionData }: Route.ComponentProps) {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Safehouse</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           This account will be the administrator. It can see every record in the
           household, including the private ones, and it is the only account that
           can create the others.

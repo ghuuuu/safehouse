@@ -174,7 +174,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
 
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Vault</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           {documents.length === 1
             ? "One document"
             : `${documents.length} documents`}

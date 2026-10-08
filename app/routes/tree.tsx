@@ -70,17 +70,11 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight">Family tree</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Who documents belong to. Pick anyone to see their documents.
-          </p>
-        </div>
-        <nav className="flex gap-4 text-sm">
-          <Link className="py-2 underline" to={`/vault${as ? `?${as}` : ""}`}>Vault</Link>
-          <Link className="py-2 underline" to="/people">People</Link>
-        </nav>
+      <div>
+        <h1 className="text-2xl font-medium tracking-tight">Family tree</h1>
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
+          Who documents belong to. Pick anyone to see their documents.
+        </p>
       </div>
 
       <Segmented
@@ -124,7 +118,7 @@ function OwnerList({
   }
 
   return (
-    <ul className="rounded-lg border border-gray-200 text-sm">
+    <ul className="rounded-lg border border-gray-200 bg-white text-sm">
       {owners.map((owner) => (
         <li key={owner.ownerId} className="border-b border-gray-100 p-4 last:border-b-0">
           <Link className="underline" to={vaultFor(owner.ownerId)}>

@@ -63,15 +63,15 @@ export default function Search({ loaderData }: Route.ComponentProps) {
         </button>
       </Form>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-500 max-w-prose">
         Numbers are stored encrypted and found by the whole number or its last four characters, not by a
         part from the middle. A match on a number is recorded in the activity log.
       </p>
 
       {hits === null ? null : hits.length === 0 ? (
-        <p className="text-sm text-gray-500">Nothing you can see matches that.</p>
+        <p className="text-sm text-gray-500 max-w-prose">Nothing you can see matches that.</p>
       ) : (
-        <ul className="rounded-lg border border-gray-200 text-sm">
+        <ul className="rounded-lg border border-gray-200 bg-white text-sm">
           {hits.map((hit) => (
             <li
               key={hit.documentId}

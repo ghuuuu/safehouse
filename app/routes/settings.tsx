@@ -256,7 +256,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
         </div>
 
         {settings ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 max-w-prose">
             Auto-lock: a page left alone for {settings.autoLockMinutes} minutes signs itself out.
           </p>
         ) : null}
@@ -272,7 +272,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
             {delivery.lastSweepAt ? <>Last checked <When at={delivery.lastSweepAt} />.</> : null}
           </p>
         ) : (
-          <p className="text-sm text-gray-500">What is running out is on your dashboard. Messages outside the app go to the administrator.</p>
+          <p className="text-sm text-gray-500 max-w-prose">What is running out is on your dashboard. Messages outside the app go to the administrator.</p>
         )}
         {notifications.length > 0 ? (
           <ul className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
@@ -287,7 +287,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
             ))}
           </ul>
         ) : null}
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 max-w-prose">
           A message never names a document, a person or a number. It says to open Safehouse.
         </p>
       </section>

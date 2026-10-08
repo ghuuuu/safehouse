@@ -243,7 +243,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">People</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           Everyone and everything documents can be filed to.
         </p>
       </div>
@@ -354,6 +354,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
               <select
                 className="rounded-lg border border-gray-300 p-2"
                 name="relation"
+                aria-label="How they are related"
                 defaultValue={anchors.length === 0 ? "root" : "child_of"}
               >
                 {anchors.length === 0 ? (
@@ -371,6 +372,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                 <select
                   className="rounded-lg border border-gray-300 p-2"
                   name="anchorOwnerId"
+                  aria-label="To whom"
                   required
                 >
                   {anchors.map((anchor) => (
@@ -398,12 +400,12 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             </div>
 
             {anchors.length === 0 ? (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 max-w-prose">
                 There is nobody here yet, so this person is the root of the tree
                 and attaches to nobody.
               </p>
             ) : (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 max-w-prose">
                 Brothers and sisters are worked out from a shared parent rather
                 than stored, so adding one copies the parents of the person you
                 pick.
@@ -415,7 +417,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             ) : null}
 
             {actionData && "added" in actionData ? (
-              <p className="text-sm text-gray-500">Added.</p>
+              <p className="text-sm text-gray-500 max-w-prose">Added.</p>
             ) : null}
 
             <button
@@ -427,7 +429,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             </button>
           </Form>
 
-          <p className="mt-4 text-xs text-gray-500">
+          <p className="mt-4 text-xs text-gray-500 max-w-prose">
             Adding somebody here does not create a sign-in for them. A person and
             an account are different things, and the second is a separate step.
           </p>

@@ -194,7 +194,7 @@ export function TreePicture({
         })}
       </svg>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-500 max-w-prose">
         † deceased · ♀ female · ♂ male · dashed grey lines are relationships that
         have ended (a divorce, a guardianship that ran out). They are shown as
         history and give nobody access.

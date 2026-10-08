@@ -126,7 +126,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">File many</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 max-w-prose">
             Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
             as its own record, and read for dates and numbers on the way in. Up to {MB} MB each, PDF or an image.
           </p>
@@ -283,12 +283,12 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
             >
               {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
             </button>
-            <p className="text-sm text-gray-500" aria-live="polite">
+            <p className="text-sm text-gray-500 max-w-prose" aria-live="polite">
               {unassigned > 0 ? `${unassigned} still need an owner. ` : ""}
               {filed + refused > 0 ? `Filed ${filed}${refused ? `, ${refused} not filed` : ""}.` : ""}
             </p>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 max-w-prose">
             Dates and numbers the reader finds are proposals: nothing acts on them until somebody confirms them
             on the document&apos;s page.
           </p>

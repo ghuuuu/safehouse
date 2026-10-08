@@ -89,7 +89,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
     <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">File a document</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 max-w-prose">
           It is encrypted before it reaches the disk. Up to{" "}
           {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB, PDF or an image.
         </p>

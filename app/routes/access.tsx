@@ -153,7 +153,7 @@ export default function Access({ loaderData }: Route.ComponentProps) {
               <PanelView key={panel.subject.id} panel={panel} />
             </div>
           ) : (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 max-w-prose">
               Pick an account to see what it reaches and change what it is granted. Editing happens
               here, one person at a time; the grid of everyone is for checking, and is read-only.
             </p>
@@ -171,7 +171,7 @@ function PanelView({ panel }: { panel: Panel }) {
     <section className="flex flex-col gap-6">
       <div>
         <h2 className="text-lg font-medium">{subject.name}</h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 max-w-prose">
           {roleLabel(subject.role)}
           {subject.disabled ? ", disabled: reaches nothing until re-enabled" : ""}
         </p>
@@ -194,7 +194,7 @@ function PanelView({ panel }: { panel: Panel }) {
       <div>
         <h3 className="text-sm font-medium">Owners they can see</h3>
         {reaches.length === 0 ? (
-          <p className="mt-1 text-sm text-gray-500">Nobody&apos;s.</p>
+          <p className="mt-1 text-sm text-gray-500 max-w-prose">Nobody&apos;s.</p>
         ) : (
           <ul className="mt-1 flex flex-wrap gap-2 text-sm">
             {reaches.map((owner) => (
@@ -205,7 +205,7 @@ function PanelView({ panel }: { panel: Panel }) {
             ))}
           </ul>
         )}
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-gray-500 max-w-prose">
           {subject.role === "individual"
             ? "Family comes from the tree and the household's own papers come with membership; neither is edited here. Private records stop at their owner."
             : subject.role === "third_party"
@@ -217,7 +217,7 @@ function PanelView({ panel }: { panel: Panel }) {
       {panel.window ? <WindowNotice panel={panel} /> : null}
 
       {grantable.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 max-w-prose">
           {subject.role === "admin"
             ? "An administrator sees everything, private records included. There is nothing to grant."
             : subject.role === "emergency"
@@ -318,7 +318,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
   return (
     <GrantList kind="record" title="Single records">
       {panel.grants.records.length === 0 ? (
-        <p className="text-sm text-gray-500">None. A private record is reachable only this way.</p>
+        <p className="text-sm text-gray-500 max-w-prose">None. A private record is reachable only this way.</p>
       ) : (
         <ul className="flex flex-col gap-1 text-sm">
           {panel.grants.records.map((record) => (
@@ -355,7 +355,7 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
 
   return (
     <section className="flex flex-col gap-2">
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 max-w-prose">
         Documents each account reaches, by whose they are and by kind, read as that account. Read-only:
         click a row to change it.
       </p>
@@ -404,7 +404,7 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-500 max-w-prose">
         &ldquo;Of {matrix.reachable}&rdquo; is what you can see yourself, not a count of the database.
       </p>
     </section>
