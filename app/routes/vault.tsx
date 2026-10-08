@@ -226,7 +226,8 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {groups.map(([category, rows]) => (
-        <section key={category} className="flex flex-col gap-2">
+        // The id is where the dashboard's category overview lands.
+        <section key={category} id={category} className="flex scroll-mt-4 flex-col gap-2">
           <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
             {category}
           </h2>
