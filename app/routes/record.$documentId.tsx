@@ -331,7 +331,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                 </Link>
                 <span className="text-xs text-gray-500">
                   {version.pageCount} {version.pageCount === 1 ? "page" : "pages"}
-                  {version.expiresOn ? ` · expired ${version.expiresOn}` : ""}
+                  {version.expiresOn ? ` · ${version.expired ? "expired" : "expires"} ${version.expiresOn}` : ""}
                 </span>
               </li>
             ))}

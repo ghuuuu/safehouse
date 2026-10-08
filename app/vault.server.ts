@@ -36,6 +36,8 @@ export const VAULT_LIST_SQL = `
     d.version_no as "versionNo",
     d.is_current as "isCurrent",
     d.expires_on as "expiresOn",
+    -- Asked of the database, so the page and the server agree on "today".
+    coalesce(d.expires_on < current_date, false) as "expired",
     -- Correlated rather than joined, because a document with two pages would
     -- otherwise appear in this list twice. Both subqueries read through
     -- document_files_read, so a page the viewer may not see is neither

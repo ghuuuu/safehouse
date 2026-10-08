@@ -43,6 +43,8 @@ export type Version = {
   isCurrent: boolean;
   documentDate: string | null;
   expiresOn: string | null;
+  /** Whether that date has passed, by the database's clock. */
+  expired: boolean;
   pageCount: number;
 };
 
@@ -117,6 +119,7 @@ export async function findRecordView(
     select
       d.id, d.version_no as "versionNo", d.is_current as "isCurrent",
       d.document_date as "documentDate", d.expires_on as "expiresOn",
+      coalesce(d.expires_on < current_date, false) as "expired",
       (select count(*)::int from document_files f where f.document_id = d.id) as "pageCount"
     from documents d
     where d.record_id = ${row.recordId as string}

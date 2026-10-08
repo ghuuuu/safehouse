@@ -26,6 +26,7 @@ type DocumentRow = {
   isCurrent: boolean;
   isPrivate: boolean;
   expiresOn: string | null;
+  expired: boolean;
   /** The first page, or null when the viewer reaches the document but no file. */
   fileId: string | null;
   fileCount: number;
@@ -139,6 +140,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
 
   const canViewAs = actor.role === "admin";
   const groups = groupByCategory(documents);
+  const superseded = documents.filter((d) => !d.isCurrent).length;
   // Keeps whose eyes you are using when clearing the owner filter.
   const everything = isViewingAs && viewedUser ? `/vault?as=${viewedUser.id}` : "/vault";
 
@@ -173,6 +175,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           {documents.length === 1
             ? "One document"
             : `${documents.length} documents`}
+          {superseded > 0 ? `, ${superseded} of them older versions` : null}
           {isViewingAs ? null : `, as ${actor.name}`}.
         </p>
         {owner ? (
@@ -266,7 +269,11 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                     <span>superseded (v{document.versionNo})</span>
                   )}
                   {document.expiresOn ? (
-                    <span>expires {document.expiresOn}</span>
+                    document.expired ? (
+                      <span className="font-medium text-red-700 dark:text-red-400">expired {document.expiresOn}</span>
+                    ) : (
+                      <span>expires {document.expiresOn}</span>
+                    )
                   ) : null}
                 </span>
               </li>

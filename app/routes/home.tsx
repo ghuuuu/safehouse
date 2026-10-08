@@ -251,7 +251,8 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">
-            {total} {total === 1 ? "document" : "documents"} by kind
+            {total} {mode === "businesses" ? "business" : "personal and household"}{" "}
+            {total === 1 ? "document" : "documents"} by kind
           </h2>
           <ul className="grid grid-cols-2 gap-2 text-sm">
             {categories.map(({ category, count }) => (
@@ -274,7 +275,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             ))}
           </ul>
           <p className="text-xs text-gray-500">
-            Current versions you can see. Counted by the database, not by this page.
+            Current versions you can see; the vault also lists older ones.
           </p>
         </section>
       </div>
