@@ -41,7 +41,7 @@ export type ViewContext = {
   roster: RosterEntry[];
 };
 
-const UUID =
+export const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
@@ -144,9 +144,12 @@ export async function resolveViewContext(
  * It is set even when nobody is being impersonated, because a function that
  * guards only the dangerous case has to be sure which case it is in, and this
  * one never writes either way.
+ *
+ * Takes only the id, so the access console can hand it `gateViewAs`'s answer
+ * for each account in turn. The gate is still the only way to get one.
  */
 export async function withViewedVault<T>(
-  context: ViewContext,
+  context: Pick<ViewContext, "viewedUserId">,
   work: (db: VaultTransaction) => Promise<T>,
 ): Promise<T> {
   return asUser(context.viewedUserId, async (db) => {

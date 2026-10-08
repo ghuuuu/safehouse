@@ -43,6 +43,12 @@ export const ACTIONS = {
    */
   accountInvited: "account.invited",
   signInLinkMade: "account.link-made",
+  /**
+   * An account's access changed in the console. The subject is the account;
+   * the target says which owner, record or category, by id or enum (0012).
+   */
+  grantAdded: "grant.added",
+  grantRemoved: "grant.removed",
 } as const;
 
 export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
@@ -54,6 +60,9 @@ export type Event = {
   subjectId: string;
   /** Whose eyes the actor was using, when they were not their own. */
   actingAsUserId?: string | null;
+  /** What a grant line granted: an owner or record id, or a category. */
+  targetId?: string | null;
+  targetCategory?: string | null;
 };
 
 /**
@@ -69,10 +78,12 @@ export async function record(
 ): Promise<void> {
   await db.execute(sql`
     insert into activity_events
-      (actor_user_id, acting_as_user_id, action, subject_type, subject_id)
+      (actor_user_id, acting_as_user_id, action, subject_type, subject_id,
+       target_id, target_category)
     values (
       current_app_user(), ${event.actingAsUserId ?? null}, ${event.action},
-      ${event.subjectType}, ${event.subjectId}
+      ${event.subjectType}, ${event.subjectId},
+      ${event.targetId ?? null}, ${event.targetCategory ?? null}::category
     )
   `);
 }
