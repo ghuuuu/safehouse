@@ -119,6 +119,11 @@ if (existing > 0) {
   }
 }
 
+// The dump grants to the app and sign-in roles, so they must exist first. On a
+// new machine they do not; on this one, setting them up again changes nothing.
+console.log("Making sure the application's roles exist…");
+await run("node", ["scripts/db-setup.mjs"]);
+
 console.log("Restoring the database…");
 await run(
   "docker",
@@ -130,5 +135,5 @@ console.log("Restoring the document store…");
 await cp(join(backupDir, "storage"), storeDir, { recursive: true, force: true });
 
 console.log("");
-console.log("Restored. The roles the application connects as are not in a dump,");
-console.log("so run `npm run db:setup` before starting the app.");
+console.log("Restored. Run `npm run db:migrate` before starting the app: it brings an");
+console.log("older backup's schema forward and seals any identifier it holds in the clear.");

@@ -84,7 +84,9 @@ const dump = await run("docker", [
   "--clean",
   "--if-exists",
   "--no-owner",
-  "--no-privileges",
+  // Privileges are kept. Every grant the app and sign-in roles hold was made by
+  // a migration, and a migration does not run again on restore: a dump without
+  // them restores a vault that refuses the app everything (found in Step 19).
   "-U",
   "safehouse",
   "safehouse",
