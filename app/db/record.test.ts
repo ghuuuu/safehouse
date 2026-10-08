@@ -7,7 +7,6 @@
  * the number would pass against a payload that carried it.
  */
 
-import { randomBytes } from "node:crypto";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,8 +17,9 @@ import {
   findRecordView,
   revealIdentifier,
   saveFields,
+  saveProposals,
 } from "../record.server";
-import { DOCUMENT, USER } from "./fixture";
+import { DOCUMENT, FIXTURE_KEY, USER } from "./fixture";
 import { closeTestDatabase, owner, prepareTestDatabase } from "./test-harness";
 
 let asUser: typeof import("../db.server").asUser;
@@ -28,7 +28,8 @@ beforeAll(async () => {
   await prepareTestDatabase();
 
   const dir = await mkdtemp(join(tmpdir(), "safehouse-record-"));
-  await writeFile(join(dir, "key"), randomBytes(32).toString("hex"));
+  // The key the fixture sealed its identifiers under, so a reveal can open one.
+  await writeFile(join(dir, "key"), FIXTURE_KEY.toString("hex"));
   process.env.SAFEHOUSE_KEY_FILE = join(dir, "key");
   process.env.SAFEHOUSE_STORAGE_DIR = dir;
 
@@ -119,8 +120,8 @@ describe("the masked field", () => {
   });
 
   test("revealing it is written to the log before it answers", async () => {
-    // D14 accepts readable identifiers in the database in exchange for exactly
-    // this. A reveal that could not be recorded does not happen.
+    // D14 asked for this when identifiers sat readable in the database; D35
+    // keeps it. A reveal that could not be recorded does not happen.
     await asUser(USER.maya, (db) => revealIdentifier(db, DOCUMENT.mayaPassport));
 
     const [row] = await owner()`
@@ -193,5 +194,84 @@ describe("saving what a person typed", () => {
     `;
 
     expect(row.place_of_issue).toBeNull();
+  });
+});
+
+describe("the number at rest (D35)", () => {
+  async function stored(documentId: string) {
+    const [row] = await owner()`
+      select identifier, identifier_sealed, identifier_fp, identifier_last4_fp
+      from documents where id = ${documentId}
+    `;
+    return row;
+  }
+
+  test("the database holds no readable number, anywhere in the documents table", async () => {
+    const rows = await owner()`select to_jsonb(d)::text as row from documents d`;
+    const dump = rows.map((row) => row.row as string).join(" ");
+
+    expect(dump).not.toMatch(/FIXTURE-(PP|DL|POL|PERMIT)-/);
+    // bytea renders as hex in json; the number's own bytes are not in there either.
+    expect(dump).not.toContain(Buffer.from("FIXTURE-PP-0001").toString("hex"));
+  });
+
+  test("a number typed by hand is sealed, fingerprinted, and opens again", async () => {
+    try {
+      await asUser(USER.maya, (db) =>
+        saveFields(db, DOCUMENT.mayaPassport, { identifier: " zz 998877 " }),
+      );
+
+      const row = await stored(DOCUMENT.mayaPassport);
+      expect(row.identifier).toBeNull();
+      expect(row.identifier_sealed).not.toBeNull();
+      expect(row.identifier_fp).not.toBeNull();
+      expect(row.identifier_last4_fp).not.toBeNull();
+
+      const value = await asUser(USER.maya, (db) => revealIdentifier(db, DOCUMENT.mayaPassport));
+      expect(value).toBe("zz 998877");
+    } finally {
+      await asUser(USER.maya, (db) =>
+        saveFields(db, DOCUMENT.mayaPassport, { identifier: "FIXTURE-PP-0001" }),
+      );
+    }
+  });
+
+  test("clearing it clears all three columns", async () => {
+    try {
+      await asUser(USER.maya, (db) => saveFields(db, DOCUMENT.mayaPassport, { identifier: "" }));
+
+      const row = await stored(DOCUMENT.mayaPassport);
+      expect([row.identifier_sealed, row.identifier_fp, row.identifier_last4_fp]).toEqual([null, null, null]);
+
+      const view = await asUser(USER.maya, (db) => findRecordView(db, DOCUMENT.mayaPassport));
+      expect(view?.document.hasIdentifier).toBe(false);
+    } finally {
+      await asUser(USER.maya, (db) =>
+        saveFields(db, DOCUMENT.mayaPassport, { identifier: "FIXTURE-PP-0001" }),
+      );
+    }
+  });
+
+  test("a number the reader proposed is sealed too", async () => {
+    try {
+      await asUser(USER.maya, (db) =>
+        saveProposals(db, DOCUMENT.mayaDrivingLicence, [{ field: "identifier", value: "DL5544" }]),
+      );
+
+      expect((await stored(DOCUMENT.mayaDrivingLicence)).identifier).toBeNull();
+      const value = await asUser(USER.maya, (db) => revealIdentifier(db, DOCUMENT.mayaDrivingLicence));
+      expect(value).toBe("DL5544");
+    } finally {
+      await asUser(USER.maya, (db) =>
+        saveProposals(db, DOCUMENT.mayaDrivingLicence, [{ field: "identifier", value: "FIXTURE-DL-0003" }]),
+      );
+    }
+  });
+
+  test("nothing can write the old column in the clear any more", async () => {
+    const error = await owner()`
+      update documents set identifier = 'X1' where id = ${DOCUMENT.mayaPassport}
+    `.catch((e: { code?: string }) => e.code);
+    expect(error).toBe("23514");
   });
 });

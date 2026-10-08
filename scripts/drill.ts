@@ -23,6 +23,7 @@ import postgres from "postgres";
 
 import { openDump, type Manifest } from "../app/backup.server";
 import { keyIdOf, openFile } from "../app/crypto.server";
+import { openIdentifier } from "../app/field-crypto.server";
 import { keyProviderFromFile } from "../app/keys.server";
 
 const DRILL_DATABASE = "safehouse_drill";
@@ -106,6 +107,8 @@ const drill = postgres(withDatabase(ownerUrl, DRILL_DATABASE), { max: 1, onnotic
 let checked = 0;
 let missing = 0;
 let retired = 0;
+let identifiers = 0;
+let retiredIdentifiers = 0;
 
 try {
   const files = await drill`
@@ -157,6 +160,32 @@ try {
 
     checked += 1;
   }
+
+  // Every sealed identifier opens (D35). Not counted per row in the output:
+  // the numbers are the point of the check and must not be printed. A backup
+  // from before 0013 has no such column, and its numbers are in the dump in the
+  // clear; `npm run identifiers:seal` after restoring it seals them.
+  const [{ has }] = await drill`
+    select exists (
+      select 1 from information_schema.columns
+      where table_name = 'documents' and column_name = 'identifier_sealed'
+    ) as has
+  `;
+  if (has) {
+    const rows = await drill`
+      select id, identifier_sealed from documents where identifier_sealed is not null
+    `;
+    for (const row of rows) {
+      const sealedValue = Buffer.from(row.identifier_sealed as Buffer);
+      if (!keyIdOf(sealedValue).equals(provider.keyId())) {
+        retiredIdentifiers += 1;
+        continue;
+      }
+      // Throws on a tag mismatch, which fails the drill: that is damage, not a key.
+      openIdentifier(sealedValue, row.id as string, provider);
+      identifiers += 1;
+    }
+  }
 } finally {
   await drill.end();
 }
@@ -181,6 +210,12 @@ if (retired > 0) {
   );
 }
 
+if (retiredIdentifiers > 0) {
+  console.error(
+    `  ${retiredIdentifiers} identifier${retiredIdentifiers === 1 ? "" : "s"} sealed under a key this machine no longer has (D12).`,
+  );
+}
+
 if (checked === 0 && missing + retired > 0) {
   console.error(
     `Drill FAILED: ${missing + retired} file rows restored and not one of them ` +
@@ -193,7 +228,8 @@ console.log(
   `Drill passed: ${manifest.counts.documents} documents restored, ` +
     `${checked} files opened and verified byte for byte` +
     (missing > 0 ? `, ${missing} rows with no stored blob (fixture rows have none)` : "") +
-    (retired > 0 ? `, ${retired} unopenable under the current key` : ""),
+    (retired > 0 ? `, ${retired} unopenable under the current key` : "") +
+    `, ${identifiers} sealed identifiers opened`,
 );
 
 function withDatabase(url: string, database: string): string {

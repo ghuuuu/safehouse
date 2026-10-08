@@ -50,7 +50,7 @@ type DocumentRow = {
  * name for the heading is read through `owners_read`, so an owner the viewer
  * cannot see gets no name and no documents: the same empty page as a stranger.
  *
- * Note what is not selected: `documents.identifier` holds the passport number.
+ * Note what is not selected: `identifier_sealed` holds the passport number.
  * It is masked in the interface, so it must not be in the payload that renders
  * the interface (CLAUDE.md). A record view that needs it can ask for it there,
  * deliberately.

@@ -19,6 +19,7 @@ import { hashPassword } from "better-auth/crypto";
 import postgres from "postgres";
 
 import { insertFixture, USER } from "../app/db/fixture.ts";
+import { keys } from "../app/keys.server.ts";
 
 /**
  * Not a secret, and not meant to look like one: fictional accounts, in a
@@ -71,7 +72,9 @@ try {
     );
   }
 
-  await insertFixture(sql);
+  // Under this machine's own key, so the dev server can reveal what it seeded
+  // (D35). The test database uses the fixture key instead.
+  await insertFixture(sql, keys());
 
   // better-auth's own scrypt, so the hash is one its sign-in can verify.
   // Hashing is never hand-rolled here (CLAUDE.md).

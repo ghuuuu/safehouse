@@ -12,7 +12,8 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
 import { requireEnv } from "../config.server";
-import { insertFixture } from "./fixture";
+import { FIXTURE_KEY, insertFixture } from "./fixture";
+import { keyProviderFrom } from "../keys.server";
 
 function withDatabase(url: string, database: string): string {
   const parsed = new URL(url);
@@ -93,7 +94,7 @@ export async function buildTestDatabase(): Promise<void> {
   `);
 
   await migrate(drizzle(ownerSql), { migrationsFolder: "drizzle" });
-  await insertFixture(ownerSql);
+  await insertFixture(ownerSql, keyProviderFrom(FIXTURE_KEY));
 
   await ownerSql.end();
   ownerSql = undefined;

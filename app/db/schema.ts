@@ -287,7 +287,16 @@ export const documents = pgTable(
     issuedOn: date("issued_on"),
     expiresOn: date("expires_on"),
     issuerCountry: text("issuer_country"),
+    /**
+     * Empty, and held there by `identifier_is_sealed` (0013). Kept only until
+     * every deployment has run `identifiers:seal`; read nothing from it.
+     */
     identifier: text("identifier"),
+    /** The number, sealed (D35). Opened only by a logged reveal. */
+    identifierSealed: bytea("identifier_sealed"),
+    /** Keyed fingerprints for search: the whole number, and its last four. */
+    identifierFp: bytea("identifier_fp"),
+    identifierLast4Fp: bytea("identifier_last4_fp"),
     placeOfIssue: text("place_of_issue"),
     originalLocationNote: text("original_location_note"),
     details: jsonb("details").notNull().default({}),

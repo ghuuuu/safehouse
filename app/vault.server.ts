@@ -9,8 +9,8 @@
  * the transaction's user (`app/db.server.ts`) and the policies in
  * `0001_permission_layer.sql` — never by a value spliced in here.
  *
- * What it does not select is as deliberate: `documents.identifier` holds the
- * passport number. Masked in the interface means absent from the payload
+ * What it does not select is as deliberate: `documents.identifier_sealed`
+ * holds the passport number (D35). Masked in the interface means absent from the payload
  * (CLAUDE.md), so a surface that genuinely needs it has to ask for it on
  * purpose rather than inherit it from this list.
  *

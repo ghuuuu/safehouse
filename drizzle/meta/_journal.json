@@ -92,6 +92,13 @@
       "when": 1787390372497,
       "tag": "0012_grant_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787390432497,
+      "tag": "0013_sealed_identifiers",
+      "breakpoints": true
     }
   ]
 }

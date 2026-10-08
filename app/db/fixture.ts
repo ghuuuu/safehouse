@@ -17,6 +17,9 @@
 
 import type { Sql } from "postgres";
 
+import { identifierColumns } from "../field-crypto.server";
+import type { KeyProvider } from "../keys.server";
+
 function id(n: number): string {
   return `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 }
@@ -213,7 +216,44 @@ export const FILE = {
   lenaSchoolEnrolment: id(416),
 } as const;
 
-export async function insertFixture(sql: Sql): Promise<void> {
+/**
+ * The fixture's identifiers, made up and marked as such (CLAUDE.md). Stored
+ * sealed, like every identifier (D35): `insertFixture` seals them under
+ * whichever key it is given.
+ */
+export const IDENTIFIER = {
+  mayaPassportOld: "FIXTURE-PP-0001-A",
+  mayaPassport: "FIXTURE-PP-0001",
+  danielLicenceOld: "FIXTURE-DL-0001",
+  danielLicence: "FIXTURE-DL-0002",
+  householdDeed: "FIXTURE-DEED-0001",
+  halePermitOld: "FIXTURE-PERMIT-0001",
+  halePermit: "FIXTURE-PERMIT-0002",
+  theoPassport: "FIXTURE-PP-0002",
+  nadiaPassport: "FIXTURE-PP-0003",
+  rosePassport: "FIXTURE-PP-0004",
+  danielPassport: "FIXTURE-PP-0005",
+  mayaDrivingLicence: "FIXTURE-DL-0003",
+  ivyBirthCertificate: "FIXTURE-BC-0001",
+  householdMarriageCertificate: "FIXTURE-MC-0001",
+  ivyInsuranceCard: "FIXTURE-HI-0001",
+  haleRegistration: "FIXTURE-REG-0001",
+  haleClientContract: "FIXTURE-CON-0001",
+  haleLeaseContract: "FIXTURE-CON-0002",
+  haleInsurancePolicy: "FIXTURE-POL-0001",
+  householdHomeInsurance: "FIXTURE-POL-0002",
+  householdApplianceWarranty: "FIXTURE-WAR-0001",
+  bramTenancyDeposit: "FIXTURE-REC-0001",
+} as const satisfies Partial<Record<keyof typeof DOCUMENT, string>>;
+
+/**
+ * The key the test database's identifiers are sealed under. Not a secret: it
+ * opens nothing but the made-up numbers above. A test that reveals one writes
+ * this to its key file.
+ */
+export const FIXTURE_KEY = Buffer.alloc(32, 0x5a);
+
+export async function insertFixture(sql: Sql, provider: KeyProvider): Promise<void> {
   await sql`
     insert into owners (id, kind, display_name) values
       (${OWNER.rose}, 'person', 'Rose Adeyemi'),
@@ -358,43 +398,54 @@ export async function insertFixture(sql: Sql): Promise<void> {
     insert into documents
       (id, record_id, version_no, is_current, identifier, expires_on, document_date, issued_on, issuer_country, place_of_issue, original_location_note, details)
     values
-      (${DOCUMENT.mayaPassportOld}, ${RECORD.mayaPassport}, 1, false, 'FIXTURE-PP-0001-A', '2019-02-28', null, '2009-02-28', 'ZZ', 'Fixture City', 'Fireproof box, upstairs cupboard', '{"pages": 32, "endorsements": "none"}'),
-      (${DOCUMENT.mayaPassport}, ${RECORD.mayaPassport}, 2, true, 'FIXTURE-PP-0001', '2029-01-31', null, '2019-02-01', 'ZZ', 'Fixture City', 'Fireproof box, upstairs cupboard', '{"pages": 32, "endorsements": "none"}'),
-      (${DOCUMENT.danielLicenceOld}, ${RECORD.danielLicence}, 1, false, 'FIXTURE-DL-0001', '2024-05-05', null, null, null, null, null, '{}'),
-      (${DOCUMENT.danielLicence}, ${RECORD.danielLicence}, 2, true, 'FIXTURE-DL-0002', '2034-05-05', null, null, null, null, null, '{}'),
+      (${DOCUMENT.mayaPassportOld}, ${RECORD.mayaPassport}, 1, false, null, '2019-02-28', null, '2009-02-28', 'ZZ', 'Fixture City', 'Fireproof box, upstairs cupboard', '{"pages": 32, "endorsements": "none"}'),
+      (${DOCUMENT.mayaPassport}, ${RECORD.mayaPassport}, 2, true, null, '2029-01-31', null, '2019-02-01', 'ZZ', 'Fixture City', 'Fireproof box, upstairs cupboard', '{"pages": 32, "endorsements": "none"}'),
+      (${DOCUMENT.danielLicenceOld}, ${RECORD.danielLicence}, 1, false, null, '2024-05-05', null, null, null, null, null, '{}'),
+      (${DOCUMENT.danielLicence}, ${RECORD.danielLicence}, 2, true, null, '2034-05-05', null, null, null, null, null, '{}'),
       (${DOCUMENT.ivyImmunisation}, ${RECORD.ivyImmunisation}, 1, true, null, null, null, null, null, null, null, '{}'),
       (${DOCUMENT.ivyCounselling}, ${RECORD.ivyCounselling}, 1, true, null, null, null, null, null, null, null, '{}'),
       (${DOCUMENT.roseWillOld}, ${RECORD.roseWill}, 1, false, null, null, '2014-09-02', null, null, null, null, '{}'),
       (${DOCUMENT.roseWill}, ${RECORD.roseWill}, 2, true, null, null, '2023-11-30', null, null, null, 'Solicitor holds the original', '{}'),
-      (${DOCUMENT.householdDeed}, ${RECORD.householdDeed}, 1, true, 'FIXTURE-DEED-0001', null, '2016-04-11', null, null, null, 'Solicitor holds the original', '{"title_number": "FIXTURE-TN-0001"}'),
-      (${DOCUMENT.halePermitOld}, ${RECORD.halePermit}, 1, false, 'FIXTURE-PERMIT-0001', '2025-09-30', null, '2020-10-01', null, null, null, '{}'),
-      (${DOCUMENT.halePermit}, ${RECORD.halePermit}, 2, true, 'FIXTURE-PERMIT-0002', ${inDays(26)}, null, '2025-10-01', null, null, null, '{}'),
+      (${DOCUMENT.householdDeed}, ${RECORD.householdDeed}, 1, true, null, null, '2016-04-11', null, null, null, 'Solicitor holds the original', '{"parcel": "north plot"}'),
+      (${DOCUMENT.halePermitOld}, ${RECORD.halePermit}, 1, false, null, '2025-09-30', null, '2020-10-01', null, null, null, '{}'),
+      (${DOCUMENT.halePermit}, ${RECORD.halePermit}, 2, true, null, ${inDays(26)}, null, '2025-10-01', null, null, null, '{}'),
       (${DOCUMENT.haleTaxReturn}, ${RECORD.haleTaxReturn}, 1, true, null, null, '2025-01-31', null, null, null, null, '{}'),
-      (${DOCUMENT.theoPassport}, ${RECORD.theoPassport}, 1, true, 'FIXTURE-PP-0002', '2031-03-19', null, null, null, null, null, '{}'),
-      (${DOCUMENT.nadiaPassport}, ${RECORD.nadiaPassport}, 1, true, 'FIXTURE-PP-0003', '2030-07-07', null, null, null, null, null, '{}'),
+      (${DOCUMENT.theoPassport}, ${RECORD.theoPassport}, 1, true, null, '2031-03-19', null, null, null, null, null, '{}'),
+      (${DOCUMENT.nadiaPassport}, ${RECORD.nadiaPassport}, 1, true, null, '2030-07-07', null, null, null, null, null, '{}'),
       (${DOCUMENT.lenaCarePlan}, ${RECORD.lenaCarePlan}, 1, true, null, null, '2025-03-12', null, null, null, null, '{}'),
-      (${DOCUMENT.rosePassport}, ${RECORD.rosePassport}, 1, true, 'FIXTURE-PP-0004', ${inDays(12)}, null, null, null, null, null, '{}'),
-      (${DOCUMENT.danielPassport}, ${RECORD.danielPassport}, 1, true, 'FIXTURE-PP-0005', ${inDays(-40)}, null, null, null, null, null, '{}'),
-      (${DOCUMENT.mayaDrivingLicence}, ${RECORD.mayaDrivingLicence}, 1, true, 'FIXTURE-DL-0003', ${inDays(74)}, null, null, null, null, null, '{}'),
-      (${DOCUMENT.ivyBirthCertificate}, ${RECORD.ivyBirthCertificate}, 1, true, 'FIXTURE-BC-0001', null, '2004-09-20', null, null, null, null, '{}'),
-      (${DOCUMENT.householdMarriageCertificate}, ${RECORD.householdMarriageCertificate}, 1, true, 'FIXTURE-MC-0001', null, '2012-08-18', null, null, null, null, '{}'),
-      (${DOCUMENT.ivyInsuranceCard}, ${RECORD.ivyInsuranceCard}, 1, true, 'FIXTURE-HI-0001', ${inDays(89)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.rosePassport}, ${RECORD.rosePassport}, 1, true, null, ${inDays(12)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.danielPassport}, ${RECORD.danielPassport}, 1, true, null, ${inDays(-40)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.mayaDrivingLicence}, ${RECORD.mayaDrivingLicence}, 1, true, null, ${inDays(74)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.ivyBirthCertificate}, ${RECORD.ivyBirthCertificate}, 1, true, null, null, '2004-09-20', null, null, null, null, '{}'),
+      (${DOCUMENT.householdMarriageCertificate}, ${RECORD.householdMarriageCertificate}, 1, true, null, null, '2012-08-18', null, null, null, null, '{}'),
+      (${DOCUMENT.ivyInsuranceCard}, ${RECORD.ivyInsuranceCard}, 1, true, null, ${inDays(89)}, null, null, null, null, null, '{}'),
       (${DOCUMENT.frankVisitSummary}, ${RECORD.frankVisitSummary}, 1, true, null, null, '2021-05-28', null, null, null, null, '{}'),
-      (${DOCUMENT.haleRegistration}, ${RECORD.haleRegistration}, 1, true, 'FIXTURE-REG-0001', null, '2015-02-01', null, null, null, null, '{}'),
-      (${DOCUMENT.haleClientContract}, ${RECORD.haleClientContract}, 1, true, 'FIXTURE-CON-0001', '2027-06-30', '2025-07-01', null, null, null, null, '{}'),
-      (${DOCUMENT.haleLeaseContract}, ${RECORD.haleLeaseContract}, 1, true, 'FIXTURE-CON-0002', ${inDays(45)}, '2023-11-20', null, null, null, null, '{}'),
-      (${DOCUMENT.haleInsurancePolicy}, ${RECORD.haleInsurancePolicy}, 1, true, 'FIXTURE-POL-0001', ${inDays(103)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.haleRegistration}, ${RECORD.haleRegistration}, 1, true, null, null, '2015-02-01', null, null, null, null, '{}'),
+      (${DOCUMENT.haleClientContract}, ${RECORD.haleClientContract}, 1, true, null, '2027-06-30', '2025-07-01', null, null, null, null, '{}'),
+      (${DOCUMENT.haleLeaseContract}, ${RECORD.haleLeaseContract}, 1, true, null, ${inDays(45)}, '2023-11-20', null, null, null, null, '{}'),
+      (${DOCUMENT.haleInsurancePolicy}, ${RECORD.haleInsurancePolicy}, 1, true, null, ${inDays(103)}, null, null, null, null, null, '{}'),
       (${DOCUMENT.haleBankStatement}, ${RECORD.haleBankStatement}, 1, true, null, null, '2026-08-31', null, null, null, null, '{}'),
       (${DOCUMENT.danielTaxReturn}, ${RECORD.danielTaxReturn}, 1, true, null, null, '2026-01-31', null, null, null, null, '{}'),
       (${DOCUMENT.mayaSavingsStatement}, ${RECORD.mayaSavingsStatement}, 1, true, null, null, '2026-08-31', null, null, null, null, '{}'),
-      (${DOCUMENT.householdHomeInsurance}, ${RECORD.householdHomeInsurance}, 1, true, 'FIXTURE-POL-0002', ${inDays(58)}, null, null, null, null, null, '{}'),
+      (${DOCUMENT.householdHomeInsurance}, ${RECORD.householdHomeInsurance}, 1, true, null, ${inDays(58)}, null, null, null, null, null, '{}'),
       (${DOCUMENT.rosePowerOfAttorney}, ${RECORD.rosePowerOfAttorney}, 1, true, null, null, '2022-02-14', null, null, null, 'Solicitor holds the original', '{}'),
       (${DOCUMENT.danielDivorceDecree}, ${RECORD.danielDivorceDecree}, 1, true, null, null, '2010-03-22', null, null, null, null, '{}'),
       (${DOCUMENT.mayaAdvanceDirective}, ${RECORD.mayaAdvanceDirective}, 1, true, null, null, '2024-06-05', null, null, null, null, '{}'),
-      (${DOCUMENT.householdApplianceWarranty}, ${RECORD.householdApplianceWarranty}, 1, true, 'FIXTURE-WAR-0001', ${inDays(67)}, '2024-12-12', null, null, null, null, '{}'),
+      (${DOCUMENT.householdApplianceWarranty}, ${RECORD.householdApplianceWarranty}, 1, true, null, ${inDays(67)}, '2024-12-12', null, null, null, null, '{}'),
       (${DOCUMENT.lenaSchoolEnrolment}, ${RECORD.lenaSchoolEnrolment}, 1, true, null, null, '2026-09-01', null, null, null, null, '{}'),
-      (${DOCUMENT.bramTenancyDeposit}, ${RECORD.bramTenancyDeposit}, 1, true, 'FIXTURE-REC-0001', null, '2021-05-17', null, null, null, null, '{}')
+      (${DOCUMENT.bramTenancyDeposit}, ${RECORD.bramTenancyDeposit}, 1, true, null, null, '2021-05-17', null, null, null, null, '{}')
   `;
+
+  for (const [document, value] of Object.entries(IDENTIFIER)) {
+    const documentId = DOCUMENT[document as keyof typeof IDENTIFIER];
+    const columns = identifierColumns(value, documentId, provider);
+    await sql`
+      update documents
+      set identifier_sealed = ${columns.sealed}, identifier_fp = ${columns.fp},
+          identifier_last4_fp = ${columns.last4}
+      where id = ${documentId}
+    `;
+  }
 
   // Which expiry dates a human has actually agreed with (D26). Nothing acts on
   // an unconfirmed one, so a fixture that confirmed nothing would make the

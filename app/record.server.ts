@@ -2,13 +2,13 @@
  * One record, its versions, its pages, and the fields that make it more than a
  * picture.
  *
- * The masking rule is the load-bearing part. `documents.identifier` holds the
- * passport number, and PRODUCT.md says sensitive fields are masked until
- * explicitly revealed. CLAUDE.md says what that has to mean: masked in the
- * interface means **absent from the payload**, not hidden in CSS. So nothing
- * here selects `identifier` on the ordinary path — the screen is told whether
- * there is one, never what it is — and revealing it is a second request that
- * costs a password check and a line in the log (D14).
+ * The masking rule is the load-bearing part. The passport number is stored
+ * sealed (`identifier_sealed`, D35), and PRODUCT.md says sensitive fields are
+ * masked until explicitly revealed. CLAUDE.md says what that has to mean:
+ * masked in the interface means **absent from the payload**, not hidden in
+ * CSS. So nothing here opens it on the ordinary path — the screen is told
+ * whether there is one, never what it is — and revealing it is a second
+ * request that costs a password check and a line in the log.
  *
  * Everything else about who sees what is decided where it always is: these
  * queries carry no permission logic, and a document the viewer may not see
@@ -19,6 +19,7 @@ import { sql } from "drizzle-orm";
 
 import { ACTIONS, record as logEvent } from "./activity.server";
 import type { VaultTransaction } from "./db.server";
+import { identifierColumns, openIdentifier } from "./field-crypto.server";
 
 /** The fields a person may fill in or correct. */
 export const EDITABLE_FIELDS = [
@@ -90,7 +91,7 @@ export async function findRecordView(
       d.place_of_issue as "placeOfIssue",
       d.original_location_note as "originalLocationNote",
       -- Whether, never what. The number itself never joins this payload.
-      (d.identifier is not null) as "hasIdentifier",
+      (d.identifier_sealed is not null) as "hasIdentifier",
       d.confirmed_fields as "confirmedFields",
       d.extraction
     from documents d
@@ -177,6 +178,8 @@ export async function saveFields(
 
   const assignments = given.map((field) => {
     const value = (values[field] ?? "").trim();
+    if (field === "identifier") return sealedAssignment(value, documentId);
+
     const next = value === "" ? sql`null` : sql`${value}`;
 
     // Dates have to be cast; everything else is text already.
@@ -203,6 +206,18 @@ export async function saveFields(
   `);
 }
 
+/**
+ * The identifier is never written as itself: three columns, sealed and
+ * fingerprinted, and an empty value clears all three (D35). Sealed under the
+ * document's id, so this is the only shape of write that can produce a value
+ * the reveal will open.
+ */
+function sealedAssignment(value: string, documentId: string) {
+  const columns = identifierColumns(value || null, documentId);
+  return sql`identifier_sealed = ${columns.sealed}, identifier_fp = ${columns.fp},
+    identifier_last4_fp = ${columns.last4}`;
+}
+
 const DATE_FIELDS = new Set<EditableField>([
   "document_date",
   "issued_on",
@@ -226,11 +241,12 @@ export async function revealIdentifier(
     subjectId: documentId,
   });
 
-  const rows = await db.execute<{ identifier: string | null }>(
-    sql`select identifier from documents where id = ${documentId}`,
+  const rows = await db.execute<{ sealed: Buffer | null }>(
+    sql`select identifier_sealed as sealed from documents where id = ${documentId}`,
   );
 
-  return [...rows][0]?.identifier ?? null;
+  const sealed = [...rows][0]?.sealed;
+  return sealed ? openIdentifier(sealed, documentId) : null;
 }
 
 /**
@@ -265,6 +281,7 @@ export async function saveProposals(
 
   if (toWrite.length > 0) {
     const assignments = toWrite.map((p) => {
+      if (p.field === "identifier") return sealedAssignment(p.value.trim(), documentId);
       const value = DATE_FIELDS.has(p.field as EditableField)
         ? sql`${p.value}::date`
         : sql`${p.value}`;
@@ -288,9 +305,10 @@ export async function saveProposals(
  * Store the reader's working notes.
  *
  * A proposal for a masked field keeps its provenance and loses its value. The
- * number itself goes to `documents.identifier`, where seeing it costs a
- * password check and a line in the log (D14); leaving a copy in a column the
- * Record screen renders would hand it straight back past both.
+ * number itself is sealed into `identifier_sealed`, where seeing it costs a
+ * password check and a line in the log (D35); leaving a copy in a column the
+ * Record screen renders would hand it straight back past both, and in the
+ * clear.
  */
 export async function saveExtraction(
   db: VaultTransaction,
