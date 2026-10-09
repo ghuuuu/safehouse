@@ -86,6 +86,12 @@ finish review, the verdict, and DESIGN.md
   --line-5: #8a5a2b;
   --line-guardian: #c47f00;
 
+  /* Tags on the map: something has run out, something is about to. */
+  --warn: #c0262d;
+  --on-warn: #ffffff;
+  --soon: #f0a020;
+  --on-soon: #1d0f1f;
+
   /* Category marks (PRODUCT.md, Taxonomy). Each passes 4.5:1 as text. */
   --cat-personal: #3b6788;
   --cat-medical: #4a7655;
@@ -125,6 +131,11 @@ finish review, the verdict, and DESIGN.md
     --line-4: #3fb8c2;
     --line-5: #d39a62;
     --line-guardian: #ffb23e;
+
+    --warn: #ff7b7b;
+    --on-warn: #1d0f1f;
+    --soon: #ffb23e;
+    --on-soon: #1d0f1f;
 
     --cat-personal: #93b9d6;
     --cat-medical: #95c2a0;

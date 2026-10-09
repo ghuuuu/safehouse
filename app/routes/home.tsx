@@ -10,7 +10,7 @@ import { deliverNow, deliveryStatus } from "../notify.server";
 import { confirmKeyCopy, readSafekeeping, type Safekeeping as SafekeepingState } from "../safekeeping.server";
 import { withVault } from "../session.server";
 import type { OwnerLink } from "../tree";
-import { TreePicture } from "../tree-picture";
+import { TreePicture, type MapTag } from "../tree-picture";
 import { Segmented } from "../segmented";
 import { When } from "../when";
 
@@ -94,9 +94,44 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   const vaultFor = (ownerId: string) => `/vault?owner=${ownerId}`;
   const total = categories.reduce((sum, c) => sum + c.count, 0);
 
+  const needs = expiring.soon.length;
+  // The tags are the same rows as Running out below, read through the
+  // viewer's own transaction; an item whose owner they may not see has no id
+  // and so no tag (D17), and stays in the list.
+  const tags = new Map<string, MapTag[]>();
+  for (const item of expiring.soon) {
+    if (!item.ownerId || item.ownerKind !== "person") continue;
+    const tag: MapTag = {
+      tone: item.daysLeft < 0 ? "warn" : "soon",
+      text: item.daysLeft < 0 ? `${item.title} expired` : item.daysLeft === 0 ? `${item.title} · today` : `${item.title} · ${item.daysLeft} days`,
+    };
+    tags.set(item.ownerId, [...(tags.get(item.ownerId) ?? []), tag]);
+  }
+  const owners = mode === "individuals" ? tree.households : [...tree.businesses, ...tree.households];
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
-      <h1 className="text-2xl font-medium tracking-tight">Dashboard</h1>
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 md:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {needs === 0
+              ? "Nothing needs you right now."
+              : `${needs} ${needs === 1 ? "paper needs" : "papers need"} you.${mode === "individuals" && tags.size > 0 ? " Each is marked on the person it belongs to." : ""}`}
+          </p>
+        </div>
+        <Form method="get" action="/search" role="search" className="flex w-full gap-2 md:w-[28rem]">
+          <label className="sr-only" htmlFor="q">Search</label>
+          <input
+            id="q"
+            name="q"
+            type="search"
+            placeholder="Search titles, people, or a document's number"
+            className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm"
+          />
+          <button className="rounded-full bg-accent px-4 text-sm font-medium text-on-accent" type="submit">Search</button>
+        </Form>
+      </div>
 
       {user.role === "emergency" ? (
         <BreakGlass open={windows[0] ?? null} error={actionData && "error" in actionData ? (actionData.error ?? null) : null} />
@@ -128,29 +163,17 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
 
       {safekeeping ? <Safekeeping {...safekeeping} /> : null}
 
-      <Segmented
-        label="Mode"
-        options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
-      />
-
-      <Form method="get" action="/search" role="search" className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="q">Search</label>
-          <input
-            id="q"
-            name="q"
-            type="search"
-            placeholder="Search titles, people, kinds — or a document's number"
-            className="flex-1 rounded border border-gray-300 p-2 text-sm"
-          />
-          <button className="rounded border border-gray-300 px-4 text-sm" type="submit">Search</button>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Segmented
+          label="Mode"
+          options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
+        />
         {chips.length > 0 ? (
           <ul aria-label="Quick searches" className="flex flex-wrap gap-2 text-sm">
             {chips.map((chip) => (
               <li key={chip.label}>
                 <Link
-                  className="inline-block rounded-full border border-gray-200 px-3 py-1 hover:border-gray-400 pointer-coarse:py-2"
+                  className="inline-block rounded-full border border-gray-200 bg-white px-3 py-1 hover:border-gray-400 pointer-coarse:py-2"
                   to={`/search?q=${encodeURIComponent(chip.label)}`}
                 >
                   {chip.label} <span className="text-gray-500">{chip.count}</span>
@@ -159,7 +182,23 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             ))}
           </ul>
         ) : null}
-      </Form>
+      </div>
+
+      <section aria-labelledby="family" className="flex flex-col gap-3">
+        <h2 id="family" className="sr-only">
+          {mode === "individuals" ? "The family" : "Businesses and the household"}
+        </h2>
+        {mode === "individuals" ? (
+          tree.people.length > 0 ? (
+            <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} tags={tags} />
+          ) : (
+            <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">
+              Nobody in the family tree that you can see.
+            </p>
+          )
+        ) : null}
+        <Owners owners={owners} empty={mode === "businesses" ? "No businesses that you can see." : null} vaultFor={vaultFor} />
+      </section>
 
       <div className="grid gap-8 md:grid-cols-2">
         <section className="flex flex-col gap-2">
@@ -228,31 +267,6 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           </p>
         </section>
       </div>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">
-          {mode === "individuals" ? "The family" : "Businesses"}
-        </h2>
-        {mode === "individuals" ? (
-          tree.people.length > 0 ? (
-            <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} />
-          ) : (
-            <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">
-              Nobody in the family tree that you can see.
-            </p>
-          )
-        ) : (
-          <Owners owners={tree.businesses} empty="No businesses that you can see." vaultFor={vaultFor} />
-        )}
-        {mode === "individuals" && tree.households.length > 0 ? (
-          <p className="text-sm">
-            Household papers:{" "}
-            {tree.households.map((h) => (
-              <Link key={h.ownerId} className="underline" to={vaultFor(h.ownerId)}>{h.name}</Link>
-            ))}
-          </p>
-        ) : null}
-      </section>
     </main>
   );
 }
@@ -263,17 +277,23 @@ function Owners({
   vaultFor,
 }: {
   owners: OwnerLink[];
-  empty: string;
+  empty: string | null;
   vaultFor: (ownerId: string) => string;
 }) {
   if (owners.length === 0) {
-    return <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">{empty}</p>;
+    return empty ? <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">{empty}</p> : null;
   }
   return (
-    <ul className="rounded-lg border border-gray-200 bg-white text-sm">
+    <ul aria-label="Papers that belong to no one person" className="flex flex-wrap gap-2 text-sm">
       {owners.map((owner) => (
-        <li key={owner.ownerId} className="border-b border-gray-100 p-4 last:border-b-0">
-          <Link className="underline" to={vaultFor(owner.ownerId)}>{owner.name}</Link>
+        <li key={owner.ownerId}>
+          <Link
+            className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-900 bg-white px-4 py-2 font-semibold hover:border-accent"
+            to={vaultFor(owner.ownerId)}
+          >
+            {owner.name}
+            <span className="font-normal text-gray-500">{owner.papers}</span>
+          </Link>
         </li>
       ))}
     </ul>
