@@ -16,9 +16,9 @@
 
 import type { TreeEdge, TreePerson } from "./tree";
 
-export const NODE_WIDTH = 150;
-export const NODE_HEIGHT = 52;
-const GAP_X = 64;
+export const NODE_WIDTH = 144;
+export const NODE_HEIGHT = 40;
+const GAP_X = 48;
 const GAP_Y = 96;
 
 export type Layout = {
@@ -97,18 +97,61 @@ export function layoutTree(people: TreePerson[], edges: TreeEdge[]): Layout {
     rows.push(ordered);
   }
 
-  const widest = Math.max(...rows.map((r) => r.length));
-  const width = widest * NODE_WIDTH + (widest - 1) * GAP_X;
-  const positions: Layout["positions"] = {};
+  // Across: each person as near as they can be to the middle of their own
+  // parents (blood or adoptive first, then anybody who raised them), so a
+  // child stands under the couple they hang from. Nobody with parents above
+  // follows whoever is before them. Then a sweep keeps every pair apart.
+  const raisedBy = new Map(ids.map((id) => [id, [] as string[]]));
+  for (const edge of edges) {
+    if (edge.kind === "parent_of" && raisedBy.has(edge.to) && edge.parentType !== "step" && edge.parentType !== "guardian") {
+      raisedBy.get(edge.to)!.push(edge.from);
+    }
+  }
+  const x = new Map<string, number>();
+  const step = NODE_WIDTH + GAP_X;
+  for (const members of rows) {
+    let previous = -Infinity;
+    for (const id of members) {
+      const own = raisedBy.get(id)!.filter((p) => x.has(p));
+      const any = parentsOf.get(id)!.filter((p) => x.has(p));
+      const from = own.length > 0 ? own : any;
+      const wanted = from.length > 0 ? from.reduce((sum, p) => sum + x.get(p)!, 0) / from.length : previous + step;
+      // A spouse with no parents of their own stands right beside their partner.
+      const at = Math.max(Number.isFinite(wanted) ? wanted : 0, previous + step);
+      x.set(id, at);
+      previous = at;
+    }
+  }
 
+  // Back up: somebody at the top with no partner and no parents of their own
+  // stands over their children, so their line drops straight down instead of
+  // crossing another family's. The rest of their row keeps its order.
+  for (let r = rows.length - 2; r >= 0; r--) {
+    const members = rows[r];
+    const wanted = new Map(members.map((id) => [id, x.get(id)!]));
+    for (const id of members) {
+      const children = ids.filter((c) => parentsOf.get(c)!.includes(id));
+      if (spousesOf.get(id)!.length > 0 || parentsOf.get(id)!.length > 0) continue;
+      // Nobody-at-all still goes last, as on the way down.
+      if (children.length === 0) wanted.set(id, Infinity);
+      else wanted.set(id, children.reduce((sum, c) => sum + x.get(c)!, 0) / children.length);
+    }
+    members.sort((a, b) => wanted.get(a)! - wanted.get(b)!);
+    let previous = -Infinity;
+    for (const id of members) {
+      const w = wanted.get(id)!;
+      const at = Number.isFinite(w) ? Math.max(w, previous + step) : previous + step;
+      x.set(id, at);
+      previous = at;
+    }
+  }
+
+  const left = Math.min(...x.values());
+  const positions: Layout["positions"] = {};
   rows.forEach((members, r) => {
-    // Each row centred under the widest.
-    const rowWidth = members.length * NODE_WIDTH + (members.length - 1) * GAP_X;
-    const left = (width - rowWidth) / 2;
-    members.forEach((id, i) => {
-      positions[id] = { x: left + i * (NODE_WIDTH + GAP_X), y: r * (NODE_HEIGHT + GAP_Y) };
-    });
+    for (const id of members) positions[id] = { x: x.get(id)! - left, y: r * (NODE_HEIGHT + GAP_Y) };
   });
+  const width = Math.max(...[...x.values()].map((v) => v - left)) + NODE_WIDTH;
 
   return { positions, width, height: rowCount * NODE_HEIGHT + (rowCount - 1) * GAP_Y };
 }
@@ -120,4 +163,97 @@ function hasChildren(id: string, parentsOf: Map<string, string[]>): boolean {
 
 function byEnds(a: TreeEdge, b: TreeEdge): number {
   return a.kind.localeCompare(b.kind) || a.from.localeCompare(b.from) || a.to.localeCompare(b.to);
+}
+
+/** A family's colour: one of five transit inks, or amber for guardianship. */
+export type LineColour = "line-1" | "line-2" | "line-3" | "line-4" | "line-5" | "guardian";
+
+export type FamilyLine = {
+  key: string;
+  /** SVG path, in the layout's coordinates. */
+  d: string;
+  colour: LineColour;
+  /** A divorce, or a guardianship that ran out (D33): drawn dotted. */
+  ended: boolean;
+  /** For a child's line, who it leads to. */
+  child?: string;
+  label?: string;
+};
+
+const INKS: LineColour[] = ["line-1", "line-2", "line-3", "line-4", "line-5"];
+
+/**
+ * The tree's lines, the way a metro map draws them. A couple is one line in
+ * one colour; a child of that couple hangs from the middle of it, in the same
+ * colour, so a family reads as one route. A guardian, a step-parent, or a
+ * parent with no partner on the tree draws a line of their own. Each line
+ * down to a row runs across at its own height, so two families' lines never
+ * merge into one nobody can trace.
+ */
+export function familyLines(edges: TreeEdge[], layout: Layout): FamilyLine[] {
+  const at = layout.positions;
+  const sorted = [...edges].filter((e) => at[e.from] && at[e.to]).sort(byEnds);
+  const lines: FamilyLine[] = [];
+  const colourOf = new Map<string, LineColour>();
+  let next = 0;
+  const fresh = () => INKS[next++ % INKS.length];
+
+  // Couples first: each spouse edge is a family with its own colour.
+  const couples = new Map<string, { colour: LineColour; midX: number; y: number; ended: boolean }>();
+  for (const edge of sorted.filter((e) => e.kind === "spouse_of")) {
+    const [a, b] = [edge.from, edge.to].sort();
+    const [left, right] = at[a].x < at[b].x ? [at[a], at[b]] : [at[b], at[a]];
+    const colour = fresh();
+    const y = left.y + NODE_HEIGHT / 2;
+    couples.set(`${a}:${b}`, { colour, midX: (left.x + NODE_WIDTH + right.x) / 2, y, ended: edge.ended });
+    for (const id of [a, b]) if (!colourOf.has(id)) colourOf.set(id, colour);
+    lines.push({ key: `couple:${a}:${b}`, d: `M ${left.x + NODE_WIDTH} ${y} H ${right.x}`, colour, ended: edge.ended });
+  }
+
+  // Each source of a line down gets its own lane within its row.
+  const lanes = new Map<string, number>();
+  const laneY = (source: string, fromBottom: number, toTop: number, row: number) => {
+    if (!lanes.has(source)) lanes.set(source, [...lanes.keys()].filter((k) => k.endsWith(`@${row}`)).length);
+    return (fromBottom + toTop) / 2 + ((lanes.get(source)! % 4) - 1.5) * 9;
+  };
+
+  const blood = (e: TreeEdge) => e.kind === "parent_of" && (e.parentType === "biological" || e.parentType === "adoptive" || e.parentType === null);
+  const children = [...new Set(sorted.filter((e) => e.kind === "parent_of").map((e) => e.to))];
+  const covered = new Set<TreeEdge>();
+
+  for (const child of children) {
+    const parents = sorted.filter((e) => e.to === child && blood(e));
+    const couple = parents.length === 2 ? couples.get(parents.map((e) => e.from).sort().join(":")) : undefined;
+    if (!couple) continue;
+    parents.forEach((e) => covered.add(e));
+    const top = at[child].y;
+    const y = laneY(`${parents.map((e) => e.from).sort().join(":")}@${couple.y}`, couple.y, top, couple.y);
+    const x = at[child].x + NODE_WIDTH / 2;
+    lines.push({ key: `child:${child}`, child, colour: couple.colour, ended: false, d: `M ${couple.midX} ${couple.y} V ${y} H ${x} V ${top}` });
+  }
+
+  for (const edge of sorted.filter((e) => e.kind === "parent_of" && !covered.has(e))) {
+    const from = at[edge.from];
+    const to = at[edge.to];
+    const guardian = edge.parentType === "guardian";
+    let colour: LineColour = "guardian";
+    if (!guardian) {
+      if (!colourOf.has(edge.from)) colourOf.set(edge.from, fresh());
+      colour = colourOf.get(edge.from)!;
+    }
+    const x1 = from.x + NODE_WIDTH / 2;
+    const bottom = from.y + NODE_HEIGHT;
+    const y = laneY(`${edge.from}@${from.y}`, bottom, to.y, from.y);
+    const kind = edge.parentType && edge.parentType !== "biological" ? edge.parentType : null;
+    lines.push({
+      key: `parent:${edge.from}:${edge.to}`,
+      child: edge.to,
+      colour,
+      ended: edge.ended,
+      label: edge.ended ? `former ${kind ?? "parent"}` : (kind ?? undefined),
+      d: `M ${x1} ${bottom} V ${y} H ${to.x + NODE_WIDTH / 2} V ${to.y}`,
+    });
+  }
+
+  return lines;
 }

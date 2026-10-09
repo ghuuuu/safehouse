@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { TreeEdge, TreePerson } from "./tree";
-import { layoutTree } from "./tree-layout";
+import { familyLines, layoutTree, NODE_WIDTH } from "./tree-layout";
 
 /** The fixture household's shape, by name, with no database involved. */
 const NAMES = ["rose", "frank", "maya", "daniel", "ivy", "theo", "nadia", "omar", "lena", "bram", "priya"];
@@ -10,6 +10,7 @@ const PEOPLE: TreePerson[] = NAMES.map((name) => ({
   name,
   deceased: name === "frank",
   sex: null,
+  papers: 0,
 }));
 
 const parent = (from: string, to: string, ended = false): TreeEdge => ({
@@ -77,7 +78,7 @@ test("the same household always lays out the same way", () => {
 });
 
 test("a cycle in bad data still finishes, and places everybody", () => {
-  const people = ["a", "b", "c"].map((id) => ({ ownerId: id, name: id, deceased: false, sex: null }));
+  const people = ["a", "b", "c"].map((id) => ({ ownerId: id, name: id, deceased: false, sex: null, papers: 0 }));
   const edges = [parent("a", "b"), parent("b", "c"), parent("c", "a"), spouse("a", "c")];
 
   const { positions } = layoutTree(people, edges);
@@ -86,4 +87,90 @@ test("a cycle in bad data still finishes, and places everybody", () => {
 
 test("an empty tree is an empty picture", () => {
   expect(layoutTree([], [])).toEqual({ positions: {}, width: 0, height: 0 });
+});
+
+describe("the family lines", () => {
+  const guardian = (from: string, to: string, ended = false): TreeEdge => ({
+    from, to, kind: "parent_of", parentType: "guardian", ended,
+  });
+  const step = (from: string, to: string): TreeEdge => ({ from, to, kind: "parent_of", parentType: "step", ended: false });
+  const edges: TreeEdge[] = [
+    spouse("rose", "frank"),
+    spouse("daniel", "maya"),
+    spouse("daniel", "nadia", true),
+    parent("rose", "maya"),
+    parent("frank", "maya"),
+    parent("omar", "nadia"),
+    parent("maya", "ivy"),
+    parent("daniel", "ivy"),
+    parent("daniel", "theo"),
+    parent("nadia", "theo"),
+    step("maya", "theo"),
+    guardian("rose", "lena"),
+    guardian("rose", "bram", true),
+  ];
+  const lines = familyLines(edges, layoutTree(PEOPLE, edges));
+  const of = (key: string) => lines.find((line) => line.key === key)!;
+
+  test("a couple's children hang from the couple, in the couple's colour", () => {
+    // One line for Ivy, not one from each parent.
+    expect(lines.filter((line) => line.child === "ivy")).toHaveLength(1);
+    expect(of("child:ivy").colour).toBe(of("couple:daniel:maya").colour);
+    expect(of("child:maya").colour).toBe(of("couple:frank:rose").colour);
+  });
+
+  test("each couple has its own colour", () => {
+    const couples = lines.filter((line) => line.key.startsWith("couple:")).map((line) => line.colour);
+    expect(new Set(couples).size).toBe(couples.length);
+  });
+
+  test("a divorced couple's line is drawn as ended, and their child still hangs from it", () => {
+    expect(of("couple:daniel:nadia").ended).toBe(true);
+    expect(of("child:theo").colour).toBe(of("couple:daniel:nadia").colour);
+    expect(of("child:theo").ended).toBe(false);
+  });
+
+  test("guardianship is its own colour, ended when it ran out, and says so", () => {
+    expect(of("parent:rose:lena").colour).toBe("guardian");
+    expect([of("parent:rose:bram").colour, of("parent:rose:bram").ended]).toEqual(["guardian", true]);
+    expect(of("parent:rose:bram").label).toBe("former guardian");
+  });
+
+  test("a step-parent is a line of their own, labelled", () => {
+    expect(of("parent:maya:theo").label).toBe("step");
+  });
+
+  test("a child stands under the couple they hang from, not under another", () => {
+    const { positions } = layoutTree(PEOPLE, edges);
+    const centre = (id: string) => positions[id].x;
+    const between = (id: string, a: string, b: string) =>
+      centre(id) >= Math.min(centre(a), centre(b)) && centre(id) <= Math.max(centre(a), centre(b));
+
+    expect(between("ivy", "maya", "daniel")).toBe(true);
+    expect(between("theo", "daniel", "nadia")).toBe(true);
+    expect(between("maya", "rose", "frank")).toBe(true);
+  });
+
+  test("a parent with nobody beside them stands over their child", () => {
+    // Omar has no partner on the tree; his line should drop straight to
+    // Nadia, not across somebody else's family.
+    const { positions } = layoutTree(PEOPLE, edges);
+    expect(positions.omar.x).toBe(positions.nadia.x);
+  });
+
+  test("nobody overlaps anybody on their row", () => {
+    const { positions } = layoutTree(PEOPLE, edges);
+    const all = Object.values(positions);
+    for (const a of all) {
+      for (const b of all) {
+        if (a === b || a.y !== b.y) continue;
+        expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(NODE_WIDTH);
+      }
+    }
+  });
+
+  test("a single parent's line takes their own family's colour", () => {
+    // Omar has no spouse on the tree, so his line to Nadia is his own family.
+    expect(of("parent:omar:nadia").colour).toMatch(/^line-[1-5]$/);
+  });
 });
