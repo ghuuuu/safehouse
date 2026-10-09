@@ -52,6 +52,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
           id="q"
           name="q"
           type="search"
+          aria-keyshortcuts="/"
           defaultValue={query}
           placeholder="Title, kind, person — or a document's number"
           className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2"

@@ -126,6 +126,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             id="q"
             name="q"
             type="search"
+            aria-keyshortcuts="/"
             placeholder="Search titles, people, or a document's number"
             className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm"
           />

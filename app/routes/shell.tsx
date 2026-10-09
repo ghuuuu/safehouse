@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Form, Link, NavLink, Outlet, useLocation } from "react-router";
+import { Form, Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import type { Route } from "./+types/shell";
 import { Logo } from "../logo";
@@ -60,6 +60,7 @@ const TABS: Item[] = [
 
 export default function Shell({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
+  useSlashToSearch();
   // Signed out: the page's own loader has already redirected to sign-in.
   if (!user) return <Outlet />;
 
@@ -91,6 +92,28 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
       <TabBar groups={groups} user={user} />
     </div>
   );
+}
+
+/**
+ * "/" from anywhere goes to search: to the page's own search box when it has
+ * one (the dashboard and /search), otherwise to /search, which focuses its
+ * box. Not while typing, and not with a modifier held.
+ */
+function useSlashToSearch() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      const box = document.querySelector<HTMLInputElement>("input[type=search]");
+      if (box) box.focus();
+      else navigate("/search");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
 }
 
 function Groups({ groups, tone = "side" }: { groups: { title: string; items: Item[] }[]; tone?: "side" | "sheet" }) {

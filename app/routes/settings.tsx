@@ -146,6 +146,12 @@ export async function action({ request }: Route.ActionArgs) {
 
 const card = "flex flex-col gap-3 rounded-lg border border-gray-200 p-4";
 const input = "rounded-lg border border-gray-300 p-2";
+/** The most recent devices are shown; the rest wait behind "Show all". */
+const RECENT_DEVICES = 5;
+
+/** A stored message starts mid-sentence after its prefix; on screen it starts a sentence. */
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 const button = "self-start rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2 text-sm";
 
 function Note({ result, section }: { result: Result | undefined; section: string }) {
@@ -226,7 +232,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
         <div className={card}>
           <h3 className="text-sm font-medium">Signed-in devices</h3>
           <ul className="flex flex-col divide-y divide-gray-100 text-sm">
-            {devices.map((device) => (
+            {devices.slice(0, RECENT_DEVICES).map((device) => (
               <li key={device.id} className="flex items-center justify-between gap-4 py-2">
                 <span>
                   {device.device}
@@ -246,6 +252,31 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
               </li>
             ))}
           </ul>
+          {devices.length > RECENT_DEVICES ? (
+            <details className="text-sm">
+              <summary className="cursor-pointer py-1 text-gray-600 underline">
+                Show all {devices.length}
+              </summary>
+              <ul className="mt-1 flex flex-col divide-y divide-gray-100">
+                {devices.slice(RECENT_DEVICES).map((device) => (
+                  <li key={device.id} className="flex items-center justify-between gap-4 py-2">
+                    <span>
+                      {device.device}
+                      <span className="block text-xs text-gray-500">
+                        {device.ipAddress ? `${device.ipAddress} · ` : ""}
+                        last seen <When at={device.lastSeenAt} />
+                      </span>
+                    </span>
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="device-out" />
+                      <input type="hidden" name="sessionId" value={device.id} />
+                      <button className="-my-2 py-2 pl-2 text-gray-500 underline" type="submit" disabled={busy}>sign out</button>
+                    </Form>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
           {devices.length > 1 ? (
             <Form method="post">
               <input type="hidden" name="intent" value="others-out" />
@@ -278,7 +309,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           <ul className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
             {notifications.map((n) => (
               <li key={n.id} className="flex flex-col gap-1 p-3">
-                <span>{n.text.replace(/^Safehouse: /, "")}</span>
+                <span>{sentence(n.text.replace(/^Safehouse: /, ""))}</span>
                 <span className="text-xs text-gray-500">
                   <When at={n.createdAt} /> ·{" "}
                   {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700 dark:text-red-400">not sent: {n.error}</span> : "in the app only"}

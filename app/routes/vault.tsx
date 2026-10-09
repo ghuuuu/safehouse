@@ -198,7 +198,11 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       </div>
 
       {canViewAs ? (
-        <Form method="get" className="flex flex-wrap items-center gap-2 text-sm">
+        // Folded away: it is for checking access, not for finding a paper,
+        // and on a phone it would otherwise fill the first screen.
+        <details open={isViewingAs} className="text-sm">
+          <summary className="cursor-pointer py-1 text-gray-600 underline">View as somebody else</summary>
+        <Form method="get" className="mt-2 flex flex-wrap items-center gap-2">
           {owner ? <input type="hidden" name="owner" value={owner.id} /> : null}
           <label className="text-gray-500" htmlFor="as">
             View as
@@ -226,6 +230,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             Look
           </button>
         </Form>
+        </details>
       ) : null}
 
       {groups.length === 0 ? (
