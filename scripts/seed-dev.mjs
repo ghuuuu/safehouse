@@ -1,6 +1,7 @@
 /**
- * Fills an empty development database with the fixture household, and gives two
- * of its accounts a password.
+ * Fills an empty development database with the fixture household, and gives one
+ * account per role a password (`app/dev-logins.server.ts`, which the sign-in
+ * page's development buttons use too).
  *
  * Both halves, deliberately. Seeding closes `/setup` — the first-run page is
  * open only while the vault has no accounts at all (`noUsersYet` in
@@ -15,23 +16,14 @@
  */
 
 import "dotenv/config";
-import { hashPassword } from "better-auth/crypto";
 import postgres from "postgres";
 
-import { insertFixture, USER } from "../app/db/fixture.ts";
+import { insertFixture } from "../app/db/fixture.ts";
+import { DEV_LOGINS, DEV_PASSWORD, writeDevLogins } from "../app/dev-logins.server.ts";
 import { keys } from "../app/keys.server.ts";
 
-/**
- * Not a secret, and not meant to look like one: fictional accounts, in a
- * database that exists on one developer's machine.
- */
-const PASSWORD = "safehouse-dev-password";
-
-/** Two accounts, because one of each is what the permission work needs to see. */
-const SIGN_INS = [
-  [USER.priya, "priya@example.invalid", "household administrator"],
-  [USER.maya, "maya@example.invalid", "ordinary family member"],
-];
+/** `--logins`: only (re)write the sign-ins, on a vault seeded before they grew. */
+const loginsOnly = process.argv.includes("--logins");
 
 const LOCAL = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
@@ -65,6 +57,14 @@ try {
         : Promise.reject(error),
   );
 
+  if (loginsOnly) {
+    const done = await writeDevLogins(sql);
+    if (done.length === 0) fail("No fixture accounts here, so nobody to give a sign-in to.");
+    console.log(`Sign-ins written, password ${DEV_PASSWORD}:`);
+    for (const email of done) console.log(`  ${email}`);
+    process.exit(0);
+  }
+
   if (existing[0].n > 0) {
     fail(
       `This database already has ${existing[0].n} account(s). Refusing to seed on top of them.`,
@@ -76,16 +76,9 @@ try {
   // (D35). The test database uses the fixture key instead.
   await insertFixture(sql, keys());
 
-  // better-auth's own scrypt, so the hash is one its sign-in can verify.
-  // Hashing is never hand-rolled here (CLAUDE.md).
-  const password = await hashPassword(PASSWORD);
-
-  for (const [userId] of SIGN_INS) {
-    await sql`
-      insert into accounts (user_id, issuer, account_id, provider_id, password)
-      values (${userId}, 'local:credential', ${userId}, 'credential', ${password})
-    `;
-  }
+  // better-auth's own scrypt, inside writeDevLogins, so the hash is one its
+  // sign-in can verify. Hashing is never hand-rolled here (CLAUDE.md).
+  await writeDevLogins(sql);
 
   const [counts] = await sql`
     select
@@ -99,9 +92,9 @@ try {
   console.log(
     `Seeded the fixture household: ${counts.owners} owners, ${counts.users} accounts, ${counts.documents} documents.`,
   );
-  console.log(`\nSign in at ${signIn} with the password ${PASSWORD}:`);
-  for (const [, email, who] of SIGN_INS) {
-    console.log(`  ${email.padEnd(24)} ${who}`);
+  console.log(`\nSign in at ${signIn} with the password ${DEV_PASSWORD}, or with the buttons beside the form:`);
+  for (const login of DEV_LOGINS) {
+    console.log(`  ${login.email.padEnd(24)} ${login.role}, ${login.note}`);
   }
   console.log("\n/setup is closed from now on: this vault has accounts.");
 } finally {
