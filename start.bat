@@ -1,8 +1,10 @@
 @echo off
 rem Safehouse - one command to get a working dev server.
 rem
-rem   start.bat    checks the tools, starts the database, migrates it, then
-rem                runs the dev server on http://localhost:4021
+rem   start.bat    checks the tools, starts the database, migrates it, makes
+rem                the encryption key on a first run, offers the sample
+rem                household when the vault is empty, then runs the dev server
+rem                on http://localhost:4021 and opens it in the browser
 rem
 rem It fixes what it safely can on its own - launching Docker Desktop, installing
 rem project dependencies - and asks first before installing anything onto the
@@ -14,6 +16,10 @@ rem packaged app (docker compose up --build), 5435 Postgres on the host.
 
 setlocal enableextensions enabledelayedexpansion
 cd /d "%~dp0"
+
+rem Re-entered by itself, in the background, to open the browser once the
+rem server answers (see the end of the main steps).
+if "%~1"==":open_when_ready" goto :open_when_ready
 
 call :ensure_node || goto :failed
 call :ensure_env || goto :failed
@@ -28,11 +34,14 @@ echo Applying migrations...
 call npm run db:migrate || goto :failed
 echo.
 
+call :ensure_key || goto :failed
+call :offer_sample_household || goto :failed
 call :warn_if_port_taken 4021
 
-echo Dev server: http://localhost:4021
+echo Dev server: http://localhost:4021 - it opens in your browser when ready.
 echo Ctrl+C stops it. The database keeps running - "docker compose down" stops that.
 echo.
+start "" /b cmd /c call "%~f0" :open_when_ready
 call npm run dev
 goto :end
 
@@ -73,10 +82,14 @@ if not exist ".env" (
   exit /b 0
 )
 rem An .env written before a setting was added fails much later, somewhere
-rem confusing. Compare it against .env.example here instead.
+rem confusing. Compare it against .env.example here instead. A setting left
+rem empty in the example is optional (the notification webhook), so only the
+rem ones with a value there are required.
 set "MISSING="
-for /f "usebackq tokens=1 delims==" %%k in (`findstr /r /c:"^[A-Z][A-Z0-9_]*=" ".env.example"`) do (
-  findstr /b /c:"%%k=" ".env" >nul || set "MISSING=!MISSING! %%k"
+for /f "usebackq tokens=1,* delims==" %%k in (`findstr /r /c:"^[A-Z][A-Z0-9_]*=" ".env.example"`) do (
+  if not "%%l"=="" (
+    findstr /b /c:"%%k=" ".env" >nul || set "MISSING=!MISSING! %%k"
+  )
 )
 if defined MISSING (
   echo Your .env is missing:!MISSING!
@@ -160,6 +173,47 @@ if !WAITED! geq 180 (
 goto :docker_wait
 
 
+rem --- The encryption key ---------------------------------------------------
+rem Every document is sealed under this key (D12), and the dashboard reads it,
+rem so a first run makes one. key:make refuses to overwrite an existing key -
+rem a new key would make every document already filed unreadable - so this
+rem only ever runs when there is none.
+:ensure_key
+set "KEY_FILE=./keys/safehouse.key"
+for /f "usebackq tokens=1,* delims==" %%a in (`findstr /b /c:"SAFEHOUSE_KEY_FILE=" ".env"`) do set "KEY_FILE=%%b"
+set "KEY_FILE=!KEY_FILE:/=\!"
+if exist "!KEY_FILE!" exit /b 0
+echo No encryption key yet - making one at !KEY_FILE!...
+call npm run key:make || exit /b 1
+echo   Back it up somewhere other than this machine. Lose it and every document
+echo   filed under it is gone, backups included. See docs\OPERATIONS.md.
+echo.
+exit /b 0
+
+
+rem --- An empty vault -----------------------------------------------------
+rem With no accounts, Safehouse opens on /setup to create the first
+rem administrator: the real first run. For a look around, the fictional
+rem sample household is one keypress away. No is the default, after 10 seconds.
+:offer_sample_household
+set "ACCOUNTS="
+for /f %%n in ('docker compose exec -T db psql -U safehouse -d safehouse -tAc "select count(*) from users" 2^>nul') do set "ACCOUNTS=%%n"
+if not "!ACCOUNTS!"=="0" exit /b 0
+echo The vault is empty. The browser will open on the page that creates the
+echo first administrator.
+choice /c YN /n /t 10 /d N /m "  Fill it with the fictional sample household instead? [Y/N] "
+if errorlevel 2 (
+  echo.
+  exit /b 0
+)
+echo.
+call npm run db:seed || exit /b 1
+echo   Sign in as priya@example.invalid, the administrator, with the password
+echo   the seed printed above.
+echo.
+exit /b 0
+
+
 rem --- Small helpers ------------------------------------------------------
 rem %1 winget package id, %2 what to call it, %3 where to get it by hand.
 :offer_winget
@@ -195,6 +249,17 @@ if not errorlevel 1 (
 )
 exit /b 0
 
+
+:open_when_ready
+rem Up to two minutes: the first compile can be slow.
+for /l %%i in (1,1,120) do (
+  curl -s -o nul http://localhost:4021/sign-in >nul 2>nul && (
+    start "" http://localhost:4021
+    exit /b 0
+  )
+  ping -n 2 127.0.0.1 >nul
+)
+exit /b 0
 
 :failed
 echo.

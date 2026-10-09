@@ -45,6 +45,12 @@ in, read [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ### Working on it
 
+On Windows, double-click `start.bat`. It checks for Node and Docker (offering
+to install them with winget), copies `.env` on a first run, installs
+dependencies, starts and migrates the database, makes the encryption key if
+there is none, offers the fictional sample household when the vault is empty,
+then runs the dev server and opens <http://localhost:4021>. By hand:
+
 ```sh
 docker compose up -d db       # database only
 npm install

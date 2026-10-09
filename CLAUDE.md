@@ -55,6 +55,8 @@ without it.
 ```
 # dev:        npm run dev         → http://localhost:4021
 #             needs the database:  docker compose up -d db
+#             start.bat does all of it on Windows: tools, .env, install,
+#             database, migrate, key, sample household if empty, browser
 # build:      npm run build
 # test:       npm test            (npm run test:watch while working)
 # lint:       npm run lint
