@@ -18,6 +18,7 @@
     "db:migrate": "npm run db:setup && drizzle-kit migrate && npm run identifiers:seal",
     "identifiers:seal": "vite-node scripts/seal-identifiers.ts",
     "db:seed": "vite-node scripts/seed-dev.mjs",
+    "dev:logins": "vite-node scripts/seed-dev.mjs -- --logins",
     "key:make": "node scripts/make-key.mjs",
     "backup": "vite-node scripts/backup.ts",
     "backup:drill": "vite-node scripts/drill.ts",

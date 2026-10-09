@@ -88,7 +88,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">File a document</h1>
+        <h1 className="text-2xl font-bold tracking-tight">File a document</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">
           It is encrypted before it reaches the disk. Up to{" "}
           {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB, PDF or an image.
@@ -178,7 +178,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
           <button
             type="submit"
             disabled={filing}
-            className="self-start rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+            className="self-start rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent disabled:opacity-60"
           >
             {filing ? "Filing…" : "File it"}
           </button>

@@ -242,7 +242,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">People</h1>
+        <h1 className="text-2xl font-bold tracking-tight">People</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">
           Everyone and everything documents can be filed to.
         </p>
@@ -421,7 +421,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             ) : null}
 
             <button
-              className="self-start rounded-lg bg-gray-900 p-2 px-3 text-sm text-white"
+              className="self-start rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
               type="submit"
               disabled={saving}
             >

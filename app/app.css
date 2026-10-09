@@ -1,28 +1,33 @@
-/*! Safehouse visual contract (impeccable, 2026-10-08)
-THESIS: a well-kept home filing cabinet. Papers on a desk, filed in folders with
-coloured tabs, written in ink. Refuses cloud-storage chrome and SaaS grey.
-OWN-WORLD: warm paper ground, a lighter sheet for anything you write on, ink
-text, ruled lines for edges. The six categories are folder-tab colours and the
-only colour in the app besides warnings. At night, the inside of the drawer.
-STORY: open it, see whose papers and what is running out, find one, get out.
-FIRST VIEWPORT: the sidebar index (Find / File / Household) on the left, the
-dashboard on the paper to its right.
-FORM: user-pinned "warm paper"; no seed roll (the brief pinned the world).
+/*! Safehouse visual contract (impeccable, 2026-10-09)
+THESIS: the household is a map. People are names on coloured family lines, the
+way stations sit on a metro map; what is running out hangs on the person it
+belongs to. Refuses the cloud-drive grid of folders and the SaaS stat card.
+OWN-WORLD: a plum sidebar beside a light porcelain page, white sheets with
+plum-ink outlines, a house-with-a-keyhole logo, family lines in clear transit
+inks, categories as small marks. At night the page goes dark and the plum deepens.
+STORY: open it, see the family and who needs attention, pick a name, get out.
+FIRST VIEWPORT: the plum sidebar left; the dashboard's family map filling the
+page, search top right, tags on the names that need you.
+FORM: user-steered from the transit-map challenger (seed d01ff13b), porcelain
+layout, plum accent, chosen over five accents.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the
 finish review, the verdict, and DESIGN.md
 */
 @import "tailwindcss";
 
 /*
- * The grey scale is ink on paper, and it changes with the light.
+ * The grey scale is plum ink on porcelain, and it changes with the light.
  *
  * Every `gray-*` and `white` class in the app reads these, so the whole app is
- * one palette with no per-page colour decisions to drift. Low numbers are paper
- * and ruled lines, high numbers are ink. In dark mode the scale turns over: the
- * paper goes dark and the ink goes light, so a class means the same role in both
- * ("gray-500" is always muted text, "gray-900" always the strongest ink), and no
- * component needs a `dark:` variant for a grey. Contrast of every text step
- * against every ground is at least 4.5:1 in both modes.
+ * one palette with no per-page colour decisions to drift. Low numbers are the
+ * page and ruled lines, high numbers are ink. In dark mode the scale turns
+ * over: the page goes dark and the ink goes light, so a class means the same
+ * role in both ("gray-500" is always muted text, "gray-900" always the
+ * strongest ink), and no component needs a `dark:` variant for a grey.
+ * Contrast of every text step against every ground is at least 4.5:1 in both.
+ *
+ * `accent` is plum: the primary button, the current choice in a switch, the
+ * focus ring. `side` is the sidebar and the phone's tab bar.
  */
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif,
@@ -41,24 +46,57 @@ finish review, the verdict, and DESIGN.md
   --color-gray-800: var(--g800);
   --color-gray-900: var(--g900);
   --color-gray-950: var(--g950);
+
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-side: var(--side);
+  --color-side-ink: var(--side-ink);
+  --color-side-muted: var(--side-muted);
+  --color-side-hover: var(--side-hover);
+  --color-side-on: var(--side-on);
+  --color-side-on-ink: var(--side-on-ink);
 }
 
 :root {
-  --paper: #f5f1e8;
-  --sheet: #fffdf8;
-  --g50: #eee8dc;
-  --g100: #e7e0d2;
-  --g200: #dcd3c2;
-  --g300: #c8bda8;
-  --g400: #9c907d;
-  --g500: #6b6052;
-  --g600: #574d41;
-  --g700: #433b31;
-  --g800: #322b23;
-  --g900: #231e18;
-  --g950: #17130f;
+  --paper: #f6f4f6;
+  --sheet: #ffffff;
+  --g50: #efebef;
+  --g100: #e8e2e8;
+  --g200: #ddd5de;
+  --g300: #c9bdca;
+  --g400: #9a8b9c;
+  --g500: #6a5a6c;
+  --g600: #574858;
+  --g700: #443646;
+  --g800: #352737;
+  --g900: #2e1a31;
+  --g950: #1d0f1f;
 
-  /* Folder tabs (PRODUCT.md, Taxonomy). Each passes 4.5:1 as text on paper. */
+  --accent: #5a2b5f;
+  --on-accent: #ffffff;
+  --side: #3a1f3d;
+  --side-ink: #ecdfee;
+  --side-muted: #b59cb8;
+  --side-hover: #4a2a4e;
+  --side-on: #ffffff;
+  --side-on-ink: #2e1a31;
+  --logo: #f0a020;
+
+  /* Family lines on the map. Each passes 3:1 against the page as a line. */
+  --line-1: #2f6fe0;
+  --line-2: #d93a3f;
+  --line-3: #1f8a55;
+  --line-4: #0e7c86;
+  --line-5: #8a5a2b;
+  --line-guardian: #c47f00;
+
+  /* Tags on the map: something has run out, something is about to. */
+  --warn: #c0262d;
+  --on-warn: #ffffff;
+  --soon: #f0a020;
+  --on-soon: #1d0f1f;
+
+  /* Category marks (PRODUCT.md, Taxonomy). Each passes 4.5:1 as text. */
   --cat-personal: #3b6788;
   --cat-medical: #4a7655;
   --cat-business: #585c8c;
@@ -70,19 +108,40 @@ finish review, the verdict, and DESIGN.md
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --paper: #17140f;
-    --sheet: #211d17;
-    --g50: #1d1913;
-    --g100: #2a251e;
-    --g200: #363027;
-    --g300: #4b4338;
-    --g400: #7d7262;
-    --g500: #a89d8c;
-    --g600: #c0b6a6;
-    --g700: #d4cbbd;
-    --g800: #e2dacd;
-    --g900: #ece5d8;
-    --g950: #f7f2e8;
+    --paper: #161117;
+    --sheet: #201922;
+    --g50: #1c161d;
+    --g100: #29212b;
+    --g200: #362c38;
+    --g300: #4b3f4d;
+    --g400: #7d6f80;
+    --g500: #ab9cae;
+    --g600: #c2b5c4;
+    --g700: #d6cbd7;
+    --g800: #e3dae4;
+    --g900: #f1eaf2;
+    --g950: #faf6fa;
+
+    --accent: #c9a0cf;
+    --on-accent: #1f1022;
+    --side: #24132a;
+    --side-ink: #ecdfee;
+    --side-muted: #a58fa9;
+    --side-hover: #33203a;
+    --side-on: #ecdfee;
+    --side-on-ink: #24132a;
+
+    --line-1: #6ea8ff;
+    --line-2: #ff7b7b;
+    --line-3: #4cc38a;
+    --line-4: #3fb8c2;
+    --line-5: #d39a62;
+    --line-guardian: #ffb23e;
+
+    --warn: #ff7b7b;
+    --on-warn: #1d0f1f;
+    --soon: #ffb23e;
+    --on-soon: #1d0f1f;
 
     --cat-personal: #93b9d6;
     --cat-medical: #95c2a0;
@@ -98,7 +157,7 @@ body {
   @apply bg-paper text-gray-900;
 }
 
-/* Anything you write on is a sheet, lighter than the paper it lies on. */
+/* Anything you write on is a white sheet on the porcelain page. */
 @layer base {
   input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]),
   select,
@@ -125,9 +184,9 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   background-color: var(--g900);
 }
 
-/* Checkboxes, radios and the like, in ink rather than the browser's blue. */
+/* Checkboxes, radios and the like, in plum rather than the browser's blue. */
 :root {
-  accent-color: var(--g900);
+  accent-color: var(--accent);
 }
 
 /*
@@ -150,8 +209,8 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   }
 }
 
-/* A visible focus ring on every control, in ink, never removed. */
+/* A visible focus ring on every control, in plum, never removed. */
 :focus-visible {
-  outline: 2px solid var(--g900);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

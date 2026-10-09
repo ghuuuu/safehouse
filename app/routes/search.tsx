@@ -33,7 +33,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
-      <h1 className="text-2xl font-medium tracking-tight">Search</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Search</h1>
 
       {viewing ? (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
@@ -52,13 +52,14 @@ export default function Search({ loaderData }: Route.ComponentProps) {
           id="q"
           name="q"
           type="search"
+          aria-keyshortcuts="/"
           defaultValue={query}
           placeholder="Title, kind, person — or a document's number"
-          className="flex-1 rounded border border-gray-300 p-2"
+          className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2"
           autoFocus
         />
         {viewing ? <input type="hidden" name="as" value={viewing.id} /> : null}
-        <button className="rounded border border-gray-300 px-4" type="submit">
+        <button className="rounded-full bg-accent px-5 font-medium text-on-accent" type="submit">
           Search
         </button>
       </Form>

@@ -55,6 +55,8 @@ without it.
 ```
 # dev:        npm run dev         → http://localhost:4021
 #             needs the database:  docker compose up -d db
+#             start.bat does all of it on Windows: tools, .env, install,
+#             database, migrate, key, sample household if empty, browser
 # build:      npm run build
 # test:       npm test            (npm run test:watch while working)
 # lint:       npm run lint
@@ -67,6 +69,7 @@ without it.
 #                                  after restoring a backup from before D35
 #             npm run db:setup     the app role on its own (db:migrate runs it)
 # dev data:   npm run db:seed      the fixture household, and a way back in
+#             npm run dev:logins   one sign-in per role on an already-seeded vault
 # the key:    npm run key:make     once per deployment, before the first upload
 # backup:     npm run backup       database encrypted, documents copied as-is
 #             npm run backup:drill prove one restores, into a throwaway database
@@ -82,11 +85,19 @@ First run, and after any schema change: `docker compose up -d db` then
 migrate itself, on purpose (D22).
 
 `npm run db:seed` fills an empty dev database with the fictional fixture
-household and gives `priya@example.invalid` (admin) and `maya@example.invalid`
-the dev password printed by the script. Both halves matter: seeding closes
-`/setup`, so a seeded database without a credential row has no way in at all.
-It refuses a database that is not on this machine, and one that already has
-accounts.
+household and gives one account per role the dev password printed by the
+script (the list is `app/dev-logins.server.ts`). Both halves matter: seeding
+closes `/setup`, so a seeded database without a credential row has no way in
+at all. It refuses a database that is not on this machine, and one that
+already has accounts. `npm run dev:logins` writes just those sign-ins, for a
+vault seeded before the list grew.
+
+In `npm run dev` against a database on this machine, the sign-in page shows a
+button per role that signs in as that account. The button sends only which
+account; the server adds the password and signs in through better-auth as
+usual. Every use sits behind `import.meta.env.DEV`, so a production build
+contains none of it: after touching it, build and grep `build/` for
+`safehouse-dev-password`, which must find nothing.
 
 `npm test` needs the database running. It builds `safehouse_test` from the
 migrations and the fixture in `app/db/fixture.ts` on every run.

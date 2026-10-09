@@ -113,7 +113,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
   if (!canFile) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
-        <h1 className="text-2xl font-medium tracking-tight">File many</h1>
+        <h1 className="text-2xl font-bold tracking-tight">File many</h1>
         <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
           Your account can read the vault but not add to it.
         </p>
@@ -125,7 +125,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight">File many</h1>
+          <h1 className="text-2xl font-bold tracking-tight">File many</h1>
           <p className="mt-1 text-sm text-gray-500 max-w-prose">
             Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
             as its own record, and read for dates and numbers on the way in. Up to {MB} MB each, PDF or an image.
@@ -157,7 +157,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
             <legend className="px-1 text-gray-500">Apply to every file not yet filed</legend>
             <label className="flex flex-col gap-1">
               Whose
-              <select value={allOwner} onChange={(e) => setAllOwner(e.target.value)} className="rounded border border-gray-300 p-1.5">
+              <select value={allOwner} onChange={(e) => setAllOwner(e.target.value)} className="rounded-lg border border-gray-300 p-1.5">
                 <option value="">—</option>
                 {owners.map((o) => (
                   <option key={o.id} value={o.id}>{o.displayName}{o.kind === "person" ? "" : ` (${o.kind})`}</option>
@@ -166,14 +166,14 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
             </label>
             <label className="flex flex-col gap-1">
               Kind
-              <select value={allCategory} onChange={(e) => setAllCategory(e.target.value as Category)} className="rounded border border-gray-300 p-1.5">
+              <select value={allCategory} onChange={(e) => setAllCategory(e.target.value as Category)} className="rounded-lg border border-gray-300 p-1.5">
                 <option value="">—</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
             <button
               type="button"
-              className="rounded border border-gray-300 px-3 py-1.5"
+              className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3 py-1.5"
               onClick={() =>
                 setRows((current) =>
                   current.map((row) =>
@@ -215,7 +215,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                           value={row.ownerId}
                           disabled={locked}
                           onChange={(e) => update(row.key, { ownerId: e.target.value })}
-                          className="rounded border border-gray-300 p-1.5"
+                          className="rounded-lg border border-gray-300 p-1.5"
                         >
                           <option value="">—</option>
                           {owners.map((o) => <option key={o.id} value={o.id}>{o.displayName}</option>)}
@@ -227,7 +227,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                           value={row.category}
                           disabled={locked}
                           onChange={(e) => update(row.key, { category: e.target.value as Category })}
-                          className="rounded border border-gray-300 p-1.5"
+                          className="rounded-lg border border-gray-300 p-1.5"
                         >
                           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -240,7 +240,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                           disabled={locked}
                           placeholder={untitled(row.category)}
                           onChange={(e) => update(row.key, { title: e.target.value })}
-                          className="w-48 rounded border border-gray-300 p-1.5"
+                          className="w-48 rounded-lg border border-gray-300 p-1.5"
                         />
                       </td>
                       <td className="p-2" aria-live="polite">
@@ -279,7 +279,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
               type="button"
               disabled={running || waiting.length === 0 || unassigned > 0}
               onClick={fileAll}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+              className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent disabled:opacity-60"
             >
               {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
             </button>

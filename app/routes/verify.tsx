@@ -4,6 +4,7 @@ import type { Route } from "./+types/verify";
 import { passwordMatches } from "../auth.server";
 import { requireUser } from "../session.server";
 import { grantStepUp, STEP_UP_SECONDS } from "../stepup.server";
+import { Logo } from "../logo";
 
 export function meta() {
   return [{ title: "Confirm it is you — Safehouse" }];
@@ -50,9 +51,11 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Verify({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
+      <Logo size={48} />
+      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">Confirm it is you</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Confirm it is you</h1>
         <p className="mt-2 text-sm text-gray-500 max-w-prose">
           Opening a document asks for your password again, {loaderData.name}. A
           signed-in browser somebody walked away from should not be able to pull
@@ -86,7 +89,7 @@ export default function Verify({ loaderData, actionData }: Route.ComponentProps)
 
         <button
           type="submit"
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
+          className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
         >
           Confirm
         </button>
@@ -95,6 +98,7 @@ export default function Verify({ loaderData, actionData }: Route.ComponentProps)
       <Link className="text-sm text-gray-500 underline" to="/vault">
         Back to the vault
       </Link>
+      </div>
     </main>
   );
 }

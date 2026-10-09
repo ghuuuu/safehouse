@@ -169,7 +169,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">{view.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{view.title}</h1>
         <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
           {view.ownerName ?? "owner not shown to you"} ·
           <CategoryMark category={view.category} />
@@ -191,7 +191,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="text-base font-medium">What it says</h2>
           {canEdit && !editing ? (
-            <Link className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" to={`${here}?edit`}>
+            <Link className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3 py-1.5 text-sm" to={`${here}?edit`}>
               Edit
             </Link>
           ) : null}
@@ -211,11 +211,11 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         ) : (
           <>
             {unconfirmed.length > 0 ? (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
                 {unconfirmed.length === 1 ? "One detail was" : `${unconfirmed.length} details were`} read from the scan
                 and nobody has checked {unconfirmed.length === 1 ? "it" : "them"} yet.{" "}
                 {canEdit ? (
-                  <Link className="underline" to={`${here}?edit`}>
+                  <Link className="inline-block py-1 underline" to={`${here}?edit`}>
                     Check {unconfirmed.length === 1 ? "it" : "them"}
                   </Link>
                 ) : null}
@@ -433,10 +433,10 @@ function EditDetails({
       {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">
+        <button type="submit" disabled={busy} className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent">
           Save
         </button>
-        <Link className="rounded-lg border border-gray-300 px-4 py-2 text-sm" to={cancel}>
+        <Link className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2 text-sm" to={cancel}>
           Cancel
         </Link>
         {hasPages ? (

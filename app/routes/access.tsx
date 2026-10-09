@@ -107,7 +107,7 @@ export default function Access({ loaderData }: Route.ComponentProps) {
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-medium tracking-tight">Access</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Access</h1>
         <Segmented
           label="View"
           options={[
@@ -180,7 +180,7 @@ function PanelView({ panel }: { panel: Panel }) {
       <div className="flex flex-col gap-1">
         {/* The sentence below says the numbers; this bar only shows them. */}
         <div aria-hidden className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-          <div className="h-full rounded-full bg-gray-900" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
+          <div className="h-full rounded-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
         </div>
         <p className="text-sm">
           {subject.name} reaches <strong className="font-medium">{reach} of the {reachable}</strong>{" "}
@@ -251,7 +251,7 @@ function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNod
       <input type="hidden" name="userId" value={panel.subject.id} />
       {children}
       <div className="flex items-center gap-3">
-        <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white" type="submit" disabled={busy}>
+        <button className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent" type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save access"}
         </button>
         {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700 dark:text-red-400">{mine.error}</span> : null}
@@ -333,7 +333,7 @@ function RecordGrants({ panel }: { panel: Panel }) {
       )}
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-gray-500">Add one</span>
-        <select name="record" defaultValue="" className="w-full min-w-0 rounded border border-gray-300 p-2">
+        <select name="record" defaultValue="" className="w-full min-w-0 rounded-lg border border-gray-300 p-2">
           <option value="">—</option>
           {panel.options.records
             .filter((record) => !granted.has(record.id))
@@ -422,7 +422,7 @@ function WindowNotice({ panel }: { panel: Panel }) {
       </p>
       <input type="hidden" name="intent" value="revoke-window" />
       <input type="hidden" name="userId" value={panel.subject.id} />
-      <button type="submit" className="self-start rounded-lg bg-red-700 px-3 py-1.5 text-red-50">Close it now</button>
+      <button type="submit" className="self-start rounded-full bg-red-700 px-5 py-2 font-medium text-red-50">Close it now</button>
       {result && result.kind === "window" && "error" in result ? <p>{result.error}</p> : null}
     </Form>
   );

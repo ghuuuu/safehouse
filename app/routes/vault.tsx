@@ -178,7 +178,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">Vault</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Vault</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">
           {documents.length === 1
             ? "One document"
@@ -198,7 +198,11 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       </div>
 
       {canViewAs ? (
-        <Form method="get" className="flex flex-wrap items-center gap-2 text-sm">
+        // Folded away: it is for checking access, not for finding a paper,
+        // and on a phone it would otherwise fill the first screen.
+        <details open={isViewingAs} className="text-sm">
+          <summary className="cursor-pointer py-1 text-gray-600 underline">View as somebody else</summary>
+        <Form method="get" className="mt-2 flex flex-wrap items-center gap-2">
           {owner ? <input type="hidden" name="owner" value={owner.id} /> : null}
           <label className="text-gray-500" htmlFor="as">
             View as
@@ -220,12 +224,13 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
               ))}
           </select>
           <button
-            className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white"
+            className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
             type="submit"
           >
             Look
           </button>
         </Form>
+        </details>
       ) : null}
 
       {groups.length === 0 ? (
@@ -296,7 +301,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           // Hidden while viewing as somebody else, because the transaction that
           // would file it is read-only: offering the link would be offering a
           // button that cannot work.
-          <Link className="text-gray-500 underline" to="/upload">
+          <Link className="inline-block py-1 text-gray-500 underline" to="/upload">
             File a document
           </Link>
         )}

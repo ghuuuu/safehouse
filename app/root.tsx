@@ -58,7 +58,7 @@ function AutoLock({ minutes }: { minutes: number }) {
   return null;
 }
 
-export const links: Route.LinksFunction = () => [];
+export const links: Route.LinksFunction = () => [{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }];
 
 // Fonts are not loaded from a third party. A private vault should not tell
 // anyone else's server which pages the household is opening.

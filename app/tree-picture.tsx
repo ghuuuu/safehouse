@@ -9,45 +9,45 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import type { TreeEdge, TreePerson } from "./tree";
-import { layoutTree, NODE_HEIGHT, NODE_WIDTH, type Layout } from "./tree-layout";
+import { familyLines, layoutTree, NODE_HEIGHT, NODE_WIDTH } from "./tree-layout";
 
 const PAD = 40;
 /**
- * The smallest scale the tree opens at: names stay about 11px and a person is
- * about 40px tall, which a thumb can hit. A wider tree than that opens on its
- * left edge and is panned, rather than shrunk until nobody can read it.
+ * The smallest scale the tree opens at: 14px names stay about 11px and a
+ * person is about 32px tall, which a thumb can still hit. A wider tree than
+ * that opens on its left edge and is panned, rather than shrunk until nobody
+ * can read it.
  */
-const MIN_SCALE = 0.85;
-const SEX_MARK = { female: "♀", male: "♂" } as const;
+const MIN_SCALE = 0.8;
+
+/** Something about a person's papers that needs them, hung on their name. */
+export type MapTag = { text: string; tone: "warn" | "soon" };
 
 /**
- * The tree as an SVG. Drag to pan, wheel or buttons to zoom. Every person is a
- * link, so Tab reaches them and Enter opens them without a mouse.
+ * The tree as an SVG, drawn like a metro map: people are names, a family is a
+ * coloured line. Drag to pan, wheel or buttons to zoom. Every person is a
+ * link, so Tab reaches them and Enter opens them without a mouse; the tag on
+ * a name is in its label too, so it is not colour alone.
  */
 export function TreePicture({
   people,
   edges,
   vaultFor,
+  tags,
 }: {
   people: TreePerson[];
   edges: TreeEdge[];
   vaultFor: (ownerId: string) => string;
+  /** Read by the loader through the viewer's own transaction, like the tree. */
+  tags?: Map<string, MapTag[]>;
 }) {
   const layout = layoutTree(people, edges);
-  // Each parent's lines to their children run at their own height, so that
-  // three parents of one child do not merge into one line nobody can trace.
-  const lanes = new Map<string, number>();
-  for (const edge of edges) {
-    if (edge.kind !== "parent_of" || lanes.has(edge.from)) continue;
-    const row = layout.positions[edge.from]?.y;
-    const taken = [...lanes].filter(([id]) => layout.positions[id]?.y === row).length;
-    lanes.set(edge.from, taken % 4);
-  }
+  const lines = familyLines(edges, layout);
   const whole = {
     x: -PAD,
-    y: -PAD,
+    y: -PAD - (tags?.size ? 24 : 0),
     w: Math.max(layout.width + PAD * 2, 600),
-    h: layout.height + PAD * 2,
+    h: layout.height + PAD * 2 + (tags?.size ? 24 : 0),
   };
   const svg = useRef<SVGSVGElement>(null);
   // The server cannot know the screen, so it draws the whole tree; the first
@@ -91,9 +91,9 @@ export function TreePicture({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
-        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
-        <button type="button" className="min-h-9 rounded border border-gray-300 px-3" onClick={() => setBox(fit())}>Reset</button>
+        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
+        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
+        <button type="button" className="min-h-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3" onClick={() => setBox(fit())}>Reset</button>
         <span className="text-xs text-gray-500">
           <span className="pointer-coarse:hidden">Drag to move around.</span>
           <span className="hidden pointer-coarse:inline">Swipe sideways to move along.</span>
@@ -104,8 +104,11 @@ export function TreePicture({
         ref={svg}
         role="group"
         aria-label="Family tree"
-        className="h-[24rem] w-full cursor-grab touch-pan-y select-none md:h-[32rem] pointer-fine:touch-none rounded-lg border border-gray-200 bg-white active:cursor-grabbing"
+        className="h-[24rem] w-full cursor-grab touch-pan-y select-none md:h-[32rem] pointer-fine:touch-none active:cursor-grabbing"
         viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
+        // No taller than the family itself, so a small household is not an
+        // island in a sea of empty map.
+        style={{ maxHeight: whole.h }}
         onPointerDown={(event) => {
           drag.current = { x: event.clientX, y: event.clientY, moved: false };
         }}
@@ -128,21 +131,33 @@ export function TreePicture({
           setTimeout(() => (drag.current = null), 0);
         }}
       >
-        {edges.map((edge) => (
-          <Edge
-            key={`${edge.kind}:${edge.from}:${edge.to}`}
-            edge={edge}
-            layout={layout}
-            lane={lanes.get(edge.from) ?? 0}
+        {lines.map((line) => (
+          <path
+            key={line.key}
+            d={line.d}
+            fill="none"
+            stroke={`var(--${line.colour === "guardian" ? "line-guardian" : line.colour})`}
+            strokeWidth={6}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            strokeDasharray={line.ended ? "0.5 11" : undefined}
+            opacity={line.ended ? 0.8 : 1}
           />
         ))}
+        {lines.map((line) => {
+          if (!line.label || !line.child) return null;
+          const to = layout.positions[line.child];
+          return <Label key={`label:${line.key}`} x={to.x + NODE_WIDTH / 2 + 8} y={to.y - 10} text={line.label} />;
+        })}
 
         {people.map((person) => {
           const at = layout.positions[person.ownerId];
+          const own = tags?.get(person.ownerId) ?? [];
           const description = [
             person.name,
-            person.sex,
             person.deceased ? "deceased" : null,
+            `${person.papers} ${person.papers === 1 ? "paper" : "papers"}`,
+            ...own.map((tag) => tag.text),
           ].filter(Boolean).join(", ");
 
           return (
@@ -162,100 +177,62 @@ export function TreePicture({
                 y={at.y}
                 width={NODE_WIDTH}
                 height={NODE_HEIGHT}
-                rx={8}
+                rx={NODE_HEIGHT / 2}
+                strokeWidth={2}
+                strokeDasharray={person.deceased ? "5 4" : undefined}
                 className={
-                  "stroke-gray-300 group-hover:stroke-gray-900 group-focus-visible:stroke-blue-600 group-focus-visible:[stroke-width:3] " +
-                  (person.deceased ? "fill-gray-100" : "fill-white")
+                  "fill-white group-hover:stroke-accent group-focus-visible:stroke-accent group-focus-visible:[stroke-width:4] " +
+                  (person.deceased ? "stroke-gray-400" : "stroke-gray-900")
                 }
               />
               <text
-                x={at.x + 12}
+                x={at.x + NODE_WIDTH / 2}
                 y={at.y + NODE_HEIGHT / 2}
                 dominantBaseline="central"
-                className={"text-[13px] " + (person.deceased ? "fill-gray-500" : "fill-gray-900")}
+                textAnchor="middle"
+                className={"text-[14px] font-semibold " + (person.deceased ? "fill-gray-500" : "fill-gray-900")}
               >
                 {truncate(person.name)}
                 {person.deceased ? " †" : ""}
+                <tspan dx={8} className="fill-gray-500 font-normal">{person.papers}</tspan>
               </text>
-              {person.sex ? (
-                <text
-                  x={at.x + NODE_WIDTH - 12}
-                  y={at.y + NODE_HEIGHT / 2}
-                  dominantBaseline="central"
-                  textAnchor="end"
-                  aria-hidden="true"
-                  className="fill-gray-500 text-[14px]"
-                >
-                  {SEX_MARK[person.sex]}
-                </text>
-              ) : null}
+              {own.length > 0 ? <Tag x={at.x + NODE_WIDTH / 2} y={at.y - 8} tag={own[0]} more={own.length - 1} /> : null}
             </a>
           );
         })}
       </svg>
 
       <p className="text-xs text-gray-500 max-w-prose">
-        † deceased · ♀ female · ♂ male · dashed grey lines are relationships that
-        have ended (a divorce, a guardianship that ran out). They are shown as
-        history and give nobody access.
+        Each family is a colour: a couple shares a line, and their children hang
+        from it. Amber is guardianship. Dotted lines have ended (a divorce, a
+        guardianship that ran out) and give nobody access. † has died. The number
+        beside a name is how many papers you can see for them.
       </p>
     </section>
   );
 }
 
-function Edge({ edge, layout, lane }: { edge: TreeEdge; layout: Layout; lane: number }) {
-  const from = layout.positions[edge.from];
-  const to = layout.positions[edge.to];
-  if (!from || !to) return null;
-
-  const style = edge.ended
-    ? "stroke-gray-300 [stroke-dasharray:6_4]"
-    : "stroke-gray-500";
-
-  if (edge.kind === "spouse_of") {
-    const [left, right] = from.x < to.x ? [from, to] : [to, from];
-    const y = left.y + NODE_HEIGHT / 2;
-    const x1 = left.x + NODE_WIDTH;
-    const x2 = right.x;
-    return (
-      <g>
-        <line x1={x1} y1={y} x2={x2} y2={y} className={style} strokeWidth={2} />
-        {/* Only a divorce ends a marriage here; a death does not (0001). */}
-        {edge.ended ? <Label x={(x1 + x2) / 2} y={y - 8} text="divorced" /> : null}
-      </g>
-    );
-  }
-
-  // Parent to child: down, across, down.
-  const x1 = from.x + NODE_WIDTH / 2;
-  const y1 = from.y + NODE_HEIGHT;
-  const x2 = to.x + NODE_WIDTH / 2;
-  const y2 = to.y;
-  const mid = (y1 + y2) / 2 + (lane - 1.5) * 10;
-  const kind = edge.parentType && edge.parentType !== "biological" ? edge.parentType : null;
-  const label = edge.ended ? `former ${kind ?? "parent"}` : kind;
-
-  return (
-    <g>
-      <path
-        d={`M ${x1} ${y1} V ${mid} H ${x2} V ${y2}`}
-        fill="none"
-        className={style}
-        strokeWidth={1.5}
-      />
-      {label ? <Label x={x2} y={y2 - 6} text={label} /> : null}
-    </g>
-  );
-}
-
 function Label({ x, y, text }: { x: number; y: number; text: string }) {
   return (
-    <text x={x} y={y} textAnchor="middle" className="fill-gray-500 text-[10px]">
+    <text x={x} y={y} textAnchor="start" className="fill-gray-500 text-[11px]">
       {text}
     </text>
   );
 }
 
+function Tag({ x, y, tag, more }: { x: number; y: number; tag: MapTag; more: number }) {
+  const text = more > 0 ? `${tag.text} +${more}` : tag.text;
+  const width = text.length * 6.6 + 20;
+  return (
+    <g aria-hidden="true">
+      <rect x={x - width / 2} y={y - 22} width={width} height={22} rx={11} fill={`var(--${tag.tone})`} />
+      <text x={x} y={y - 11} dominantBaseline="central" textAnchor="middle" fill={`var(--on-${tag.tone})`} className="text-[12px] font-bold">
+        {text}
+      </text>
+    </g>
+  );
+}
+
 function truncate(name: string): string {
-  return name.length > 18 ? `${name.slice(0, 17)}…` : name;
+  return name.length > 15 ? `${name.slice(0, 14)}…` : name;
 }
