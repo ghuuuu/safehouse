@@ -211,11 +211,11 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         ) : (
           <>
             {unconfirmed.length > 0 ? (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
                 {unconfirmed.length === 1 ? "One detail was" : `${unconfirmed.length} details were`} read from the scan
                 and nobody has checked {unconfirmed.length === 1 ? "it" : "them"} yet.{" "}
                 {canEdit ? (
-                  <Link className="underline" to={`${here}?edit`}>
+                  <Link className="inline-block py-1 underline" to={`${here}?edit`}>
                     Check {unconfirmed.length === 1 ? "it" : "them"}
                   </Link>
                 ) : null}

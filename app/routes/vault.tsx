@@ -296,7 +296,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           // Hidden while viewing as somebody else, because the transaction that
           // would file it is read-only: offering the link would be offering a
           // button that cannot work.
-          <Link className="text-gray-500 underline" to="/upload">
+          <Link className="inline-block py-1 text-gray-500 underline" to="/upload">
             File a document
           </Link>
         )}
