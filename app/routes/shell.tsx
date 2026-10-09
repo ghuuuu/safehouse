@@ -96,7 +96,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 function Groups({ groups, tone = "side" }: { groups: { title: string; items: Item[] }[]; tone?: "side" | "sheet" }) {
   const quiet = tone === "side" ? "text-side-muted" : "text-gray-500";
   const idle = tone === "side" ? "text-side-ink/90 hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100";
-  const here = tone === "side" ? "bg-paper font-semibold text-gray-900" : "bg-accent font-semibold text-on-accent";
+  const here = tone === "side" ? "bg-side-on font-semibold text-side-on-ink" : "bg-accent font-semibold text-on-accent";
   return groups.map((group) => (
     <div key={group.title}>
       {/* Not a heading: the page's own h1 is the first heading a reader meets. */}

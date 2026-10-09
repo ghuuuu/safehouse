@@ -53,6 +53,8 @@ finish review, the verdict, and DESIGN.md
   --color-side-ink: var(--side-ink);
   --color-side-muted: var(--side-muted);
   --color-side-hover: var(--side-hover);
+  --color-side-on: var(--side-on);
+  --color-side-on-ink: var(--side-on-ink);
 }
 
 :root {
@@ -76,6 +78,8 @@ finish review, the verdict, and DESIGN.md
   --side-ink: #ecdfee;
   --side-muted: #b59cb8;
   --side-hover: #4a2a4e;
+  --side-on: #ffffff;
+  --side-on-ink: #2e1a31;
   --logo: #f0a020;
 
   /* Family lines on the map. Each passes 3:1 against the page as a line. */
@@ -124,6 +128,8 @@ finish review, the verdict, and DESIGN.md
     --side-ink: #ecdfee;
     --side-muted: #a58fa9;
     --side-hover: #33203a;
+    --side-on: #ecdfee;
+    --side-on-ink: #24132a;
 
     --line-1: #6ea8ff;
     --line-2: #ff7b7b;

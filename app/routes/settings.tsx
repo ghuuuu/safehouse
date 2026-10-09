@@ -146,7 +146,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 const card = "flex flex-col gap-3 rounded-lg border border-gray-200 p-4";
 const input = "rounded-lg border border-gray-300 p-2";
-const button = "self-start rounded-lg border border-gray-300 px-4 py-2 text-sm";
+const button = "self-start rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2 text-sm";
 
 function Note({ result, section }: { result: Result | undefined; section: string }) {
   if (!result || result.section !== section) return null;
@@ -163,7 +163,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
-      <h1 className="text-2xl font-medium tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-medium">Account</h2>

@@ -4,6 +4,7 @@ import type { Route } from "./+types/sign-in";
 import { auth, noUsersYet } from "../auth.server";
 import { getSignedInUser } from "../session.server";
 import { safeNext } from "../next";
+import { Logo } from "../logo";
 
 export function meta() {
   return [{ title: "Sign in — Safehouse" }];
@@ -52,9 +53,11 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
   const [params] = useSearchParams();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-6 md:p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
+      <Logo size={48} />
+      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">Safehouse</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Safehouse</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">Sign in to the household.</p>
       </div>
 
@@ -98,12 +101,13 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
         ) : null}
 
         <button
-          className="rounded-lg bg-accent p-2 text-sm text-on-accent"
+          className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
           type="submit"
         >
           Sign in
         </button>
       </Form>
+      </div>
     </main>
   );
 }

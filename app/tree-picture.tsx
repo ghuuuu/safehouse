@@ -91,9 +91,9 @@ export function TreePicture({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
-        <button type="button" className="min-h-9 min-w-9 rounded border border-gray-300 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
-        <button type="button" className="min-h-9 rounded border border-gray-300 px-3" onClick={() => setBox(fit())}>Reset</button>
+        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
+        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
+        <button type="button" className="min-h-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3" onClick={() => setBox(fit())}>Reset</button>
         <span className="text-xs text-gray-500">
           <span className="pointer-coarse:hidden">Drag to move around.</span>
           <span className="hidden pointer-coarse:inline">Swipe sideways to move along.</span>

@@ -178,7 +178,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">Vault</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Vault</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">
           {documents.length === 1
             ? "One document"
@@ -220,7 +220,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
               ))}
           </select>
           <button
-            className="rounded-lg bg-accent px-3 py-2 text-sm text-on-accent"
+            className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
             type="submit"
           >
             Look

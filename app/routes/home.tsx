@@ -319,10 +319,10 @@ function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error
       <input type="hidden" name="intent" value="break-glass" />
       <label className="flex flex-col gap-1">
         Why do you need it?
-        <input name="reason" required minLength={3} maxLength={500} className="rounded border border-gray-300 p-2" />
+        <input name="reason" required minLength={3} maxLength={500} className="rounded-lg border border-gray-300 p-2" />
       </label>
       {error ? <p role="alert" className="text-red-700 dark:text-red-400">{error}</p> : null}
-      <button type="submit" className="self-start rounded-lg bg-red-700 px-4 py-2 text-red-50">Open an emergency window</button>
+      <button type="submit" className="self-start rounded-full bg-red-700 px-5 py-2 font-medium text-red-50">Open an emergency window</button>
     </Form>
   );
 }

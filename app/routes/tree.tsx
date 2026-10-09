@@ -71,7 +71,7 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       <div>
-        <h1 className="text-2xl font-medium tracking-tight">Family tree</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Family tree</h1>
         <p className="mt-1 text-sm text-gray-500 max-w-prose">
           Who documents belong to. Pick anyone to see their documents.
         </p>
@@ -120,10 +120,13 @@ function OwnerList({
   return (
     <ul className="rounded-lg border border-gray-200 bg-white text-sm">
       {owners.map((owner) => (
-        <li key={owner.ownerId} className="border-b border-gray-100 p-4 last:border-b-0">
-          <Link className="underline" to={vaultFor(owner.ownerId)}>
+        <li key={owner.ownerId} className="relative flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0">
+          <Link className="row-link underline" to={vaultFor(owner.ownerId)}>
             {owner.name}
           </Link>
+          <span className="text-gray-500">
+            {owner.papers} {owner.papers === 1 ? "paper" : "papers"}
+          </span>
         </li>
       ))}
     </ul>
