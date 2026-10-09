@@ -7,8 +7,14 @@
  * only when both of its ends are, so the tree never draws a line to somebody
  * the viewer cannot see.
  *
- * Only what is drawn is selected: a name, whether the person has died, and sex
- * where it was recorded. Not given name, family name or date of birth.
+ * Only what is drawn is selected: a name, whether the person has died, sex
+ * where it was recorded, and how many papers they have. Not given name, family
+ * name or date of birth.
+ *
+ * The paper count is a listing, so it reads exactly what the vault lists:
+ * records with at least one version the viewer may see (`latestVersions` in
+ * `app/vault.server.ts` folds the same rows). It runs through the same
+ * policies, and `tree.test.ts` holds it to the vault's own answer.
  */
 
 import { sql } from "drizzle-orm";
@@ -25,13 +31,19 @@ export async function getFamilyTree(db: VaultTransaction): Promise<FamilyTree> {
     name: string;
     deceased: boolean | null;
     sex: TreePerson["sex"];
+    papers: number;
   }>(sql`
     select
       o.id as "ownerId",
       o.kind,
       o.display_name as name,
       p.died_on is not null as deceased,
-      p.sex
+      p.sex,
+      (
+        select count(distinct d.record_id)::int
+        from documents d join records r on r.id = d.record_id
+        where r.owner_id = o.id
+      ) as papers
     from owners o
     left join people p on p.owner_id = o.id
     where o.archived_at is null
@@ -54,11 +66,12 @@ export async function getFamilyTree(db: VaultTransaction): Promise<FamilyTree> {
   const rows = [...owners];
   const people = rows
     .filter((row) => row.kind === "person")
-    .map(({ ownerId, name, deceased, sex }) => ({
+    .map(({ ownerId, name, deceased, sex, papers }) => ({
       ownerId,
       name,
       deceased: deceased === true,
       sex: sex ?? null,
+      papers,
     }));
   const visible = new Set(people.map((person) => person.ownerId));
 
@@ -69,9 +82,9 @@ export async function getFamilyTree(db: VaultTransaction): Promise<FamilyTree> {
     edges: [...edges].filter((edge) => visible.has(edge.from) && visible.has(edge.to)),
     businesses: rows
       .filter((row) => row.kind === "business")
-      .map(({ ownerId, name }) => ({ ownerId, name })),
+      .map(({ ownerId, name, papers }) => ({ ownerId, name, papers })),
     households: rows
       .filter((row) => row.kind === "household")
-      .map(({ ownerId, name }) => ({ ownerId, name })),
+      .map(({ ownerId, name, papers }) => ({ ownerId, name, papers })),
   };
 }

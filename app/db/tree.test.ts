@@ -8,6 +8,7 @@
  * to somebody you cannot see", which is itself something you cannot see.
  */
 
+import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { getFamilyTree, type FamilyTree } from "../tree.server";
@@ -123,7 +124,42 @@ test("the tree carries nothing it does not draw", async () => {
   const tree = await treeFor(USER.priya);
 
   for (const person of tree.people) {
-    expect(Object.keys(person).sort()).toEqual(["deceased", "name", "ownerId", "sex"]);
+    // The paper count is drawn beside the name; see "the number beside a name".
+    expect(Object.keys(person).sort()).toEqual(["deceased", "name", "ownerId", "papers", "sex"]);
   }
   expect(JSON.stringify(tree)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+});
+
+describe("the number beside a name", () => {
+  // A count is a listing: it must say exactly what the vault would list for
+  // that person, to that viewer, and nothing the vault would not.
+  test.each(Object.entries(USER))("is what the vault lists for them, as %s", async (_who, userId) => {
+    const { forOwner, latestVersions, VAULT_LIST_SQL } = await import("../vault.server");
+    const { tree, rows } = await asUser(userId, async (db) => ({
+      tree: await getFamilyTree(db),
+      rows: [...(await db.execute(sql.raw(VAULT_LIST_SQL)))] as unknown as {
+        recordId: string;
+        ownerId: string | null;
+        versionNo: number;
+        isCurrent: boolean;
+      }[],
+    }));
+    const listed = latestVersions(rows);
+
+    for (const owner of [...tree.people, ...tree.businesses, ...tree.households]) {
+      expect([owner.ownerId, owner.papers]).toEqual([owner.ownerId, forOwner(listed, owner.ownerId).length]);
+    }
+  });
+
+  test("counts records, not versions: a renewed passport is one paper", async () => {
+    // Maya's passport has an older version behind the current one (fixture).
+    const versions = await asUser(USER.priya, async (db) =>
+      [...(await db.execute<{ n: number }>(sql`
+        select count(*)::int as n from documents d join records r on r.id = d.record_id
+        where r.owner_id = ${OWNER.maya}
+      `))][0].n,
+    );
+    const tree = await treeFor(USER.priya);
+    expect(tree.people.find((p) => p.ownerId === OWNER.maya)?.papers).toBe(versions - 1);
+  });
 });

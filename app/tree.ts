@@ -12,6 +12,8 @@ export type TreePerson = {
   deceased: boolean;
   /** Null when nobody recorded it. */
   sex: "female" | "male" | null;
+  /** How many records the vault would list for them, to this viewer. */
+  papers: number;
 };
 
 export type TreeEdge = {
@@ -24,7 +26,7 @@ export type TreeEdge = {
   ended: boolean;
 };
 
-export type OwnerLink = { ownerId: string; name: string };
+export type OwnerLink = { ownerId: string; name: string; papers: number };
 
 export type FamilyTree = {
   people: TreePerson[];

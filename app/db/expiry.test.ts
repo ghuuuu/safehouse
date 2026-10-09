@@ -120,6 +120,39 @@ describe("who is told", () => {
     expect(await expiringFor(USER.priya)).toContain(DOCUMENT.rosePassport);
   });
 
+  test.each(Object.entries(USER))("an owner id is given exactly when the owner's name is, as %s", async (_who, userId) => {
+    // The dashboard hangs a tag on the owner's name with it, so an id the
+    // viewer may not see would say whose a document is (D17).
+    const { soon } = await asUser(userId, (db) => findExpiring(db));
+    for (const row of soon) expect(row.ownerId === null).toBe(row.ownerName === null);
+  });
+
+  test("a document reached by name alone carries no owner id", async () => {
+    // Sam reaches Rose's will through a per-record grant and not Rose (D17).
+    // Given an expiry for the length of this test, it must reach him without
+    // anything that says whose it is.
+    const [before] = await owner()`
+      select expires_on, confirmed_fields from documents where id = ${DOCUMENT.roseWill}
+    `;
+    try {
+      await owner()`
+        update documents
+        set expires_on = current_date + 5, confirmed_fields = confirmed_fields || '["expires_on"]'::jsonb
+        where id = ${DOCUMENT.roseWill}
+      `;
+      const { soon } = await asUser(USER.sam, (db) => findExpiring(db));
+      const will = soon.find((row) => row.documentId === DOCUMENT.roseWill);
+
+      expect(will).toBeDefined();
+      expect([will?.ownerName, will?.ownerId]).toEqual([null, null]);
+    } finally {
+      await owner()`
+        update documents set expires_on = ${before.expires_on}, confirmed_fields = ${before.confirmed_fields}
+        where id = ${DOCUMENT.roseWill}
+      `;
+    }
+  });
+
   test("an account attached to nobody is told nothing", async () => {
     expect(await expiringFor(USER.stranger)).toEqual([]);
   });

@@ -37,6 +37,8 @@ export type Expiring = {
   ownerName: string | null;
   /** Null exactly when `ownerName` is. The dashboard splits on it. */
   ownerKind: "person" | "business" | "household" | null;
+  /** From `owners`, so null exactly when `ownerName` is: the map's tag needs it. */
+  ownerId: string | null;
   expiresOn: string;
   /** Negative once it has already gone. */
   daysLeft: number;
@@ -70,6 +72,7 @@ export async function findExpiring(
       r.category,
       o.display_name as "ownerName",
       o.kind::text as "ownerKind",
+      o.id as "ownerId",
       -- Rendered by Postgres rather than parsed back from a Date, so a
       -- timezone between here and the browser cannot move it a day.
       to_char(d.expires_on, 'YYYY-MM-DD') as "expiresOn",
