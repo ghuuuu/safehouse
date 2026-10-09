@@ -433,7 +433,7 @@ function EditDetails({
       {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">
+        <button type="submit" disabled={busy} className="rounded-lg bg-accent px-4 py-2 text-sm text-on-accent">
           Save
         </button>
         <Link className="rounded-lg border border-gray-300 px-4 py-2 text-sm" to={cancel}>

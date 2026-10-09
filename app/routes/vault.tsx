@@ -220,7 +220,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
               ))}
           </select>
           <button
-            className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white"
+            className="rounded-lg bg-accent px-3 py-2 text-sm text-on-accent"
             type="submit"
           >
             Look

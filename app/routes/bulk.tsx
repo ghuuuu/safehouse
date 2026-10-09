@@ -279,7 +279,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
               type="button"
               disabled={running || waiting.length === 0 || unassigned > 0}
               onClick={fileAll}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+              className="rounded-lg bg-accent px-4 py-2 text-sm text-on-accent disabled:opacity-60"
             >
               {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
             </button>

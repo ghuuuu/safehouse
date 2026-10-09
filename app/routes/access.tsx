@@ -180,7 +180,7 @@ function PanelView({ panel }: { panel: Panel }) {
       <div className="flex flex-col gap-1">
         {/* The sentence below says the numbers; this bar only shows them. */}
         <div aria-hidden className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-          <div className="h-full rounded-full bg-gray-900" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
+          <div className="h-full rounded-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
         </div>
         <p className="text-sm">
           {subject.name} reaches <strong className="font-medium">{reach} of the {reachable}</strong>{" "}
@@ -251,7 +251,7 @@ function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNod
       <input type="hidden" name="userId" value={panel.subject.id} />
       {children}
       <div className="flex items-center gap-3">
-        <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white" type="submit" disabled={busy}>
+        <button className="rounded-lg bg-accent px-4 py-2 text-sm text-on-accent" type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save access"}
         </button>
         {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700 dark:text-red-400">{mine.error}</span> : null}

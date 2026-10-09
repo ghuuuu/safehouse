@@ -15,7 +15,7 @@ export function Segmented({ label, options }: { label: string; options: { to: st
           aria-current={option.current ? "page" : undefined}
           className={
             "rounded-md px-4 py-1.5 pointer-coarse:py-2.5 " +
-            (option.current ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100")
+            (option.current ? "bg-accent text-on-accent" : "text-gray-600 hover:bg-gray-100")
           }
         >
           {option.label}

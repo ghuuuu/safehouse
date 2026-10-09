@@ -76,7 +76,7 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
           </p>
         ) : null}
 
-        <button className="rounded-lg bg-gray-900 p-2 text-sm text-white" type="submit">
+        <button className="rounded-lg bg-accent p-2 text-sm text-on-accent" type="submit">
           Set password
         </button>
       </Form>

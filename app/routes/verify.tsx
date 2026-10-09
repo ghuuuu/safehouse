@@ -86,7 +86,7 @@ export default function Verify({ loaderData, actionData }: Route.ComponentProps)
 
         <button
           type="submit"
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white"
+          className="rounded-lg bg-accent px-4 py-2 text-sm text-on-accent"
         >
           Confirm
         </button>

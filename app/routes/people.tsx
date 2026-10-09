@@ -421,7 +421,7 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
             ) : null}
 
             <button
-              className="self-start rounded-lg bg-gray-900 p-2 px-3 text-sm text-white"
+              className="self-start rounded-lg bg-accent p-2 px-3 text-sm text-on-accent"
               type="submit"
               disabled={saving}
             >

@@ -102,7 +102,7 @@ export default function Setup({ actionData }: Route.ComponentProps) {
         ) : null}
 
         <button
-          className="rounded-lg bg-gray-900 p-2 text-sm text-white"
+          className="rounded-lg bg-accent p-2 text-sm text-on-accent"
           type="submit"
         >
           Create the administrator

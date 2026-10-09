@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Form, Link, NavLink, Outlet, useLocation } from "react-router";
 
 import type { Route } from "./+types/shell";
+import { Logo } from "../logo";
 import { roleLabel } from "../roles";
 import { getSignedInUser } from "../session.server";
 
@@ -69,8 +70,9 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[13rem_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col gap-8 border-r border-gray-200 bg-gray-50 px-5 py-8 md:flex">
-        <Link to="/" className="text-lg font-semibold tracking-tight">
+      <aside className="sticky top-0 hidden h-screen flex-col gap-7 bg-side px-4 py-7 text-side-ink md:flex">
+        <Link to="/" className="flex items-center gap-2.5 px-2 text-lg font-bold tracking-tight">
+          <Logo />
           Safehouse
         </Link>
         <nav aria-label="Safehouse" className="flex flex-col gap-6">
@@ -91,11 +93,14 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function Groups({ groups }: { groups: { title: string; items: Item[] }[] }) {
+function Groups({ groups, tone = "side" }: { groups: { title: string; items: Item[] }[]; tone?: "side" | "sheet" }) {
+  const quiet = tone === "side" ? "text-side-muted" : "text-gray-500";
+  const idle = tone === "side" ? "text-side-ink/90 hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100";
+  const here = tone === "side" ? "bg-paper font-semibold text-gray-900" : "bg-accent font-semibold text-on-accent";
   return groups.map((group) => (
     <div key={group.title}>
       {/* Not a heading: the page's own h1 is the first heading a reader meets. */}
-      <p aria-hidden className="mb-1 px-2 text-xs font-medium text-gray-500">{group.title}</p>
+      <p aria-hidden className={`mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider ${quiet}`}>{group.title}</p>
       <ul aria-label={group.title} className="flex flex-col gap-0.5">
         {group.items.map((item) => (
           <li key={item.to}>
@@ -103,8 +108,7 @@ function Groups({ groups }: { groups: { title: string; items: Item[] }[] }) {
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) =>
-                "block rounded-md px-2 py-2.5 text-sm md:py-1.5 " +
-                (isActive ? "bg-white font-medium ring-1 ring-gray-200" : "text-gray-600 hover:bg-gray-100")
+                "block rounded-full px-3 py-2.5 text-sm md:py-1.5 " + (isActive ? here : idle)
               }
             >
               {item.label}
@@ -116,15 +120,18 @@ function Groups({ groups }: { groups: { title: string; items: Item[] }[] }) {
   ));
 }
 
-function Who({ user }: { user: { name: string; role: string } }) {
+function Who({ user, tone = "side" }: { user: { name: string; role: string }; tone?: "side" | "sheet" }) {
   return (
     <>
-      <p className="px-2 text-gray-600">
+      <p className={`px-3 ${tone === "side" ? "text-side-ink" : "text-gray-700"}`}>
         {user.name}
-        <span className="block text-xs text-gray-500">{roleLabel(user.role)}</span>
+        <span className={`block text-xs ${tone === "side" ? "text-side-muted" : "text-gray-500"}`}>{roleLabel(user.role)}</span>
       </p>
       <Form method="post" action="/sign-out">
-        <button className="rounded-md px-2 py-2 text-gray-600 underline hover:bg-gray-100" type="submit">
+        <button
+          className={`rounded-full px-3 py-2 underline ${tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100"}`}
+          type="submit"
+        >
           Sign out
         </button>
       </Form>
@@ -151,7 +158,7 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
   return (
     <nav
       aria-label="Safehouse"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-gray-50 pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
     >
       <ul className="grid grid-cols-5">
         {TABS.map((item) => (
@@ -159,11 +166,11 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
             <NavLink
               to={item.to}
               end={item.to === "/"}
-              className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-gray-900" : "text-gray-600"}`}
+              className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-side-ink" : "text-side-muted"}`}
             >
               {({ isActive }) => (
                 <>
-                  <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${isActive ? "bg-gray-900" : "bg-transparent"}`} />
+                  <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${isActive ? "bg-[var(--logo)]" : "bg-transparent"}`} />
                   {item.label}
                 </>
               )}
@@ -177,19 +184,20 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
               if (event.key === "Escape") more.current?.removeAttribute("open");
             }}
           >
-            <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "font-semibold text-gray-900" : "text-gray-600"}`}>
-              <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${inMore ? "bg-gray-900" : "bg-transparent"}`} />
+            <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "font-semibold text-side-ink" : "text-side-muted"}`}>
+              <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${inMore ? "bg-[var(--logo)]" : "bg-transparent"}`} />
               More
             </summary>
-            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto border-t border-gray-200 bg-gray-50 px-4 py-4">
+            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white px-4 py-4 text-gray-900">
               <div className="flex flex-col gap-4">
                 <Groups
+                  tone="sheet"
                   groups={groups
                     .map((g) => ({ ...g, items: g.items.filter((i) => !tabTargets.has(i.to)) }))
                     .filter((g) => g.items.length > 0)}
                 />
                 <div className="flex items-center justify-between gap-2 border-t border-gray-200 pt-3 text-sm">
-                  <Who user={user} />
+                  <Who user={user} tone="sheet" />
                 </div>
               </div>
             </div>
