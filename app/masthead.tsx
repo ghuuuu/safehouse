@@ -56,12 +56,13 @@ export function Masthead({
 
 /**
  * The page under a masthead: the same width and gutters, so a page's work
- * lines up with its name.
+ * lines up with its name. A narrow page keeps the same left edge and only
+ * stops sooner, the way a form sits flush with its letterhead.
  */
 export function Page({ children, narrow }: { children: React.ReactNode; narrow?: boolean }) {
   return (
-    <main className={`mx-auto flex flex-col gap-8 px-4 py-6 md:px-8 md:py-8 ${narrow ? "max-w-3xl" : "max-w-6xl"}`}>
-      {children}
+    <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+      <div className={`flex flex-col gap-8 ${narrow ? "max-w-3xl" : ""}`}>{children}</div>
     </main>
   );
 }
