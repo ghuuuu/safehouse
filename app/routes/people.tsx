@@ -279,8 +279,8 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
                         <span className="text-gray-500"> · archived</span>
                       ) : null}
                     </span>
-                    <span className="justify-self-end font-mono text-xs text-gray-500">
-                      {row.recordCount} {row.recordCount === 1 ? "record" : "records"}
+                    <span className="justify-self-end text-xs text-gray-500">
+                      <span className="font-mono">{row.recordCount}</span> {row.recordCount === 1 ? "record" : "records"}
                     </span>
                     <span className="col-span-2 text-gray-600">
                       {row.account ? (

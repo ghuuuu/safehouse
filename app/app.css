@@ -411,13 +411,13 @@ time,
 
   /*
    * The index voice: table heads, the sidebar's groups, a label on a field
-   * panel. Mono capitals, tracked, the way a form prints its field names.
+   * panel. Small tracked capitals, the way a form prints its field names.
+   * Words, so not mono: mono is kept for what is counted, dated or numbered.
    */
   .index {
-    font-family: var(--font-mono);
     font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     line-height: 1.4;
     text-transform: uppercase;
   }
@@ -439,10 +439,9 @@ time,
   .stamp {
     display: inline-flex;
     align-items: center;
-    font-family: var(--font-mono);
     font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     line-height: 1;
     text-transform: uppercase;
     padding: 0.3rem 0.45rem;

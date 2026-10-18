@@ -143,7 +143,7 @@ export default function Access({ loaderData }: Route.ComponentProps) {
                   key={entry.id}
                   className={
                     "relative border-b border-gray-200 px-4 py-3 last:border-b-0 " +
-                    (entry.id === panel?.subject.id ? "border-l-2 border-l-accent bg-gray-50" : "hover:bg-gray-50")
+                    (entry.id === panel?.subject.id ? "bg-gray-100" : "hover:bg-gray-50")
                   }
                 >
                   {entry.id === actorId ? (
@@ -198,16 +198,11 @@ function PanelView({ panel }: { panel: Panel }) {
 
       <div className="flex flex-col gap-2">
         {/* The sentence below says the numbers; this bar only shows them. */}
-        <div aria-hidden className="flex items-center gap-3">
-          <div className="h-2 flex-1 border border-gray-300 bg-white">
-            <div className="h-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
-          </div>
-          <span className="font-mono text-xs text-gray-600">
-            {reach} / {reachable}
-          </span>
+        <div aria-hidden className="h-2 border border-gray-300 bg-white">
+          <div className="h-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
         </div>
         <p className="text-sm">
-          {subject.name} reaches <strong className="font-mono font-semibold">{reach} of the {reachable}</strong>{" "}
+          {subject.name} reaches <strong className="font-semibold"><span className="font-mono">{reach}</span> of the <span className="font-mono">{reachable}</span></strong>{" "}
           documents you can see.{" "}
           <Link className="underline" to={`/vault?as=${subject.id}`}>
             See the vault as {subject.name}
@@ -387,10 +382,10 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-900 text-left align-bottom text-gray-500">
-              <th className="index px-3 pb-2 pt-4 md:pl-5">Account</th>
+              <th className="index sticky left-0 z-10 bg-white px-3 pb-2 pt-4 md:pl-5">Account</th>
               <th className="index px-3 pb-2 pt-4">Reaches</th>
               {matrix.owners.map((owner) => (
-                <th key={owner.id} className="index px-3 pb-2 pt-4 text-center">
+                <th key={owner.id} className="index min-w-24 px-3 pb-2 pt-4 text-center">
                   {owner.name}
                 </th>
               ))}
@@ -404,14 +399,14 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
           <tbody>
             {matrix.rows.map((row) => (
               <tr key={row.user.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50">
-                <th className="px-3 py-3 text-left font-normal md:pl-5">
+                <th className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-3 text-left font-normal md:pl-5">
                   <Link className="whitespace-nowrap font-semibold underline decoration-gray-300" to={`/access?as=${row.user.id}`}>
                     {row.user.name}
                   </Link>
                   <span className="block text-xs text-gray-500">{roleLabel(row.user.role)}</span>
                 </th>
-                <td className="whitespace-nowrap px-3 py-3 font-mono">
-                  {row.total} of {matrix.reachable}
+                <td className="whitespace-nowrap px-3 py-3">
+                  <span className="font-mono">{row.total}</span> of <span className="font-mono">{matrix.reachable}</span>
                 </td>
                 {matrix.owners.map((owner) => (
                   <td key={owner.id} className={"px-3 py-3 text-center font-mono " + (row.byOwner[owner.id] ? "" : "text-gray-500")}>

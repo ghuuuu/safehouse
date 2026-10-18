@@ -246,7 +246,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
                   {device.current ? <span className="text-gray-500"> · this one</span> : null}
                   <span className="block text-xs text-gray-500">
                     {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
-                    last seen <span className="font-mono"><When at={device.lastSeenAt} /></span>
+                    last seen <When at={device.lastSeenAt} />
                   </span>
                 </span>
                 {device.current ? null : (
@@ -271,7 +271,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
                       <span className="font-medium">{device.device}</span>
                       <span className="block text-xs text-gray-500">
                         {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
-                        last seen <span className="font-mono"><When at={device.lastSeenAt} /></span>
+                        last seen <When at={device.lastSeenAt} />
                       </span>
                     </span>
                     <Form method="post">
@@ -318,7 +318,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
               <li key={n.id} className="flex flex-col gap-1 border-b border-gray-200 py-3 last:border-b-0">
                 <span>{sentence(n.text.replace(/^Safehouse: /, ""))}</span>
                 <span className="text-xs text-gray-500">
-                  <span className="font-mono"><When at={n.createdAt} /></span> ·{" "}
+                  <When at={n.createdAt} /> ·{" "}
                   {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700 dark:text-red-400">not sent: {n.error}</span> : "in the app only"}
                 </span>
               </li>

@@ -92,7 +92,7 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
       <Page narrow>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
           It is encrypted before it reaches the disk. Up to{" "}
-          <span className="font-mono">{Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB</span>, PDF or an image.
+          <span className="font-mono">{Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}</span> MB, PDF or an image.
         </p>
 
         {canFile ? (
@@ -142,14 +142,14 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
                 name="category"
                 required
                 defaultValue=""
-                className="field font-normal capitalize"
+                className="field font-normal"
               >
                 <option value="" disabled>
                   Choose a kind
                 </option>
                 {CATEGORIES.map((category) => (
                   <option key={category} value={category}>
-                    {category}
+                    {category[0].toUpperCase() + category.slice(1)}
                   </option>
                 ))}
               </select>

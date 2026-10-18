@@ -102,7 +102,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   // and so no tag (D17), and stays in the list.
   const tags = new Map<string, MapTag[]>();
   for (const item of expiring.soon) {
-    if (!item.ownerId || item.ownerKind !== "person") continue;
+    if (!item.ownerId) continue;
     const tag: MapTag = {
       tone: item.daysLeft < 0 ? "warn" : "soon",
       text: item.daysLeft < 0 ? `${item.title} expired` : item.daysLeft === 0 ? `${item.title} · today` : `${item.title} · ${item.daysLeft} days`,
@@ -120,7 +120,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
         seed={title}
         serial={
           <>
-            <span suppressHydrationWarning>{todayStamp()}</span> · {total} {total === 1 ? "paper" : "papers"} on file
+            <span suppressHydrationWarning>{todayStamp()}</span> · {total} {mode === "businesses" ? "business" : "personal and household"} {total === 1 ? "paper" : "papers"}
           </>
         }
       >
@@ -142,7 +142,7 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
         <p className="-mb-2 text-base text-gray-700">
           {needs === 0
             ? "Nothing needs you right now."
-            : `${needs} ${needs === 1 ? "paper needs" : "papers need"} you.${mode === "individuals" && tags.size > 0 ? " Each is stamped on the person it belongs to." : ""}`}
+            : `${needs} ${needs === 1 ? "paper needs" : "papers need"} you.${expiring.soon.every((item) => item.ownerId) ? ` ${needs === 1 ? "It is" : "Each is"} stamped on whoever it belongs to.` : ""}`}
         </p>
 
         {user.role === "emergency" ? (
@@ -174,9 +174,9 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           </div>
         ) : null}
 
-        {safekeeping ? <Safekeeping {...safekeeping} /> : null}
+        {safekeeping ? <div className="order-2 md:order-none"><Safekeeping {...safekeeping} /></div> : null}
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="order-3 flex flex-wrap items-center gap-x-5 gap-y-3 md:order-none">
           <Segmented
             label="Mode"
             options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
@@ -197,14 +197,14 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
           ) : null}
         </div>
 
-        <section aria-labelledby="family" className="sheet flex min-w-0 flex-col gap-4 p-4 md:p-6">
+        <section aria-labelledby="family" className="sheet order-4 flex min-w-0 flex-col gap-4 p-4 md:order-none md:p-6">
             <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 pb-3">
               <h2 id="family" className="text-lg font-semibold">
                 {mode === "individuals" ? "The family" : "Businesses and the household"}
               </h2>
               {mode === "individuals" ? (
-                <span className="font-mono text-xs text-gray-500">
-                  {tree.people.length} {tree.people.length === 1 ? "PERSON" : "PEOPLE"}
+                <span className="text-xs text-gray-500">
+                  <span className="font-mono">{tree.people.length}</span> {tree.people.length === 1 ? "person" : "people"}
                 </span>
               ) : null}
             </div>
@@ -215,15 +215,15 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
                 <p className="text-sm text-gray-500">Nobody in the family tree that you can see.</p>
               )
             ) : null}
-            <Owners owners={owners} empty={mode === "businesses" ? "No businesses that you can see." : null} vaultFor={vaultFor} />
+            <Owners owners={owners} empty={mode === "businesses" ? "No businesses that you can see." : null} vaultFor={vaultFor} tags={tags} />
           </section>
 
-          <div className="grid items-start gap-8 lg:grid-cols-2">
+          <div className="order-1 grid items-start gap-8 md:order-none lg:grid-cols-2">
             <section aria-labelledby="running-out" className="sheet flex flex-col">
               <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
                 <h2 id="running-out" className="text-lg font-semibold">Running out</h2>
-                <span className="font-mono text-xs text-gray-500">
-                  {expiring.leadDays ? `NEXT ${expiring.leadDays} DAYS` : null}
+                <span className="text-xs text-gray-500">
+                  {expiring.leadDays ? <>next <span className="font-mono">{expiring.leadDays}</span> days</> : null}
                 </span>
               </div>
               {expiring.soon.length === 0 ? (
@@ -266,8 +266,8 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             <section aria-labelledby="by-kind" className="sheet flex flex-col">
               <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
                 <h2 id="by-kind" className="text-lg font-semibold">By kind</h2>
-                <span className="font-mono text-xs text-gray-500">
-                  {total} {mode === "businesses" ? "BUSINESS" : "PERSONAL AND HOUSEHOLD"}
+                <span className="text-xs text-gray-500">
+                  <span className="font-mono">{total}</span> {mode === "businesses" ? "business" : "personal and household"}
                 </span>
               </div>
               <ul className="grid grid-cols-2 text-sm">
@@ -312,10 +312,12 @@ function Owners({
   owners,
   empty,
   vaultFor,
+  tags,
 }: {
   owners: OwnerLink[];
   empty: string | null;
   vaultFor: (ownerId: string) => string;
+  tags: Map<string, MapTag[]>;
 }) {
   if (owners.length === 0) {
     return empty ? <p className="text-sm text-gray-500">{empty}</p> : null;
@@ -329,9 +331,18 @@ function Owners({
             to={vaultFor(owner.ownerId)}
           >
             <span className="font-semibold">{owner.name}</span>
-            <span className="font-mono text-xs text-gray-500">
-              {owner.papers} {owner.papers === 1 ? "PAPER" : "PAPERS"}
+            <span className="text-xs text-gray-500">
+              <span className="font-mono">{owner.papers}</span> {owner.papers === 1 ? "paper" : "papers"}
             </span>
+            {(tags.get(owner.ownerId) ?? []).length > 0 ? (
+              <span className="mt-2 flex flex-wrap gap-1.5">
+                {tags.get(owner.ownerId)!.map((tag) => (
+                  <span key={tag.text} className={`stamp ${tag.tone === "warn" ? "stamp-warn" : "stamp-soon"}`}>
+                    {tag.text}
+                  </span>
+                ))}
+              </span>
+            ) : null}
           </Link>
         </li>
       ))}

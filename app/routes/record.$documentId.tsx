@@ -232,7 +232,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
               ) : null}
 
               <dl className="text-sm">
-                {Object.entries(LABELS).map(([field, label]) => {
+                {Object.entries(LABELS).filter(([field]) => values[field]).map(([field, label]) => {
                   const value = values[field];
                   return (
                     <div key={field} className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 md:px-5">
@@ -255,12 +255,23 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                     </div>
                   );
                 })}
-                <div className="flex flex-col gap-1 px-4 py-3 md:px-5">
+                <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 md:px-5">
                   <dt className="index text-gray-500">Number</dt>
                   <dd>
                     <MaskedNumber hasIdentifier={view.document.hasIdentifier} />
                   </dd>
                 </div>
+                {Object.entries(LABELS).some(([field]) => !values[field]) ? (
+                  <div className="flex flex-col gap-1 px-4 py-3 md:px-5">
+                    <dt className="index text-gray-500">Not recorded</dt>
+                    <dd className="text-gray-600">
+                      {Object.entries(LABELS)
+                        .filter(([field]) => !values[field])
+                        .map(([, label]) => label.toLowerCase())
+                        .join(", ")}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </>
           )}

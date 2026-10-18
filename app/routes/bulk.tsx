@@ -135,7 +135,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
       <Page>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
           Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
-          as its own record, and read for dates and numbers on the way in. Up to <span className="font-mono">{MB} MB</span> each, PDF or an image.
+          as its own record, and read for dates and numbers on the way in. Up to <span className="font-mono">{MB}</span> MB each, PDF or an image.
         </p>
 
         <label className="sheet flex flex-col gap-2 p-5 text-sm font-medium md:p-6">

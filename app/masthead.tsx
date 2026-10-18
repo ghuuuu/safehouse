@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import { guilloche, PLATE_HEIGHT, PLATE_WIDTH } from "./guilloche";
 
 /**
- * The band across the top of every signed-in page: a gold serial line, the
- * page's name, and its guilloché plate behind them. Whatever the page puts in
- * `children` (a search box, a button) sits at the right, over the rosette.
+ * The band across the top of every signed-in page: the page's name, a gold
+ * serial line printed under it, and its guilloché plate behind them.
+ * Whatever the page puts in `children` (a search box, a button) sits at the
+ * right, over the rosette.
  *
  * The plate is seeded by `seed`, the page's own name unless it says
  * otherwise, so each page prints its own, the same every time.
@@ -45,8 +46,8 @@ export function Masthead({
       <div aria-hidden className="absolute inset-y-0 left-0 -z-10 w-full bg-linear-to-r from-side-deep via-side-deep/85 to-transparent md:w-2/3" />
       <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-8 gap-y-4 px-4 pb-6 pt-7 md:px-8 md:pb-8 md:pt-10">
         <div className="min-w-0">
-          {serial ? <p className="font-mono text-xs font-medium tracking-[0.16em] text-serial uppercase">{serial}</p> : null}
-          <h1 className="mt-2 text-[1.75rem] font-bold leading-tight tracking-[-0.02em] text-balance md:text-[2.25rem]">{title}</h1>
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-[-0.02em] text-balance md:text-[2.25rem]">{title}</h1>
+          {serial ? <p className="mt-2 font-mono text-xs font-medium tracking-[0.12em] text-serial uppercase">{serial}</p> : null}
         </div>
         {children ? <div className="w-full md:w-auto">{children}</div> : null}
       </div>
