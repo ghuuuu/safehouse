@@ -11,6 +11,7 @@ import {
 } from "../access.server";
 import { CATEGORIES } from "../documents";
 import { revokeWindows } from "../emergency.server";
+import { Masthead, Page } from "../masthead";
 import { roleLabel } from "../roles";
 import { Segmented } from "../segmented";
 import { withVault } from "../session.server";
@@ -105,9 +106,21 @@ export default function Access({ loaderData }: Route.ComponentProps) {
   const { roster, actorId, matrix, panel } = loaderData;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Access</h1>
+    <>
+      <Masthead
+        title="Access"
+        serial={
+          panel ? (
+            <>Viewing {panel.subject.name}</>
+          ) : (
+            <>
+              {roster.length} {roster.length === 1 ? "account" : "accounts"}
+            </>
+          )
+        }
+      />
+
+      <Page>
         <Segmented
           label="View"
           options={[
@@ -115,31 +128,36 @@ export default function Access({ loaderData }: Route.ComponentProps) {
             { to: "/access?view=matrix", label: "Everyone at once", current: !!matrix },
           ]}
         />
-      </div>
 
       {matrix ? (
         <MatrixView matrix={matrix} />
       ) : (
         // minmax(0, 1fr): a long record name in "Add one" must not widen the
         // column past the screen.
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[14rem_minmax(0,1fr)]">
-          <nav aria-label="Accounts">
-            <ul className="flex flex-col text-sm md:gap-1">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
+          <nav aria-label="Accounts" className="sheet">
+            <p className="index border-b border-gray-900 px-4 pb-2 pt-4 text-gray-500">Accounts</p>
+            <ul className="flex flex-col text-sm">
               {roster.map((entry) => (
-                <li key={entry.id} className="relative border-b border-gray-200 py-3 last:border-b-0 md:border-b-0 md:py-0">
+                <li
+                  key={entry.id}
+                  className={
+                    "relative border-b border-gray-200 px-4 py-3 last:border-b-0 " +
+                    (entry.id === panel?.subject.id ? "border-l-2 border-l-accent bg-gray-50" : "hover:bg-gray-50")
+                  }
+                >
                   {entry.id === actorId ? (
                     <span className="text-gray-500">{entry.name} (you)</span>
                   ) : (
                     <Link
-                      className={"row-link " + (entry.id === panel?.subject.id ? "font-medium" : "underline decoration-gray-300")}
+                      className={"row-link " + (entry.id === panel?.subject.id ? "font-semibold" : "font-medium")}
                       to={`/access?as=${entry.id}`}
                     >
                       {entry.name}
                     </Link>
                   )}
-                  <span className="text-gray-500">
-                    {" "}
-                    · {roleLabel(entry.role)}
+                  <span className="block text-xs text-gray-500">
+                    {roleLabel(entry.role)}
                     {entry.disabled ? ", disabled" : ""}
                   </span>
                 </li>
@@ -153,14 +171,15 @@ export default function Access({ loaderData }: Route.ComponentProps) {
               <PanelView key={panel.subject.id} panel={panel} />
             </div>
           ) : (
-            <p className="text-sm text-gray-500 max-w-prose">
+            <p className="sheet max-w-prose p-5 text-sm text-gray-500">
               Pick an account to see what it reaches and change what it is granted. Editing happens
               here, one person at a time; the grid of everyone is for checking, and is read-only.
             </p>
           )}
         </div>
       )}
-    </main>
+      </Page>
+    </>
   );
 }
 
@@ -168,22 +187,27 @@ function PanelView({ panel }: { panel: Panel }) {
   const { subject, reach, reachable, reaches, grantable } = panel;
 
   return (
-    <section className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-lg font-medium">{subject.name}</h2>
+    <section className="sheet flex flex-col gap-6 p-4 md:p-6">
+      <div className="border-b border-gray-900 pb-2">
+        <h2 className="text-lg font-semibold">{subject.name}</h2>
         <p className="text-sm text-gray-500 max-w-prose">
           {roleLabel(subject.role)}
           {subject.disabled ? ", disabled: reaches nothing until re-enabled" : ""}
         </p>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         {/* The sentence below says the numbers; this bar only shows them. */}
-        <div aria-hidden className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
+        <div aria-hidden className="flex items-center gap-3">
+          <div className="h-2 flex-1 border border-gray-300 bg-white">
+            <div className="h-full bg-accent" style={{ width: `${(reach / Math.max(reachable, 1)) * 100}%` }} />
+          </div>
+          <span className="font-mono text-xs text-gray-600">
+            {reach} / {reachable}
+          </span>
         </div>
         <p className="text-sm">
-          {subject.name} reaches <strong className="font-medium">{reach} of the {reachable}</strong>{" "}
+          {subject.name} reaches <strong className="font-mono font-semibold">{reach} of the {reachable}</strong>{" "}
           documents you can see.{" "}
           <Link className="underline" to={`/vault?as=${subject.id}`}>
             See the vault as {subject.name}
@@ -192,20 +216,20 @@ function PanelView({ panel }: { panel: Panel }) {
       </div>
 
       <div>
-        <h3 className="text-sm font-medium">Owners they can see</h3>
+        <h3 className="index text-gray-500">Owners they can see</h3>
         {reaches.length === 0 ? (
-          <p className="mt-1 text-sm text-gray-500 max-w-prose">Nobody&apos;s.</p>
+          <p className="mt-2 text-sm text-gray-500 max-w-prose">Nobody&apos;s.</p>
         ) : (
-          <ul className="mt-1 flex flex-wrap gap-2 text-sm">
+          <ul className="mt-2 flex flex-wrap gap-2 text-sm">
             {reaches.map((owner) => (
-              <li key={owner.id} className="rounded border border-gray-200 px-2 py-0.5">
+              <li key={owner.id} className="rounded-sm border border-gray-300 bg-white px-2.5 py-1">
                 {owner.name}
                 {owner.granted ? <span className="text-gray-500"> · granted</span> : null}
               </li>
             ))}
           </ul>
         )}
-        <p className="mt-1 text-xs text-gray-500 max-w-prose">
+        <p className="mt-2 text-xs text-gray-500 max-w-prose">
           {subject.role === "individual"
             ? "Family comes from the tree and the household's own papers come with membership; neither is edited here. Private records stop at their owner."
             : subject.role === "third_party"
@@ -247,11 +271,11 @@ function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNod
   const mine = result && result.kind === "grants" ? result : null;
 
   return (
-    <Form method="post" className="flex flex-col gap-4">
+    <Form method="post" className="flex flex-col gap-6">
       <input type="hidden" name="userId" value={panel.subject.id} />
       {children}
-      <div className="flex items-center gap-3">
-        <button className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent" type="submit" disabled={busy}>
+      <div className="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
+        <button className="btn btn-primary" type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save access"}
         </button>
         {mine && "error" in mine && mine.error ? <span className="text-sm text-red-700 dark:text-red-400">{mine.error}</span> : null}
@@ -268,8 +292,8 @@ function GrantForm({ panel, children }: { panel: Panel; children: React.ReactNod
 /** One list in the form. The hidden `kind` tells the action it was shown. */
 function GrantList({ kind, title, children }: { kind: GrantKind; title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4">
-      <legend className="px-1 text-sm font-medium">{title}</legend>
+    <fieldset className="flex flex-col gap-2">
+      <legend className="index mb-2 w-full border-b border-gray-200 pb-1.5 text-gray-500">{title}</legend>
       <input type="hidden" name="kind" value={kind} />
       {children}
     </fieldset>
@@ -331,9 +355,9 @@ function RecordGrants({ panel }: { panel: Panel }) {
           ))}
         </ul>
       )}
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-gray-500">Add one</span>
-        <select name="record" defaultValue="" className="w-full min-w-0 rounded-lg border border-gray-300 p-2">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        Add one
+        <select name="record" defaultValue="" className="field min-w-0 font-normal">
           <option value="">—</option>
           {panel.options.records
             .filter((record) => !granted.has(record.id))
@@ -359,19 +383,19 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
         Documents each account reaches, by whose they are and by kind, read as that account. Read-only:
         click a row to change it.
       </p>
-      <div className="overflow-x-auto">
+      <div className="sheet overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left align-bottom">
-              <th className="p-2 font-medium">Account</th>
-              <th className="p-2 font-medium">Reaches</th>
+            <tr className="border-b border-gray-900 text-left align-bottom text-gray-500">
+              <th className="index px-3 pb-2 pt-4 md:pl-5">Account</th>
+              <th className="index px-3 pb-2 pt-4">Reaches</th>
               {matrix.owners.map((owner) => (
-                <th key={owner.id} className="p-2 font-normal text-gray-500">
+                <th key={owner.id} className="index px-3 pb-2 pt-4 text-center">
                   {owner.name}
                 </th>
               ))}
               {CATEGORIES.map((category) => (
-                <th key={category} className="p-2 font-normal capitalize text-gray-500">
+                <th key={category} className="index px-3 pb-2 pt-4 text-center last:md:pr-5">
                   {category}
                 </th>
               ))}
@@ -379,23 +403,23 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
           </thead>
           <tbody>
             {matrix.rows.map((row) => (
-              <tr key={row.user.id} className="border-b border-gray-100">
-                <th className="p-2 text-left font-normal">
-                  <Link className="whitespace-nowrap underline decoration-gray-300" to={`/access?as=${row.user.id}`}>
+              <tr key={row.user.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50">
+                <th className="px-3 py-3 text-left font-normal md:pl-5">
+                  <Link className="whitespace-nowrap font-semibold underline decoration-gray-300" to={`/access?as=${row.user.id}`}>
                     {row.user.name}
                   </Link>
                   <span className="block text-xs text-gray-500">{roleLabel(row.user.role)}</span>
                 </th>
-                <td className="whitespace-nowrap p-2">
+                <td className="whitespace-nowrap px-3 py-3 font-mono">
                   {row.total} of {matrix.reachable}
                 </td>
                 {matrix.owners.map((owner) => (
-                  <td key={owner.id} className="p-2 text-center">
+                  <td key={owner.id} className={"px-3 py-3 text-center font-mono " + (row.byOwner[owner.id] ? "" : "text-gray-500")}>
                     <Link tabIndex={-1} to={`/access?as=${row.user.id}`}>{cell(row.byOwner[owner.id])}</Link>
                   </td>
                 ))}
                 {CATEGORIES.map((category) => (
-                  <td key={category} className="p-2 text-center">
+                  <td key={category} className={"px-3 py-3 text-center font-mono last:md:pr-5 " + (row.byCategory[category] ? "" : "text-gray-500")}>
                     <Link tabIndex={-1} to={`/access?as=${row.user.id}`}>{cell(row.byCategory[category])}</Link>
                   </td>
                 ))}
@@ -415,14 +439,14 @@ function WindowNotice({ panel }: { panel: Panel }) {
   const result = useActionData<typeof action>();
   const window = panel.window!;
   return (
-    <Form method="post" className="flex flex-col gap-2 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+    <Form method="post" className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
       <p>
         Emergency window open until <When at={window.expiresAt} />.
         {window.reason ? <> They said: &ldquo;{window.reason}&rdquo;.</> : null}
       </p>
       <input type="hidden" name="intent" value="revoke-window" />
       <input type="hidden" name="userId" value={panel.subject.id} />
-      <button type="submit" className="self-start rounded-full bg-red-700 px-5 py-2 font-medium text-red-50">Close it now</button>
+      <button type="submit" className="btn btn-danger self-start">Close it now</button>
       {result && result.kind === "window" && "error" in result ? <p>{result.error}</p> : null}
     </Form>
   );

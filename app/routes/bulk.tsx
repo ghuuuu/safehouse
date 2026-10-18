@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/bulk";
 import { ACCEPTED_TYPES, CATEGORIES, MAX_UPLOAD_BYTES, untitled, type Category } from "../documents";
+import { Masthead, Page } from "../masthead";
 import { withVault } from "../session.server";
 
 export function meta() {
@@ -112,188 +113,197 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
 
   if (!canFile) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
-        <h1 className="text-2xl font-bold tracking-tight">File many</h1>
-        <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
-          Your account can read the vault but not add to it.
-        </p>
-      </main>
+      <>
+        <Masthead title="File many" />
+        <Page narrow>
+          <p className="sheet p-5 text-sm text-gray-500">
+            Your account can read the vault but not add to it.
+          </p>
+        </Page>
+      </>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">File many</h1>
-          <p className="mt-1 text-sm text-gray-500 max-w-prose">
-            Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
-            as its own record, and read for dates and numbers on the way in. Up to {MB} MB each, PDF or an image.
-          </p>
-        </div>
+    <>
+      <Masthead title="File many">
         <nav className="flex gap-4 text-sm">
-          <Link className="py-2 underline" to="/upload">File one</Link>
+          <Link className="btn btn-serial btn-sm" to="/upload">File one</Link>
         </nav>
-      </div>
+      </Masthead>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Files
-        <input
-          type="file"
-          multiple
-          disabled={running}
-          accept={ACCEPTED_TYPES.join(",")}
-          onChange={(event) => {
-            add(event.target.files);
-            event.target.value = "";
-          }}
-          className="rounded-lg border border-gray-300 p-2"
-        />
-      </label>
+      <Page>
+        <p className="-mb-2 max-w-prose text-base text-gray-700">
+          Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
+          as its own record, and read for dates and numbers on the way in. Up to <span className="font-mono">{MB} MB</span> each, PDF or an image.
+        </p>
 
-      {rows.length > 0 ? (
-        <>
-          <fieldset disabled={running} className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 p-4 text-sm">
-            <legend className="px-1 text-gray-500">Apply to every file not yet filed</legend>
-            <label className="flex flex-col gap-1">
-              Whose
-              <select value={allOwner} onChange={(e) => setAllOwner(e.target.value)} className="rounded-lg border border-gray-300 p-1.5">
-                <option value="">—</option>
-                {owners.map((o) => (
-                  <option key={o.id} value={o.id}>{o.displayName}{o.kind === "person" ? "" : ` (${o.kind})`}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              Kind
-              <select value={allCategory} onChange={(e) => setAllCategory(e.target.value as Category)} className="rounded-lg border border-gray-300 p-1.5">
-                <option value="">—</option>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3 py-1.5"
-              onClick={() =>
-                setRows((current) =>
-                  current.map((row) =>
-                    row.status === "filed"
-                      ? row
-                      : { ...row, ownerId: allOwner || row.ownerId, category: (allCategory || row.category) as Category },
-                  ),
-                )
-              }
-            >
-              Apply
-            </button>
-          </fieldset>
+        <label className="sheet flex flex-col gap-2 p-5 text-sm font-medium md:p-6">
+          Files
+          <input
+            type="file"
+            multiple
+            disabled={running}
+            accept={ACCEPTED_TYPES.join(",")}
+            onChange={(event) => {
+              add(event.target.files);
+              event.target.value = "";
+            }}
+            className="font-normal"
+          />
+        </label>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
-                  <th className="p-2 font-normal">File (not stored)</th>
-                  <th className="p-2 font-normal">Whose</th>
-                  <th className="p-2 font-normal">Kind</th>
-                  <th className="p-2 font-normal">Called</th>
-                  <th className="p-2 font-normal">Outcome</th>
-                  <th className="p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const locked = running || row.status === "filed" || row.status === "filing";
-                  return (
-                    <tr key={row.key} className="border-b border-gray-100 align-top">
-                      <td className="max-w-48 truncate p-2 text-gray-500" title={row.file.name}>
-                        {row.file.name}
-                        <span className="block text-xs">{Math.max(1, Math.round(row.file.size / 1024))} KB</span>
-                      </td>
-                      <td className="p-2">
-                        <select
-                          aria-label={`Whose is ${row.file.name}`}
-                          value={row.ownerId}
-                          disabled={locked}
-                          onChange={(e) => update(row.key, { ownerId: e.target.value })}
-                          className="rounded-lg border border-gray-300 p-1.5"
-                        >
-                          <option value="">—</option>
-                          {owners.map((o) => <option key={o.id} value={o.id}>{o.displayName}</option>)}
-                        </select>
-                      </td>
-                      <td className="p-2">
-                        <select
-                          aria-label={`What kind is ${row.file.name}`}
-                          value={row.category}
-                          disabled={locked}
-                          onChange={(e) => update(row.key, { category: e.target.value as Category })}
-                          className="rounded-lg border border-gray-300 p-1.5"
-                        >
-                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </td>
-                      <td className="p-2">
-                        <input
-                          aria-label={`What ${row.file.name} is called`}
-                          value={row.title}
-                          maxLength={200}
-                          disabled={locked}
-                          placeholder={untitled(row.category)}
-                          onChange={(e) => update(row.key, { title: e.target.value })}
-                          className="w-48 rounded-lg border border-gray-300 p-1.5"
-                        />
-                      </td>
-                      <td className="p-2" aria-live="polite">
-                        {row.status === "waiting" ? <span className="text-gray-500">not filed yet</span> : null}
-                        {row.status === "filing" ? <span>filing and reading…</span> : null}
-                        {row.status === "filed" ? (
-                          <span>
-                            <Link className="underline" to={`/record/${row.documentId}`}>filed</Link>
-                            <span className="block text-xs text-gray-500">
-                              {row.proposed ? `${row.proposed} field(s) proposed, unconfirmed` : "nothing read"}
-                            </span>
+        {rows.length > 0 ? (
+          <>
+            <fieldset disabled={running} className="sheet flex flex-wrap items-end gap-3 p-4 text-sm md:px-5">
+              <legend className="index px-1 text-gray-500">Apply to every file not yet filed</legend>
+              <label className="flex flex-col gap-1.5 font-medium">
+                Whose
+                <select value={allOwner} onChange={(e) => setAllOwner(e.target.value)} className="field w-auto font-normal">
+                  <option value="">—</option>
+                  {owners.map((o) => (
+                    <option key={o.id} value={o.id}>{o.displayName}{o.kind === "person" ? "" : ` (${o.kind})`}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5 font-medium">
+                Kind
+                <select value={allCategory} onChange={(e) => setAllCategory(e.target.value as Category)} className="field w-auto font-normal capitalize">
+                  <option value="">—</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() =>
+                  setRows((current) =>
+                    current.map((row) =>
+                      row.status === "filed"
+                        ? row
+                        : { ...row, ownerId: allOwner || row.ownerId, category: (allCategory || row.category) as Category },
+                    ),
+                  )
+                }
+              >
+                Apply
+              </button>
+            </fieldset>
+
+            <div className="sheet overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-900 text-left text-gray-500">
+                    <th className="index px-3 pb-2 pt-4 md:pl-5">File (not stored)</th>
+                    <th className="index px-3 pb-2 pt-4">Whose</th>
+                    <th className="index px-3 pb-2 pt-4">Kind</th>
+                    <th className="index px-3 pb-2 pt-4">Called</th>
+                    <th className="index px-3 pb-2 pt-4">Outcome</th>
+                    <th className="px-3 pb-2 pt-4 md:pr-5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const locked = running || row.status === "filed" || row.status === "filing";
+                    return (
+                      <tr key={row.key} className="border-b border-gray-200 align-top last:border-b-0">
+                        <td className="max-w-48 truncate px-3 py-3 font-semibold md:pl-5" title={row.file.name}>
+                          {row.file.name}
+                          <span className="block font-mono text-xs font-normal text-gray-500">
+                            {Math.max(1, Math.round(row.file.size / 1024))} KB
                           </span>
-                        ) : null}
-                        {row.status === "refused" ? <span className="text-red-700 dark:text-red-400">{row.message}</span> : null}
-                      </td>
-                      <td className="p-2">
-                        {locked ? null : (
-                          <button
-                            type="button"
-                            className="text-gray-500 underline"
-                            onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))}
+                        </td>
+                        <td className="px-3 py-3">
+                          <select
+                            aria-label={`Whose is ${row.file.name}`}
+                            value={row.ownerId}
+                            disabled={locked}
+                            onChange={(e) => update(row.key, { ownerId: e.target.value })}
+                            className="field w-auto"
                           >
-                            remove
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            <option value="">—</option>
+                            {owners.map((o) => <option key={o.id} value={o.id}>{o.displayName}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-3 py-3">
+                          <select
+                            aria-label={`What kind is ${row.file.name}`}
+                            value={row.category}
+                            disabled={locked}
+                            onChange={(e) => update(row.key, { category: e.target.value as Category })}
+                            className="field w-auto capitalize"
+                          >
+                            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            aria-label={`What ${row.file.name} is called`}
+                            value={row.title}
+                            maxLength={200}
+                            disabled={locked}
+                            placeholder={untitled(row.category)}
+                            onChange={(e) => update(row.key, { title: e.target.value })}
+                            className="field w-48"
+                          />
+                        </td>
+                        <td className="px-3 py-3" aria-live="polite">
+                          {row.status === "waiting" ? <span className="text-gray-500">not filed yet</span> : null}
+                          {row.status === "filing" ? <span>filing and reading…</span> : null}
+                          {row.status === "filed" ? (
+                            <span className="flex flex-col items-start gap-1.5">
+                              <Link className="stamp stamp-quiet hover:text-gray-900" to={`/record/${row.documentId}`}>filed</Link>
+                              <span className="block text-xs text-gray-500">
+                                {row.proposed ? `${row.proposed} field(s) proposed, unconfirmed` : "nothing read"}
+                              </span>
+                            </span>
+                          ) : null}
+                          {row.status === "refused" ? (
+                            <span className="flex max-w-64 flex-col items-start gap-1.5">
+                              <span className="stamp stamp-warn">Not filed</span>
+                              <span className="text-xs text-red-700 dark:text-red-400">{row.message}</span>
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-3 md:pr-5">
+                          {locked ? null : (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))}
+                            >
+                              remove
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              type="button"
-              disabled={running || waiting.length === 0 || unassigned > 0}
-              onClick={fileAll}
-              className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent disabled:opacity-60"
-            >
-              {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
-            </button>
-            <p className="text-sm text-gray-500 max-w-prose" aria-live="polite">
-              {unassigned > 0 ? `${unassigned} still need an owner. ` : ""}
-              {filed + refused > 0 ? `Filed ${filed}${refused ? `, ${refused} not filed` : ""}.` : ""}
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                disabled={running || waiting.length === 0 || unassigned > 0}
+                onClick={fileAll}
+                className="btn btn-primary"
+              >
+                {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
+              </button>
+              <p className="max-w-prose text-sm text-gray-500" aria-live="polite">
+                {unassigned > 0 ? `${unassigned} still need an owner. ` : ""}
+                {filed + refused > 0 ? `Filed ${filed}${refused ? `, ${refused} not filed` : ""}.` : ""}
+              </p>
+            </div>
+            <p className="-mt-4 max-w-prose text-xs text-gray-500">
+              Dates and numbers the reader finds are proposals: nothing acts on them until somebody confirms them
+              on the document&apos;s page.
             </p>
-          </div>
-          <p className="text-xs text-gray-500 max-w-prose">
-            Dates and numbers the reader finds are proposals: nothing acts on them until somebody confirms them
-            on the document&apos;s page.
-          </p>
-        </>
-      ) : null}
-    </main>
+          </>
+        ) : null}
+      </Page>
+    </>
   );
 }
