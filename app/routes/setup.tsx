@@ -2,7 +2,7 @@ import { Form, redirect } from "react-router";
 
 import type { Route } from "./+types/setup";
 import { auth, noUsersYet } from "../auth.server";
-import { Logo } from "../logo";
+import { SignedOut } from "../signed-out";
 
 export function meta() {
   return [{ title: "First run — Safehouse" }];
@@ -51,32 +51,27 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Setup({ actionData }: Route.ComponentProps) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
-      <Logo size={48} />
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Safehouse</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
-          This account will be the administrator. It can see every record in the
-          household, including the private ones, and it is the only account that
-          can create the others.
-        </p>
-      </div>
+    <SignedOut title="First run">
+      <p className="-mt-4 text-sm text-gray-500 max-w-prose">
+        This account will be the administrator. It can see every record in the
+        household, including the private ones, and it is the only account that
+        can create the others.
+      </p>
 
       <Form method="post" className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Name</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Name
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             name="name"
             required
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Email</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Email
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             type="email"
             name="email"
             autoComplete="username"
@@ -84,17 +79,17 @@ export default function Setup({ actionData }: Route.ComponentProps) {
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Password</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Password
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             type="password"
             name="password"
             autoComplete="new-password"
             minLength={12}
             required
           />
-          <span className="text-xs text-gray-500">
+          <span className="text-xs font-normal text-gray-500">
             At least 12 characters. Nothing here can email you a reset link, so
             put it somewhere you will find it again.
           </span>
@@ -104,14 +99,10 @@ export default function Setup({ actionData }: Route.ComponentProps) {
           <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
         ) : null}
 
-        <button
-          className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
-          type="submit"
-        >
+        <button className="btn btn-primary w-full" type="submit">
           Create the administrator
         </button>
       </Form>
-      </div>
-    </main>
+    </SignedOut>
   );
 }

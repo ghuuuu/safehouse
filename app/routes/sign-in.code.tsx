@@ -3,7 +3,7 @@ import { Form, Link, redirect, useSearchParams } from "react-router";
 import type { Route } from "./+types/sign-in.code";
 import { auth } from "../auth.server";
 import { safeNext } from "../next";
-import { Logo } from "../logo";
+import { SignedOut } from "../signed-out";
 
 export function meta() {
   return [{ title: "Your code — Safehouse" }];
@@ -40,22 +40,17 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
   const next = params.get("next") ?? "/";
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
-      <Logo size={48} />
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Your code</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
-          The six digits your authenticator app shows for Safehouse.
-        </p>
-      </div>
+    <SignedOut title="Your code">
+      <p className="-mt-4 text-sm text-gray-500 max-w-prose">
+        The six digits your authenticator app shows for Safehouse.
+      </p>
 
       <Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Code</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Code
           <input
-            className="rounded-lg border border-gray-300 p-2 tracking-widest"
+            className="field font-mono font-normal tracking-widest"
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -66,18 +61,18 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
         {actionData?.error ? (
           <p role="alert" className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
         ) : null}
-        <button className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent" type="submit">
+        <button className="btn btn-primary w-full" type="submit">
           Sign in
         </button>
       </Form>
 
-      <details className="text-sm">
+      <details className="border-t border-gray-200 pt-4 text-sm">
         <summary className="cursor-pointer text-gray-500">Lost your phone? Use a backup code</summary>
         <Form method="post" className="mt-3 flex flex-col gap-3">
           <input type="hidden" name="next" value={next} />
           <input type="hidden" name="kind" value="backup" />
-          <input className="rounded-lg border border-gray-300 p-2" name="code" aria-label="Backup code" required />
-          <button className="self-start rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2" type="submit">
+          <input className="field font-mono" name="code" aria-label="Backup code" required />
+          <button className="btn btn-secondary self-start" type="submit">
             Use backup code
           </button>
           <p className="text-xs text-gray-500 max-w-prose">Each backup code works once.</p>
@@ -85,7 +80,6 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
       </details>
 
       <Link className="text-sm text-gray-500 underline" to="/sign-in">Start again</Link>
-      </div>
-    </main>
+    </SignedOut>
   );
 }

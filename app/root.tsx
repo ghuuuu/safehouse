@@ -13,6 +13,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { getSignedInUser, withVault } from "./session.server";
 import { readSettings } from "./settings.server";
+import { SignedOut } from "./signed-out";
 
 /**
  * Only what auto-lock needs: how long, and only for somebody signed in.
@@ -108,14 +109,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <SignedOut title={message} wide={Boolean(stack)}>
+      <p className="-mt-4 text-sm text-gray-600">{details}</p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre className="w-full overflow-x-auto border-t border-gray-200 pt-4 font-mono text-xs">
           <code>{stack}</code>
         </pre>
       )}
-    </main>
+    </SignedOut>
   );
 }
