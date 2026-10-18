@@ -25,6 +25,7 @@ call :ensure_node || goto :failed
 call :ensure_env || goto :failed
 call :ensure_dependencies || goto :failed
 call :ensure_docker || goto :failed
+call :check_reader
 
 echo Starting the database...
 docker compose up -d --wait --wait-timeout 120 db || goto :failed
@@ -127,8 +128,23 @@ exit /b 0
 
 rem --- Docker -------------------------------------------------------------
 :ensure_docker
+set "DOCKER_EXE="
+for %%p in ("%ProgramFiles%\Docker\Docker" "%ProgramW6432%\Docker\Docker" "%LOCALAPPDATA%\Docker") do (
+  if not defined DOCKER_EXE if exist "%%~p\Docker Desktop.exe" set "DOCKER_EXE=%%~p\Docker Desktop.exe"
+)
+
+where docker >nul 2>nul
+if errorlevel 1 if defined DOCKER_EXE (
+  rem Installed, but this window's PATH was read before the installer set it.
+  for %%d in ("!DOCKER_EXE!") do set "PATH=%%~dpdresources\bin;!PATH!"
+)
 where docker >nul 2>nul
 if errorlevel 1 (
+  if defined DOCKER_EXE (
+    echo Docker Desktop is installed, but this window cannot find its docker
+    echo command. Close this window, open a new one, and run start.bat again.
+    exit /b 1
+  )
   echo Docker is not installed.
   call :offer_winget "Docker.DockerDesktop" "Docker Desktop" "https://docs.docker.com/desktop/setup/install/windows-install/" || exit /b 1
   echo   Start Docker Desktop, let it finish its first-run setup, then run
@@ -136,28 +152,39 @@ if errorlevel 1 (
   exit /b 1
 )
 
-docker info >nul 2>nul
-if not errorlevel 1 exit /b 0
+call :docker_engine
+if "!ENGINE!"=="linux" exit /b 0
 
-set "DOCKER_EXE=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
-if not exist "!DOCKER_EXE!" set "DOCKER_EXE=%ProgramW6432%\Docker\Docker\Docker Desktop.exe"
-if not exist "!DOCKER_EXE!" set "DOCKER_EXE=%LOCALAPPDATA%\Docker\Docker Desktop.exe"
-if not exist "!DOCKER_EXE!" (
-  echo Docker is installed but not running, and Docker Desktop.exe is not where
-  echo this script looked. Start Docker yourself, then run start.bat again.
-  exit /b 1
+if "!ENGINE!"=="windows" (
+  rem The database image is Linux; in Windows-containers mode the pull fails
+  rem with a manifest error that names neither cause nor cure.
+  echo Docker is running Windows containers. Safehouse needs Linux containers.
+  set "DOCKER_CLI="
+  for %%d in ("!DOCKER_EXE!") do if exist "%%~dpdDockerCli.exe" set "DOCKER_CLI=%%~dpdDockerCli.exe"
+  if not defined DOCKER_CLI (
+    echo   Right-click the Docker icon by the clock, choose "Switch to Linux
+    echo   containers", then run start.bat again.
+    exit /b 1
+  )
+  echo   Switching Docker to Linux containers...
+  "!DOCKER_CLI!" -SwitchLinuxEngine
+) else (
+  if not defined DOCKER_EXE (
+    echo Docker is installed but not running, and Docker Desktop.exe is not where
+    echo this script looked. Start Docker yourself, then run start.bat again.
+    exit /b 1
+  )
+  echo Docker is not running - starting Docker Desktop...
+  start "" "!DOCKER_EXE!"
 )
-
-echo Docker is not running - starting Docker Desktop...
-start "" "!DOCKER_EXE!"
 
 rem A cold start is slow; a minute or two is normal on this machine.
 set /a WAITED=0
 :docker_wait
 ping -n 4 127.0.0.1 >nul
 set /a WAITED+=3
-docker info >nul 2>nul
-if not errorlevel 1 (
+call :docker_engine
+if "!ENGINE!"=="linux" (
   echo.
   echo   Docker came up after !WAITED! seconds.
   echo.
@@ -171,6 +198,41 @@ if !WAITED! geq 180 (
 )
 <nul set /p "=."
 goto :docker_wait
+
+rem Sets ENGINE to linux or windows when the daemon answers, empty when it
+rem does not.
+:docker_engine
+set "ENGINE="
+for /f "delims=" %%o in ('docker info --format "{{.OSType}}" 2^>nul') do set "ENGINE=%%o"
+exit /b 0
+
+
+rem --- The reader -----------------------------------------------------------
+rem Optional in development: without Tesseract, uploads are filed and simply
+rem not read (app/ocr.server.ts). Say so here, because in the app it looks like
+rem a reader that found nothing.
+:check_reader
+where tesseract >nul 2>nul
+if errorlevel 1 if exist "%ProgramFiles%\Tesseract-OCR\tesseract.exe" (
+  set "PATH=%ProgramFiles%\Tesseract-OCR;!PATH!"
+)
+where tesseract >nul 2>nul
+if errorlevel 1 (
+  echo Note: Tesseract is not installed, so uploads are filed but not read and
+  echo no fields are proposed from scans. To turn reading on:
+  echo   winget install --id UB-Mannheim.TesseractOCR --exact
+  echo.
+  exit /b 0
+)
+rem The container reads the passport model from /usr/share; here it is the
+rem repository's own tessdata folder.
+if not defined SAFEHOUSE_TESSDATA_DIR set "SAFEHOUSE_TESSDATA_DIR=%CD%\tessdata"
+if not exist "!SAFEHOUSE_TESSDATA_DIR!\mrz.traineddata" (
+  echo Note: no passport model in tessdata\, so passport and ID strips are not
+  echo read. tessdata\README.md says where it comes from.
+  echo.
+)
+exit /b 0
 
 
 rem --- The encryption key ---------------------------------------------------
