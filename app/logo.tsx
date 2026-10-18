@@ -1,13 +1,15 @@
 /**
- * The mark: a house whose door is a keyhole. Amber on plum by default; the
- * keyhole is cut out in whatever the logo sits on.
+ * The mark: a house whose door is a keyhole, engraved inside a double-ruled
+ * seal. Gold on teal by default; it draws in lines, so it sits on any ground.
  */
-export function Logo({ size = 28, hole = "var(--side)" }: { size?: number; hole?: string }) {
+export function Logo({ size = 30, ink = "var(--serial)" }: { size?: number; ink?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden="true" className="shrink-0">
-      <path d="M3 14 L15 3 L27 14 V27 H3 Z" fill="var(--logo)" stroke="var(--logo)" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="15" cy="16" r="3" fill={hole} />
-      <path d="M13.3 17.5 H16.7 L17.5 24 H12.5 Z" fill={hole} />
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="shrink-0" fill="none" stroke={ink}>
+      <circle cx="16" cy="16" r="15" strokeWidth="1" />
+      <circle cx="16" cy="16" r="12.5" strokeWidth="0.6" />
+      <path d="M8.5 15.5 16 9l7.5 6.5V23h-15z" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="16" cy="16.6" r="1.6" fill={ink} stroke="none" />
+      <path d="M15.2 17.6h1.6l.5 3.4h-2.6z" fill={ink} stroke="none" />
     </svg>
   );
 }
