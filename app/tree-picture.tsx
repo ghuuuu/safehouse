@@ -250,7 +250,7 @@ function Tag({ x, y, tag, more }: { x: number; y: number; tag: MapTag; more: num
     <g aria-hidden="true" transform={`rotate(-2 ${x} ${y - 12})`}>
       <rect x={x - width / 2} y={y - 24} width={width} height={22} rx={1.5} fill="var(--sheet)" stroke={ink} strokeWidth={1.5} />
       <rect x={x - width / 2 + 2.5} y={y - 21.5} width={width - 5} height={17} rx={1} fill="none" stroke={ink} strokeWidth={0.5} />
-      <text x={x} y={y - 13} dominantBaseline="central" textAnchor="middle" fill={ink} className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em]">
+      <text x={x} y={y - 13} dominantBaseline="central" textAnchor="middle" fill={ink} className="text-[11px] font-bold uppercase tracking-[0.1em]">
         {text}
       </text>
     </g>

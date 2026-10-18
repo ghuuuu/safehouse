@@ -280,8 +280,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         <section aria-labelledby="pages" className="sheet flex flex-col">
           <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
             <h2 id="pages" className="text-lg font-semibold">Pages</h2>
-            <span className="font-mono text-xs text-gray-500">
-              {view.pages.length} {view.pages.length === 1 ? "PAGE" : "PAGES"}
+            <span className="text-xs text-gray-500">
+              <span className="font-mono">{view.pages.length}</span> {view.pages.length === 1 ? "page" : "pages"}
             </span>
           </div>
           {view.pages.length === 0 ? (
@@ -297,7 +297,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                 >
                   <span className="font-medium">Page <span className="font-mono">{page.pageNo}</span></span>
                   <span className="flex gap-3 text-xs text-gray-500">
-                    <span className="font-mono">{Math.max(1, Math.round(page.byteSize / 1024))} KB</span>
+                    <span><span className="font-mono">{Math.max(1, Math.round(page.byteSize / 1024))}</span> KB</span>
                     <Link className="row-link underline" to={`/file/${page.id}`} reloadDocument>
                       open
                     </Link>
@@ -328,7 +328,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                     <span className="text-gray-500">{fact.label}</span>{" "}
                     <strong className="font-semibold">{fact.value}</strong>
                   </span>
-                  <span className="font-mono text-xs text-gray-500">page {fact.page}</span>
+                  <span className="text-xs text-gray-500">page <span className="font-mono">{fact.page}</span></span>
                 </li>
               ))}
             </ul>
@@ -351,7 +351,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                   className="rounded-sm border border-gray-300 bg-white px-2.5 py-1.5"
                 >
                   {signpost.heading}
-                  <span className="ml-2 font-mono text-xs text-gray-500">p. {signpost.page}</span>
+                  <span className="ml-2 text-xs text-gray-500">p. <span className="font-mono">{signpost.page}</span></span>
                 </li>
               ))}
             </ul>
@@ -362,7 +362,7 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           <section aria-labelledby="versions" className="sheet flex flex-col">
             <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
               <h2 id="versions" className="text-lg font-semibold">Versions</h2>
-              <span className="font-mono text-xs text-gray-500">{view.versions.length} VERSIONS</span>
+              <span className="text-xs text-gray-500"><span className="font-mono">{view.versions.length}</span> versions</span>
             </div>
             <ul className="text-sm">
               {view.versions.map((version) => (
@@ -380,9 +380,11 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                   <span className="justify-self-end">
                     {version.isCurrent ? null : <span className="stamp stamp-quiet">Superseded</span>}
                   </span>
-                  <span className="col-span-2 font-mono text-xs text-gray-500">
-                    {version.pageCount} {version.pageCount === 1 ? "page" : "pages"}
-                    {version.expiresOn ? ` · ${version.expired ? "expired" : "expires"} ${longDate(version.expiresOn)}` : ""}
+                  <span className="col-span-2 text-xs text-gray-500">
+                    <span className="font-mono">{version.pageCount}</span> {version.pageCount === 1 ? "page" : "pages"}
+                    {version.expiresOn ? (
+                      <> · {version.expired ? "expired" : "expires"} <span className="font-mono">{longDate(version.expiresOn)}</span></>
+                    ) : null}
                   </span>
                 </li>
               ))}

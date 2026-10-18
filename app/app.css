@@ -402,6 +402,19 @@ time,
     color: var(--g900);
   }
 
+  /*
+   * A sheet that scrolls sideways says so: a soft edge of ink at the right
+   * while there is more, which the content's own end covers once there is
+   * not. Backgrounds only, no script (background-attachment local/scroll).
+   */
+  .sheet.scroll-cue,
+  .scroll-cue {
+    background:
+      linear-gradient(to right, transparent, var(--sheet) 70%) right center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, color-mix(in oklab, var(--g900) 16%, transparent), transparent) right center / 1.25rem 100% no-repeat scroll,
+      var(--sheet);
+  }
+
   /* A sheet: anything read closely, set on the paper with a ruled edge. */
   .sheet {
     background: var(--sheet);

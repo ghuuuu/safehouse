@@ -286,14 +286,14 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                 <span className="flex flex-wrap items-baseline justify-end gap-x-3 justify-self-end text-xs text-gray-600">
                   {document.expiresOn ? (
                     document.expired ? (
-                      <span className="font-mono">expired {longDate(document.expiresOn)}</span>
+                      <span>expired <span className="font-mono">{longDate(document.expiresOn)}</span></span>
                     ) : (
-                      <span className="font-mono">expires {longDate(document.expiresOn)}</span>
+                      <span>expires <span className="font-mono">{longDate(document.expiresOn)}</span></span>
                     )
                   ) : null}
                   {document.olderVersions > 0 ? (
-                    <span className="font-mono">
-                      {document.olderVersions} older {document.olderVersions === 1 ? "version" : "versions"}
+                    <span>
+                      <span className="font-mono">{document.olderVersions}</span> older {document.olderVersions === 1 ? "version" : "versions"}
                     </span>
                   ) : null}
                   {document.fileId ? (

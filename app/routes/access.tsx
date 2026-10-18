@@ -378,7 +378,7 @@ function MatrixView({ matrix }: { matrix: NonNullable<Route.ComponentProps["load
         Documents each account reaches, by whose they are and by kind, read as that account. Read-only:
         click a row to change it.
       </p>
-      <div className="sheet overflow-x-auto">
+      <div className="sheet scroll-cue overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-900 text-left align-bottom text-gray-500">
