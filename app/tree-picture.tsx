@@ -92,8 +92,8 @@ export function TreePicture({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0 font-mono text-base" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
-        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0 font-mono text-base" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
+        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in"><ZoomGlyph plus /></button>
+        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0" onClick={() => zoom(1.25)} aria-label="Zoom out"><ZoomGlyph /></button>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBox(fit())}>Reset</button>
         <span className="text-xs text-gray-500">
           <span className="pointer-coarse:hidden">Drag to move around.</span>
@@ -259,4 +259,14 @@ function Tag({ x, y, tag, more }: { x: number; y: number; tag: MapTag; more: num
 
 function truncate(name: string): string {
   return name.length > 15 ? `${name.slice(0, 14)}…` : name;
+}
+
+/** The zoom buttons' marks, drawn rather than typed. */
+function ZoomGlyph({ plus }: { plus?: boolean }) {
+  return (
+    <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
+      <path d="M1.5 6h9" />
+      {plus ? <path d="M6 1.5v9" /> : null}
+    </svg>
+  );
 }

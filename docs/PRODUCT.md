@@ -24,7 +24,7 @@ deliberately not a multi-tenant application.
 The target feeling is a well-kept home filing cabinet: calm, tactile, private.
 Explicitly not a cloud storage product and not enterprise SaaS.
 
-The visual system is `docs/DESIGN.md`: porcelain and plum, with the family drawn as a line map.
+The visual system is `docs/DESIGN.md`: Security Print, the vault printed like the passports, banknotes and certificates it keeps.
 
 ---
 
