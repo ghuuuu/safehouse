@@ -13,11 +13,15 @@ export default [
     // Who can see what, admin only: /access?as=<userId> for one account's panel
     // (the only place grants are edited), /access?view=matrix for the audit grid.
     route("access", "routes/access.tsx"),
-    // Filing a document: the only surface that writes to the vault.
+    // Filing a document: photos and PDFs into a draft (D40), then to review.
     route("upload", "routes/upload.tsx"),
     // Many files at once, sorted in the browser, sent one per request to
-    // bulk/file (JSON), each read by the Step 8 reader on the way in.
+    // bulk/file (JSON), each made into its own draft and read.
     route("bulk", "routes/bulk.tsx"),
+    // A draft: its pages straightened and sized, its details checked, then
+    // filed as one PDF (D39, D40). The only surface that files into the vault.
+    route("intake/:intakeId", "routes/intake.$intakeId.tsx"),
+    route("intake/:intakeId/corners/:pageId", "routes/intake.$intakeId.corners.$pageId.tsx"),
     // Words and numbers, through the policies; /search?q=…&as=<userId> for view-as.
     route("search", "routes/search.tsx"),
     // One record: its fields, its pages, its versions.
@@ -28,6 +32,8 @@ export default [
   // The first administrator, creatable only while there are no accounts.
   route("setup", "routes/setup.tsx"),
   route("bulk/file", "routes/bulk.file.ts"),
+  // One page of a draft, as an image or a one-page PDF, behind step-up (D4).
+  route("intake/:intakeId/page/:pageId", "routes/intake.$intakeId.page.$pageId.ts"),
   // The bytes themselves, behind a step-up password check (D4).
   route("file/:fileId", "routes/file.$fileId.tsx"),
   route("verify", "routes/verify.tsx"),

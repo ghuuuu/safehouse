@@ -43,13 +43,15 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
  * What a household vault is for. Everything else is refused by name, including
  * the office formats — a vault that will hold anything is a place to park
  * malware for somebody else to open.
+ *
+ * Not HEIC: every upload becomes a PDF (D39), and the image library here
+ * cannot decode HEVC. Leaving it out is also what makes an iPhone send a JPEG
+ * instead, since the picker converts when the page does not ask for HEIC.
  */
 export const ACCEPTED_TYPES = [
   "application/pdf",
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
-  "image/heif",
   "image/tiff",
 ] as const;

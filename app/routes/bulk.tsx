@@ -43,7 +43,7 @@ type Row = {
   title: string;
   status: Status;
   message?: string;
-  documentId?: string;
+  intakeId?: string;
   proposed?: number;
 };
 
@@ -96,10 +96,10 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
           ? await response.json()
           : { error: "Signed out, or the server did not answer. Sign in and try again." };
 
-        if (response.ok && answer.documentId) {
-          update(row.key, { status: "filed", documentId: answer.documentId, proposed: answer.proposed, message: answer.how });
+        if (response.ok && answer.intakeId) {
+          update(row.key, { status: "filed", intakeId: answer.intakeId, proposed: answer.proposed });
         } else {
-          update(row.key, { status: "refused", message: answer.error ?? "Not filed." });
+          update(row.key, { status: "refused", message: answer.error ?? "Not sent." });
         }
       } catch {
         update(row.key, { status: "refused", message: "The connection dropped. Try again." });
@@ -134,8 +134,9 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
 
       <Page>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
-          Pick the files, say whose each one is and what kind, then file them. Each is encrypted, filed
-          as its own record, and read for dates and numbers on the way in. Up to <span className="font-mono">{MB}</span> MB each, PDF or an image.
+          Pick the files, say whose each one is and what kind, then send them. Each is encrypted, read for
+          dates and numbers, and waits under Unfinished until somebody checks it and files it as a PDF. Up to{" "}
+          <span className="font-mono">{MB}</span> MB each, PDF or a photo.
         </p>
 
         <label className="sheet flex flex-col gap-2 p-5 text-sm font-medium md:p-6">
@@ -248,11 +249,11 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                           />
                         </td>
                         <td className="px-3 py-3" aria-live="polite">
-                          {row.status === "waiting" ? <span className="text-gray-500">not filed yet</span> : null}
-                          {row.status === "filing" ? <span>filing and reading…</span> : null}
+                          {row.status === "waiting" ? <span className="text-gray-500">not sent yet</span> : null}
+                          {row.status === "filing" ? <span>sending and reading…</span> : null}
                           {row.status === "filed" ? (
                             <span className="flex flex-col items-start gap-1.5">
-                              <Link className="stamp stamp-quiet hover:text-gray-900" to={`/record/${row.documentId}`}>filed</Link>
+                              <Link className="stamp stamp-soon hover:text-gray-900" to={`/intake/${row.intakeId}`}>to check</Link>
                               <span className="block text-xs text-gray-500">
                                 {row.proposed ? `${row.proposed} field(s) proposed, unconfirmed` : "nothing read"}
                               </span>
@@ -260,7 +261,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                           ) : null}
                           {row.status === "refused" ? (
                             <span className="flex max-w-64 flex-col items-start gap-1.5">
-                              <span className="stamp stamp-warn">Not filed</span>
+                              <span className="stamp stamp-warn">Not sent</span>
                               <span className="text-xs text-red-700 dark:text-red-400">{row.message}</span>
                             </span>
                           ) : null}
@@ -290,16 +291,16 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
                 onClick={fileAll}
                 className="btn btn-primary"
               >
-                {running ? "Filing…" : `File ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
+                {running ? "Sending…" : `Send ${waiting.length} ${waiting.length === 1 ? "document" : "documents"}`}
               </button>
               <p className="max-w-prose text-sm text-gray-500" aria-live="polite">
                 {unassigned > 0 ? `${unassigned} still need an owner. ` : ""}
-                {filed + refused > 0 ? `Filed ${filed}${refused ? `, ${refused} not filed` : ""}.` : ""}
+                {filed + refused > 0 ? `Sent ${filed}${refused ? `, ${refused} not sent` : ""}.` : ""}
               </p>
             </div>
             <p className="-mt-4 max-w-prose text-xs text-gray-500">
-              Dates and numbers the reader finds are proposals: nothing acts on them until somebody confirms them
-              on the document&apos;s page.
+              Dates and numbers the reader finds are proposals. Each document is filed only when somebody has
+              checked its pages and details and pressed File it.
             </p>
           </>
         ) : null}

@@ -1445,8 +1445,10 @@ known size at 300 dpi prints at that size.
   every page's size matched to the intake, attachments present.
 - **Older image documents are converted by filing the PDF as a new version.**
   The image version stays as superseded history (D20); nothing is deleted.
-- **HEIC, WebP and TIFF are decoded and written as JPEG at quality 92.** The
-  original in its own format is the attachment.
+- **WebP and TIFF are decoded and written as JPEG at quality 92.** The
+  original in its own format is the attachment. **HEIC is no longer accepted:**
+  the image library here cannot decode HEVC, and an iPhone sends a JPEG when
+  the page does not ask for HEIC.
 - **The page size is a choice, guessed and shown.** An aspect ratio within 3%
   of a preset picks it; otherwise the reviewer picks.
 

@@ -1,16 +1,20 @@
 import type { Route } from "./+types/bulk.file";
-import { fileAndRead, readSafely } from "../bulk.server";
-import { requireUser, withVault } from "../session.server";
-import { checkFiling, UploadRefused } from "../upload.server";
+import { untitled, type Category, CATEGORIES } from "../documents";
+import { draftFromUploads, refusedByPolicy } from "../intake-request.server";
+import { requireUser } from "../session.server";
+import { UploadRefused } from "../upload.server";
 
 /**
- * One file of a bulk intake. A resource route: it answers in JSON, so the page
- * can send files one at a time and show each one's outcome.
+ * One file of a bulk intake, made into its own draft and read (D40). A
+ * resource route: it answers in JSON, so the page can send files one at a time
+ * and show each one's outcome. Nothing is filed here; each draft is finished
+ * from the Unfinished list.
  *
- * How it enforces access: `withVault`, and `records_write` on the insert. The
- * role check below only saves a third party's upload from being read for
- * nothing; the database refuses them either way. The answer never carries a
- * field value, only how many were proposed.
+ * How it enforces access: `withVault` (inside `draftFromUploads`), and
+ * `intakes_start`, which refuses a draft for an owner out of reach or by
+ * somebody who may not file. The role check below only saves a third party's
+ * upload from being examined for nothing. The answer never carries a field
+ * value, only how many were proposed.
  */
 export async function action({ request }: Route.ActionArgs) {
   const user = await requireUser(request);
@@ -24,29 +28,24 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Choose a file." }, { status: 400 });
   }
 
-  const bytes = Buffer.from(await upload.arrayBuffer());
-  const filing = {
-    ownerId: String(form.get("ownerId") ?? ""),
-    category: String(form.get("category") ?? "") as never,
-    title: String(form.get("title") ?? ""),
-    mime: upload.type,
-    bytes,
-  };
+  const category = String(form.get("category") ?? "");
+  const title = String(form.get("title") ?? "").trim();
 
   try {
-    // Refused before the slow part, so a file that cannot be held is not read.
-    // A blank title is allowed here: it becomes "<Category> document".
-    checkFiling({ ...filing, title: filing.title.trim() || "untitled", size: bytes.length });
-
-    const read = await readSafely(bytes, upload.type);
-    const intake = await withVault(request, (db) => fileAndRead(db, filing, read));
-
-    return Response.json(intake);
+    const draft = await draftFromUploads(request, [{ mime: upload.type, bytes: Buffer.from(await upload.arrayBuffer()) }], {
+      init: {
+        ownerId: String(form.get("ownerId") ?? "") || null,
+        category,
+        // A blank title becomes "<Category> document", never the file's name.
+        title: title || (CATEGORIES.includes(category as Category) ? untitled(category as Category) : null),
+      },
+    });
+    return Response.json(draft);
   } catch (error) {
     if (error instanceof UploadRefused) {
       return Response.json({ error: error.message }, { status: 400 });
     }
-    if ((error as { cause?: { code?: string } })?.cause?.code === "42501") {
+    if (refusedByPolicy(error)) {
       return Response.json({ error: "You cannot file a document for that owner." }, { status: 403 });
     }
     throw error;

@@ -83,7 +83,13 @@ Because intakes are separate tables, no vault list, search, tree, count or
 download can reach a draft by forgetting a status filter. That is the reason
 for separate tables rather than a `status` column on `documents`.
 
-Discarding an intake deletes its rows and blobs.
+Discarding an intake deletes its rows and blobs, after the transaction that
+let go of them has committed.
+
+**Seeing a draft's pages asks for the password,** as a download does (D4): the
+review screen, the corner editor and every page image call `requireStepUp`.
+A draft is the paper itself, and a draft can wait for days on a signed-in
+browser.
 
 ### Photo to page
 
@@ -103,7 +109,9 @@ Discarding an intake deletes its rows and blobs.
    the flattened page updates on release.
 4. **Warp.** `getPerspectiveTransform` + `warpPerspective` to exactly the
    size at 300 dpi (an ID-1 card is 1011 × 638 px), then JPEG q92.
-   HEIC, WebP and TIFF are decoded by sharp first.
+   WebP and TIFF are decoded by sharp first. HEIC is not accepted: the
+   image library cannot decode HEVC, and leaving it out of the file input's
+   types is what makes an iPhone send a JPEG.
 
 Orientation: EXIF honoured before detection (the D29 fix); a page can be
 turned a quarter at review.
