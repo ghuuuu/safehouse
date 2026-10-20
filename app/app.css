@@ -539,3 +539,63 @@ input[type="search"]::-webkit-search-cancel-button:hover {
     stroke-dashoffset: 0;
   }
 }
+
+/*
+ * Waiting on the server (root.tsx, Waiting). A gold rule along the top of the
+ * page, the serial ink that reads on the teal masthead. It shows only after
+ * 150ms, creeps towards the end, and when the answer arrives it completes and
+ * fades. With reduced motion it is simply there, whole, until it is not.
+ */
+.loading-rule {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  height: 2px;
+  background: var(--serial);
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease-out;
+}
+.loading-rule[data-busy] {
+  opacity: 1;
+  transition: opacity 0s 150ms;
+}
+/* The button that was pressed: no second press, and a rule sweeping its foot. */
+[aria-busy="true"] {
+  cursor: progress;
+  pointer-events: none;
+}
+.btn[aria-busy="true"] {
+  position: relative;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .loading-rule[data-busy] {
+    animation: loading-rule 10s cubic-bezier(0.1, 0.7, 0.2, 1) 150ms both;
+  }
+  .btn[aria-busy="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: currentColor;
+    animation: busy-sweep 900ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+}
+@keyframes loading-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(0.95);
+  }
+}
+@keyframes busy-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}

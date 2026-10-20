@@ -6,6 +6,8 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useFetchers,
+  useNavigation,
   useSubmit,
 } from "react-router";
 
@@ -59,6 +61,30 @@ function AutoLock({ minutes }: { minutes: number }) {
   return null;
 }
 
+/**
+ * While the vault is waiting on the server, a gold rule runs along the top of
+ * the page, and the button that was pressed says it is busy. The rule waits
+ * 150ms before it shows (app.css), so a quick page never flickers. One place
+ * for every form: whichever button submitted is marked `aria-busy` until the
+ * router and every fetcher are idle again.
+ */
+function Waiting() {
+  const navigation = useNavigation();
+  const fetchers = useFetchers();
+  const idle = navigation.state === "idle" && fetchers.every((f) => f.state === "idle");
+
+  useEffect(() => {
+    const onSubmit = (event: SubmitEvent) => event.submitter?.setAttribute("aria-busy", "true");
+    document.addEventListener("submit", onSubmit);
+    return () => document.removeEventListener("submit", onSubmit);
+  }, []);
+  useEffect(() => {
+    if (idle) document.querySelectorAll("[aria-busy=true]").forEach((el) => el.removeAttribute("aria-busy"));
+  }, [idle]);
+
+  return <div aria-hidden className="loading-rule" data-busy={idle ? undefined : ""} />;
+}
+
 export const links: Route.LinksFunction = () => [{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }];
 
 // Fonts are not loaded from a third party. A private vault should not tell
@@ -86,6 +112,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
+      <Waiting />
       {loaderData.autoLockMinutes ? <AutoLock minutes={loaderData.autoLockMinutes} /> : null}
       <Outlet />
     </>
