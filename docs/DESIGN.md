@@ -319,6 +319,13 @@ On Access (PRODUCT.md specifies it): an 8px ruled track on the sheet, filled tea
 ### The logo
 `app/logo.tsx`: a house whose door is a keyhole, inside a double-ruled seal, drawn in lines in serial gold. `public/favicon.svg` is the same mark on a 4px-cornered teal square.
 
+### Motion
+All of it lives in `app/app.css`, needs no library, and stops under reduced motion.
+- **Waiting:** a 2px serial-gold rule across the top of the page while the router or any fetcher is busy, shown after 150ms so a quick page never flickers (`Waiting` in `app/root.tsx`). The button that submitted carries `aria-busy`: no second press, and a rule sweeps its foot.
+- **Changing page:** the shell's links and the view switch carry `viewTransition`. The page cross-fades and the new one settles up 6px; the sidebar and tab bar hold still.
+- **Stamps:** a warn or soon stamp lands like an office stamp, a touch large and faint, then pressed flat. Quiet stamps just sit.
+- **A revealed number** inks in from the left in typewriter steps.
+
 ## Do's and Don'ts
 
 ### Do:
