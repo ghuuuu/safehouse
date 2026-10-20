@@ -71,12 +71,12 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[14rem_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col gap-7 overflow-y-auto bg-side px-4 py-6 text-side-ink md:flex">
-        <Link to="/" className="flex items-center gap-3 border-b border-side-muted/30 px-2 pb-5">
+      <aside className="sticky top-0 hidden [view-transition-name:sidebar] h-screen flex-col gap-7 overflow-y-auto bg-side px-4 py-6 text-side-ink md:flex">
+        <Link to="/" viewTransition className="flex items-center gap-3 border-b border-side-muted/30 px-2 pb-5">
           <Logo />
           <span className="text-[0.95rem] font-bold uppercase tracking-[0.2em]">Safehouse</span>
         </Link>
-        <Link to="/upload" className="btn btn-serial mx-2">
+        <Link to="/upload" viewTransition className="btn btn-serial mx-2">
           File a document
         </Link>
         <nav aria-label="Safehouse" className="flex flex-col gap-6">
@@ -132,6 +132,7 @@ function Groups({ groups, tone = "side" }: { groups: { title: string; items: Ite
           <li key={item.to}>
             <NavLink
               to={item.to}
+              viewTransition
               end={item.to === "/"}
               className={({ isActive }) =>
                 "block rounded-md px-3 py-2.5 text-sm md:py-1.5 " + (isActive ? here : idle)
@@ -184,13 +185,14 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
   return (
     <nav
       aria-label="Safehouse"
-      className="fixed inset-x-0 bottom-0 z-20 bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 [view-transition-name:tabbar] bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
     >
       <ul className="grid grid-cols-5">
         {TABS.map((item) => (
           <li key={item.to}>
             <NavLink
               to={item.to}
+              viewTransition
               end={item.to === "/"}
               className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-side-ink" : "text-side-muted"}`}
             >

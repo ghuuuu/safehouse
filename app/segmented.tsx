@@ -13,6 +13,7 @@ export function Segmented({ label, options }: { label: string; options: { to: st
         <Link
           key={option.to}
           to={option.to}
+          viewTransition
           aria-current={option.current ? "page" : undefined}
           className={
             "px-4 py-2 font-medium first:rounded-l-[2px] last:rounded-r-[2px] pointer-coarse:py-2.5 " +
