@@ -26,8 +26,10 @@
     "upgrade": "npm run backup && npm run backup:drill && npm run db:migrate"
   },
   "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1",
     "@react-router/node": "^7.18.2",
     "@react-router/serve": "^7.18.2",
+    "@techstark/opencv-js": "^4.12.0-release.1",
     "better-auth": "^1.7.1",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
