@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -65,21 +65,29 @@ function AutoLock({ minutes }: { minutes: number }) {
  * While the vault is waiting on the server, a gold rule runs along the top of
  * the page, and the button that was pressed says it is busy. The rule waits
  * 150ms before it shows (app.css), so a quick page never flickers. One place
- * for every form: whichever button submitted is marked `aria-busy` until the
+ * for every form: whichever button submitted is marked `aria-busy` while the
  * router and every fetcher are idle again.
  */
 function Waiting() {
   const navigation = useNavigation();
   const fetchers = useFetchers();
   const idle = navigation.state === "idle" && fetchers.every((f) => f.state === "idle");
+  // The last button that submitted. Marked only once the router is actually
+  // busy, so a submit that never reaches the server leaves nothing stuck.
+  const pressed = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const onSubmit = (event: SubmitEvent) => event.submitter?.setAttribute("aria-busy", "true");
+    const onSubmit = (event: SubmitEvent) => (pressed.current = event.submitter);
     document.addEventListener("submit", onSubmit);
     return () => document.removeEventListener("submit", onSubmit);
   }, []);
   useEffect(() => {
-    if (idle) document.querySelectorAll("[aria-busy=true]").forEach((el) => el.removeAttribute("aria-busy"));
+    const button = pressed.current;
+    if (!button) return;
+    if (idle) {
+      button.removeAttribute("aria-busy");
+      pressed.current = null;
+    } else button.setAttribute("aria-busy", "true");
   }, [idle]);
 
   return <div aria-hidden className="loading-rule" data-busy={idle ? undefined : ""} />;
