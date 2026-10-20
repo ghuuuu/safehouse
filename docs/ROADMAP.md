@@ -684,6 +684,20 @@ cannot write there.
 
 ---
 
+### Step 20 — Every paper a PDF, to scale; the vault as folders
+
+Imports become drafts (intakes) reviewed before filing: photographed pages
+straightened onto their corners and drawn at the real size, pages from several
+uploads joined and ordered, OCR fields corrected, then one checked PDF filed.
+Older image documents are converted the same way. `/folders` browses the vault
+as Person / Category / paper and downloads a selection as one ZIP.
+
+Spec: `docs/specs/pdf-intake-and-folders.md`. Decisions: D39, D40, D41.
+
+**Size.** L. **Depends on.** Steps 8, 15.
+
+---
+
 ## Decisions that gate steps
 
 | Decision | Gates | Cost of leaving it |

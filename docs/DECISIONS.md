@@ -1419,6 +1419,89 @@ disagree.
 
 ---
 
+## D39 — Every paper is kept as one PDF, the size of the real thing
+
+**Decision.** A document's file is one PDF. A photographed page is
+straightened onto its four corners and drawn at its real size (an ID card
+85.6 × 54 mm, a passport page 125 × 88 mm, A4, Letter, A5, or a size typed in);
+a page from an uploaded PDF is copied in at its own size; the pages of several
+uploads are joined in the order the household chose. The untouched original
+photo is attached inside the PDF. Built with `@cantoo/pdf-lib`; corners and
+warp by `@techstark/opencv-js`, on the server.
+
+**This amends D29.** D29 kept the bytes it was handed and straightened only a
+throwaway copy for reading. The household asked for papers that print at their
+real size and for no loose image files, which a stored photo of a passport at an
+angle on a table cannot be. What D29 protected is kept another way: the
+original is inside the PDF, so a straightening mistake is redone from it rather
+than being the only copy.
+
+**Why one PDF.** It is what the household opens, prints and hands to an
+office, and it is the shape a paper has outside the vault. A page warped to a
+known size at 300 dpi prints at that size.
+
+**Consequences.**
+- **A PDF is checked before it counts as filed:** parsed back, page count and
+  every page's size matched to the intake, attachments present.
+- **Older image documents are converted by filing the PDF as a new version.**
+  The image version stays as superseded history (D20); nothing is deleted.
+- **HEIC, WebP and TIFF are decoded and written as JPEG at quality 92.** The
+  original in its own format is the attachment.
+- **The page size is a choice, guessed and shown.** An aspect ratio within 3%
+  of a preset picks it; otherwise the reviewer picks.
+
+---
+
+## D40 — An import is a draft until somebody says it is finished
+
+**Decision.** An upload becomes an *intake*, in two tables of its own
+(`intakes`, `intake_pages`), not a document. Its uploader and the household's
+admins can see and change it; nobody else, and nothing under view-as. Pages are
+added, straightened, sized, turned and ordered there, OCR runs there, and the
+proposed fields are corrected there. Submit builds the PDF, checks it, and files
+record, document and file in one transaction, deleting the intake.
+
+**Why separate tables.** A `status` column on `documents` would make every
+list, search, count, tree and download one forgotten filter away from showing a
+half-sorted pile, possibly a private paper not yet marked so. A draft that lives
+elsewhere cannot be reached by those queries at all.
+
+**Why the admin too.** An upload left half done by a member who then is not
+around is otherwise stuck where nobody can finish it.
+
+**Consequences.**
+- **The application role gets SELECT, INSERT, UPDATE and DELETE on the two
+  intake tables, and nothing new on any vault table.** The pinned self-checks
+  are extended to say so.
+- **An unfinished intake waits** until it is submitted or discarded; it is
+  listed on the dashboard and counted in the index.
+- **Intake pages are sealed like documents (D12).** Discarding deletes rows and
+  blobs.
+
+---
+
+## D41 — The vault as folders is the vault list, drawn differently
+
+**Decision.** `/folders` draws the documents the viewer can see as Person /
+Category / paper, with "Earlier versions" and "Shared with me". It reads
+`VAULT_LIST_SQL` and nothing else. Files and whole folders are ticked and
+downloaded as one ZIP laid out the same way: step-up first, every file opened
+under the viewer's own policies, one `document.downloaded` row per file, and one
+id the viewer cannot see refuses the whole request.
+
+**Why.** The folder shape the household wanted on disk, without putting
+readable papers on disk (D5, D12). A folder on the mini PC is readable by
+anyone with the disk or a copy of it; a folder drawn from the vault list is
+readable by exactly whom the policies say.
+
+**Consequences.**
+- **No new way to see anything:** the listing and every byte go through the
+  policies that already exist.
+- **The ZIP is built in memory** (`fflate`, stored, since PDFs are already
+  compressed). Fine at a household's size; stream it if that ever changes.
+
+---
+
 ## Open decisions
 
 None. D9–D21 closed the list that stood here; D22 to D38 record what building
