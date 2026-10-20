@@ -40,6 +40,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { to: "/", label: "Dashboard" },
       { to: "/vault", label: "Vault" },
+      { to: "/folders", label: "Folders" },
       { to: "/search", label: "Search" },
       { to: "/tree", label: "Family tree" },
     ],

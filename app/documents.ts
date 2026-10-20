@@ -20,6 +20,9 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+/** "Personal", from the enum. */
+export const categoryName = (category: string) => category[0].toUpperCase() + category.slice(1);
+
 /**
  * What a document is called when nobody said. Never the file's own name, which
  * is not stored anywhere (`upload.server.ts`): "maya-passport-X1234567.pdf" is

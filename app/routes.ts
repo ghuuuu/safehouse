@@ -6,6 +6,8 @@ export default [
     index("routes/home.tsx"),
     // The vault, optionally through somebody else's eyes: /vault?as=<userId>.
     route("vault", "routes/vault.tsx"),
+    // The same papers as folders, whose then what kind, with ZIP download (D41).
+    route("folders", "routes/folders.tsx"),
     // Who documents can be filed to, and the admin's form for adding somebody.
     route("people", "routes/people.tsx"),
     // The family tree; a click opens /vault?owner= for that person.
@@ -34,6 +36,8 @@ export default [
   // The first administrator, creatable only while there are no accounts.
   route("setup", "routes/setup.tsx"),
   route("bulk/file", "routes/bulk.file.ts"),
+  // A chosen set of papers as one ZIP, behind step-up (D4, D41).
+  route("folders/download", "routes/folders.download.ts"),
   // One page of a draft, as an image or a one-page PDF, behind step-up (D4).
   route("intake/:intakeId/page/:pageId", "routes/intake.$intakeId.page.$pageId.ts"),
   // The bytes themselves, behind a step-up password check (D4).

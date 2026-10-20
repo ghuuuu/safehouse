@@ -100,15 +100,21 @@ export function downloadName(row: StoredFile): string {
       "image/tiff": "tiff",
     }[row.mime] ?? "bin";
 
-  // Letters, numbers, spaces, dots and hyphens survive; runs of dots collapse
-  // and leading ones are dropped, so a title of "../../etc/passwd" cannot
-  // arrive as a hidden file or a path.
-  const safe =
-    row.title
+  const page = row.pageNo > 1 ? `-${row.pageNo}` : "";
+  return `${safeName(row.title, "document")}${page}.${extension}`;
+}
+
+/**
+ * A title or a name, made safe to be a file or folder name. Letters, numbers,
+ * spaces, dots and hyphens survive; runs of dots collapse and leading ones are
+ * dropped, so a title of "../../etc/passwd" cannot arrive as a hidden file or
+ * a path.
+ */
+export function safeName(text: string, fallback = "Untitled"): string {
+  return (
+    text
       .replace(/[^\p{L}\p{N} .-]/gu, "")
       .replace(/\.{2,}/g, ".")
-      .replace(/^[.\s-]+|[.\s-]+$/g, "") || "document";
-  const page = row.pageNo > 1 ? `-${row.pageNo}` : "";
-
-  return `${safe}${page}.${extension}`;
+      .replace(/^[.\s-]+|[.\s-]+$/g, "") || fallback
+  );
 }
