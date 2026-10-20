@@ -405,7 +405,7 @@ function MaskedNumber({ hasIdentifier }: { hasIdentifier: boolean }) {
   const reveal = useFetcher<{ revealed: string | null }>();
 
   if (reveal.data?.revealed) {
-    return <code className="rounded-sm bg-gray-100 px-2 py-1 font-mono tracking-wider">{reveal.data.revealed}</code>;
+    return <code className="ink-in rounded-sm bg-gray-100 px-2 py-1 font-mono tracking-wider">{reveal.data.revealed}</code>;
   }
   if (!hasIdentifier) return <span className="text-gray-500">Not recorded</span>;
 
