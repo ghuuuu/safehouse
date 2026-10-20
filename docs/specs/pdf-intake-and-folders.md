@@ -1,6 +1,7 @@
 # Spec: Every paper a PDF, to scale; and the vault as folders
 
-Status: **approved** 2026-10-20; in progress.
+Status: **closed** 2026-10-20 — landed in seven commits; ROADMAP Step 20 has
+the acceptance as met and what is not done.
 Relates to: PRODUCT.md "Screens"; DECISIONS.md D1, D11, D12, D20, D22, D25,
 D26, D27, D29, D39, D40, D41
 

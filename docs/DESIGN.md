@@ -319,6 +319,19 @@ On Access (PRODUCT.md specifies it): an 8px ruled track on the sheet, filled tea
 ### The logo
 `app/logo.tsx`: a house whose door is a keyhole, inside a double-ruled seal, drawn in lines in serial gold. `public/favicon.svg` is the same mark on a 4px-cornered teal square.
 
+### Drafts (`app/routes/intake.$intakeId.tsx`)
+An upload is checked before it is filed (D40), on one narrow page: a Pages sheet, a Details sheet, then File it.
+- **A page row:** the page as it will be filed on the left (a photo flattened, a PDF page in the browser's own viewer), and on the right its number in mono, where it came from in muted words or `stamp-soon` "Edges not found", the size picker (presets, "As scanned", or millimetres asked for only when "Another size" is the choice), and small secondary buttons to turn, move and remove it.
+- **Read by machine:** a field the reader filled carries a `stamp-soon` "read by machine" until a person types over it. Filing records whatever is in the form as checked, and the page says so above the fields.
+- **File it** belongs to the details form, so what is typed is what is filed. Discard sits under a native disclosure and is a danger button.
+- **The corner editor** (`intake.$intakeId.corners.$pageId.tsx`): the photo inside an SVG of its own pixel size, the outline a 2px teal line over a 12% teal wash, and four square handles (sheet fill, teal edge, a hair of corner), never circles. Each handle is a focusable slider that arrow keys move, 1% a step and 0.2% with Shift.
+
+### Folders (`app/routes/folders.tsx`)
+The vault as a filing cabinet (D41): one sheet, "Everything" ruled in full ink at its head, then whose, what kind and the papers, each level a native disclosure indented a step. A folder is a small line drawing (tab and body, no fill) in muted ink. A folder's checkbox ticks everything in it and shows a half tick when some is chosen. A paper still filed as images carries a `stamp-quiet` "Image". The one primary button says how many are chosen, in mono.
+
+### Unfinished (`app/routes/unfinished.tsx`)
+Two list sheets: drafts (a row that opens the draft, `row-link`, someone else's marked with `stamp-quiet`) and papers filed as images, each with a small secondary Convert button. The index shows the number of drafts beside Unfinished in mono, with "waiting" for screen readers.
+
 ### Motion
 All of it lives in `app/app.css`, needs no library, and stops under reduced motion.
 - **Waiting:** a 2px serial-gold rule across the top of the page while the router or any fetcher is busy, shown after 150ms so a quick page never flickers (`Waiting` in `app/root.tsx`). The button that submitted carries `aria-busy`: no second press, and a rule sweeps its foot.

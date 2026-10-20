@@ -684,7 +684,7 @@ cannot write there.
 
 ---
 
-### Step 20 — Every paper a PDF, to scale; the vault as folders
+### Step 20 — Every paper a PDF, to scale; the vault as folders — **done**
 
 Imports become drafts (intakes) reviewed before filing: photographed pages
 straightened onto their corners and drawn at the real size, pages from several
@@ -693,6 +693,44 @@ Older image documents are converted the same way. `/folders` browses the vault
 as Person / Category / paper and downloads a selection as one ZIP.
 
 Spec: `docs/specs/pdf-intake-and-folders.md`. Decisions: D39, D40, D41.
+
+**Landed.** Migration `0017_intakes` (three draft tables, policies, the write
+surface restated). `app/paper.server.ts` finds a photo's corners with OpenCV,
+warps it flat at 300 dpi to its real size, builds one PDF with the originals
+attached, and reads it back to check every page's size. Upload and bulk make
+drafts; `/intake/:id` reviews them, with a corner editor; `/unfinished` lists
+drafts and papers still filed as images, which convert into a PDF as the next
+version; `/folders` browses and downloads a ZIP.
+
+**Acceptance, as met.**
+- `app/db/intakes.test.ts` (17): the uploader and an admin reach a draft;
+  another member, a third party and an emergency contact do not; a draft
+  cannot be started in somebody else's name, handed to them, or pointed at an
+  owner out of reach. Loosening the read and start policies turned 9 red.
+- `app/paper.server.test.ts` (13): a drawn card found to within 12 px,
+  flattened to exactly 1011 × 638 px with its mark in the right corner; pages
+  built at their sizes in points; a PDF that is not what was asked for refused.
+- `app/db/intake-flow.test.ts`: a photographed card filed as one page of
+  85.6 × 54 mm with the photo attached and its fields confirmed; a typed
+  field never overwritten by the reader; an old image converted into
+  version 2, version 1 kept.
+- `app/db/folders.test.ts`: the tree is the vault list; ZIP paths cannot
+  escape or collide; one id out of reach refuses the whole ZIP and records
+  nothing.
+- **In a browser**, as a member: an angled photo of a fictional card was
+  found, guessed as an ID card, filed, and downloaded as one page of exactly
+  85.60 × 54.00 mm; the same paper came back in a ZIP under
+  `Maya Adeyemi/General/`. At 390 px nothing scrolls sideways.
+- **The drill** passed on a backup taken after the migration, grants included.
+
+**Not done.**
+- **Reading scanned PDFs.** A PDF with no text layer, including one this step
+  built from photos, still reads nothing (D27, D29): the reader runs on the
+  flattened photos at review, before the PDF exists, so new drafts are read;
+  an uploaded scanned PDF is not.
+- **HEIC.** Refused; an iPhone sends JPEG when the page does not ask for HEIC.
+- **Two drafts converting the same record** can each be filed by members who
+  cannot see each other's drafts; the second becomes version 3.
 
 **Size.** L. **Depends on.** Steps 8, 15.
 
