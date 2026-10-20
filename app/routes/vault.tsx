@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import type { Route } from "./+types/vault";
 import { ACTIONS, record } from "../activity.server";
 import { FolderTab } from "../folder-tab";
+import { Masthead, Page } from "../masthead";
+import { reference } from "../reference";
 import { roleLabel } from "../roles";
 import { longDate } from "../when";
 import { forOwner, latestVersions, VAULT_LIST_SQL } from "../vault.server";
@@ -153,14 +155,36 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
   const everything = isViewingAs && viewedUser ? `/vault?as=${viewedUser.id}` : "/vault";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
+    <>
+      <Masthead
+        title="Vault"
+        serial={
+          <>
+            {documents.length === 1 ? "One document" : `${documents.length} documents`}
+            {older > 0 ? `, with ${older} older ${older === 1 ? "version" : "versions"} behind them` : null}
+            {isViewingAs ? null : `, as ${actor.name}`}
+            {isViewingAs && viewedUser ? ` · viewing as ${viewedUser.name}` : null}
+          </>
+        }
+      >
+        {isViewingAs ? null : (
+          // Hidden while viewing as somebody else, because the transaction that
+          // would file it is read-only: offering the link would be offering a
+          // button that cannot work.
+          <Link className="btn btn-serial" to="/upload">
+            File a document
+          </Link>
+        )}
+      </Masthead>
+
+      <Page>
       {isViewingAs && viewedUser ? (
         // The one place in the app that paints its own background, so it is
         // also the one place that has to name its own text colour: the body is
         // dark when the machine is, and white-on-amber is a banner nobody can
         // read. This one says you are not yourself right now, so it has to be
         // the most legible thing on the page.
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           <p>
             You are seeing the vault as{" "}
             <strong className="font-medium">{viewedUser.name}</strong> (
@@ -177,25 +201,15 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Vault</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
-          {documents.length === 1
-            ? "One document"
-            : `${documents.length} documents`}
-          {older > 0 ? `, with ${older} older ${older === 1 ? "version" : "versions"} behind them` : null}
-          {isViewingAs ? null : `, as ${actor.name}`}.
+      {owner ? (
+        <p className="text-sm">
+          Showing {owner.name ? <strong className="font-semibold">{owner.name}</strong> : "one owner"}
+          {"'s documents only. "}
+          <Link className="underline" to={everything}>
+            Show everything
+          </Link>
         </p>
-        {owner ? (
-          <p className="mt-2 text-sm">
-            Showing {owner.name ? <strong className="font-medium">{owner.name}</strong> : "one owner"}
-            {"'s documents only. "}
-            <Link className="underline" to={everything}>
-              Show everything
-            </Link>
-          </p>
-        ) : null}
-      </div>
+      ) : null}
 
       {canViewAs ? (
         // Folded away: it is for checking access, not for finding a paper,
@@ -208,7 +222,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
             View as
           </label>
           <select
-            className="rounded-lg border border-gray-300 p-2"
+            className="field w-auto max-w-full"
             id="as"
             name="as"
             defaultValue={isViewingAs ? viewedUser?.id : ""}
@@ -223,10 +237,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                 </option>
               ))}
           </select>
-          <button
-            className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
-            type="submit"
-          >
+          <button className="btn btn-primary" type="submit">
             Look
           </button>
         </Form>
@@ -234,7 +245,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
+        <p className="sheet p-5 text-sm text-gray-500">
           {owner
             ? "Nothing here that you can see."
             : `Nothing here. ${isViewingAs ? "This account" : "You"} cannot see any documents.`}
@@ -244,28 +255,47 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
       {groups.map(([category, rows]) => (
         // The id is where the dashboard's category overview lands.
         <section key={category} id={category} className="flex scroll-mt-4 flex-col">
-          <FolderTab category={category}>{category}</FolderTab>
-          <ul className="rounded-lg rounded-tl-none border border-gray-200 bg-white text-sm">
+          <FolderTab category={category}>
+            {category}
+            <span className="ml-auto font-mono text-xs font-normal normal-case text-gray-500">{rows.length}</span>
+          </FolderTab>
+          <ul className="sheet mt-2 text-sm">
             {rows.map((document) => (
               <li
                 key={document.id}
-                className="relative flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
+                className="relative grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5"
               >
-                <span>
-                  <Link className="row-link underline" to={`/record/${document.id}`}>
-                    {document.title}
-                  </Link>
-                  <span className="text-gray-500">
-                    {" — "}
-                    {document.ownerName ?? (
-                      // Reachable by a per-record grant, which carries the
-                      // document without carrying its owner (D17). Saying so
-                      // beats an empty dash that reads like missing data.
-                      <em className="not-italic">owner not shown to you</em>
-                    )}
-                  </span>
+                <Link className="row-link font-semibold" to={`/record/${document.id}`}>
+                  {document.title}
+                </Link>
+                <span className="flex flex-wrap items-center justify-end gap-1.5 justify-self-end">
+                  {document.expiresOn && document.expired ? <span className="stamp stamp-warn">Expired</span> : null}
+                  {document.isPrivate ? <span className="stamp stamp-quiet">Private</span> : null}
+                  {document.isCurrent ? null : <span className="stamp stamp-quiet">An older version</span>}
                 </span>
-                <span className="flex items-baseline gap-2 text-xs text-gray-500">
+                <span className="text-gray-500">
+                  {document.ownerName ?? (
+                    // Reachable by a per-record grant, which carries the
+                    // document without carrying its owner (D17). Saying so
+                    // beats an empty dash that reads like missing data.
+                    <em className="not-italic">owner not shown to you</em>
+                  )}
+                  {" · "}
+                  <span className="ref">{reference(document.category, document.id)}</span>
+                </span>
+                <span className="flex flex-wrap items-baseline justify-end gap-x-3 justify-self-end text-xs text-gray-600">
+                  {document.expiresOn ? (
+                    document.expired ? (
+                      <span>expired <span className="font-mono">{longDate(document.expiresOn)}</span></span>
+                    ) : (
+                      <span>expires <span className="font-mono">{longDate(document.expiresOn)}</span></span>
+                    )
+                  ) : null}
+                  {document.olderVersions > 0 ? (
+                    <span>
+                      <span className="font-mono">{document.olderVersions}</span> older {document.olderVersions === 1 ? "version" : "versions"}
+                    </span>
+                  ) : null}
                   {document.fileId ? (
                     <Link
                       className="relative z-10 -my-2 px-1 py-2 underline"
@@ -275,37 +305,13 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                       open{document.fileCount > 1 ? ` (${document.fileCount} pages)` : ""}
                     </Link>
                   ) : null}
-                  {document.isPrivate ? <span>private</span> : null}
-                  {document.isCurrent ? null : <span>an older version</span>}
-                  {document.olderVersions > 0 ? (
-                    <span>
-                      {document.olderVersions} older {document.olderVersions === 1 ? "version" : "versions"}
-                    </span>
-                  ) : null}
-                  {document.expiresOn ? (
-                    document.expired ? (
-                      <span className="font-medium text-red-700 dark:text-red-400">expired {longDate(document.expiresOn)}</span>
-                    ) : (
-                      <span>expires {longDate(document.expiresOn)}</span>
-                    )
-                  ) : null}
                 </span>
               </li>
             ))}
           </ul>
         </section>
       ))}
-
-      <div className="flex gap-4 text-sm">
-        {isViewingAs ? null : (
-          // Hidden while viewing as somebody else, because the transaction that
-          // would file it is read-only: offering the link would be offering a
-          // button that cannot work.
-          <Link className="inline-block py-1 text-gray-500 underline" to="/upload">
-            File a document
-          </Link>
-        )}
-      </div>
-    </main>
+      </Page>
+    </>
   );
 }

@@ -24,8 +24,9 @@ const MIN_SCALE = 0.8;
 export type MapTag = { text: string; tone: "warn" | "soon" };
 
 /**
- * The tree as an SVG, drawn like a metro map: people are names, a family is a
- * coloured line. Drag to pan, wheel or buttons to zoom. Every person is a
+ * The tree as an SVG, engraved like a certificate's family chart: people are
+ * names in ruled boxes, joined by one ink. Drag to pan, wheel or buttons to
+ * zoom. Every person is a
  * link, so Tab reaches them and Enter opens them without a mouse; the tag on
  * a name is in its label too, so it is not colour alone.
  */
@@ -91,9 +92,9 @@ export function TreePicture({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">+</button>
-        <button type="button" className="min-h-9 min-w-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-2" onClick={() => zoom(1.25)} aria-label="Zoom out">−</button>
-        <button type="button" className="min-h-9 rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3" onClick={() => setBox(fit())}>Reset</button>
+        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in"><ZoomGlyph plus /></button>
+        <button type="button" className="btn btn-secondary btn-sm min-w-9 px-0" onClick={() => zoom(1.25)} aria-label="Zoom out"><ZoomGlyph /></button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBox(fit())}>Reset</button>
         <span className="text-xs text-gray-500">
           <span className="pointer-coarse:hidden">Drag to move around.</span>
           <span className="hidden pointer-coarse:inline">Swipe sideways to move along.</span>
@@ -136,12 +137,11 @@ export function TreePicture({
             key={line.key}
             d={line.d}
             fill="none"
-            stroke={`var(--${line.colour === "guardian" ? "line-guardian" : line.colour})`}
-            strokeWidth={6}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            strokeDasharray={line.ended ? "0.5 11" : undefined}
-            opacity={line.ended ? 0.8 : 1}
+            stroke={line.colour === "guardian" ? "var(--line-guardian)" : "var(--line)"}
+            strokeWidth={line.colour === "guardian" ? 2 : 1.5}
+            strokeLinejoin="miter"
+            strokeDasharray={line.ended ? "5 5" : line.colour === "guardian" ? "10 3 2 3" : undefined}
+            opacity={line.ended ? 0.7 : 1}
           />
         ))}
         {lines.map((line) => {
@@ -172,29 +172,50 @@ export function TreePicture({
                 navigate(vaultFor(person.ownerId));
               }}
             >
+              {/* A name in a ruled box, framed twice like an entry on a certificate. */}
               <rect
                 x={at.x}
                 y={at.y}
                 width={NODE_WIDTH}
                 height={NODE_HEIGHT}
-                rx={NODE_HEIGHT / 2}
-                strokeWidth={2}
-                strokeDasharray={person.deceased ? "5 4" : undefined}
+                rx={2}
+                strokeWidth={1.25}
+                strokeDasharray={person.deceased ? "4 3" : undefined}
                 className={
-                  "fill-white group-hover:stroke-accent group-focus-visible:stroke-accent group-focus-visible:[stroke-width:4] " +
+                  "fill-white group-hover:stroke-accent group-focus-visible:stroke-accent group-focus-visible:[stroke-width:3] " +
                   (person.deceased ? "stroke-gray-400" : "stroke-gray-900")
                 }
               />
+              {person.deceased ? null : (
+                <rect
+                  x={at.x + 3}
+                  y={at.y + 3}
+                  width={NODE_WIDTH - 6}
+                  height={NODE_HEIGHT - 6}
+                  rx={1}
+                  fill="none"
+                  strokeWidth={0.5}
+                  className="stroke-gray-400"
+                />
+              )}
               <text
-                x={at.x + NODE_WIDTH / 2}
+                x={at.x + 14}
                 y={at.y + NODE_HEIGHT / 2}
                 dominantBaseline="central"
-                textAnchor="middle"
+                textAnchor="start"
                 className={"text-[14px] font-semibold " + (person.deceased ? "fill-gray-500" : "fill-gray-900")}
               >
                 {truncate(person.name)}
                 {person.deceased ? " †" : ""}
-                <tspan dx={8} className="fill-gray-500 font-normal">{person.papers}</tspan>
+              </text>
+              <text
+                x={at.x + NODE_WIDTH - 12}
+                y={at.y + NODE_HEIGHT / 2}
+                dominantBaseline="central"
+                textAnchor="end"
+                className="fill-gray-500 font-mono text-[12px]"
+              >
+                {person.papers}
               </text>
               {own.length > 0 ? <Tag x={at.x + NODE_WIDTH / 2} y={at.y - 8} tag={own[0]} more={own.length - 1} /> : null}
             </a>
@@ -203,10 +224,10 @@ export function TreePicture({
       </svg>
 
       <p className="text-xs text-gray-500 max-w-prose">
-        Each family is a colour: a couple shares a line, and their children hang
-        from it. Amber is guardianship. Dotted lines have ended (a divorce, a
+        A couple shares a line, and their children hang from it. The gold
+        dash-and-dot line is guardianship. Dashed lines have ended (a divorce, a
         guardianship that ran out) and give nobody access. † has died. The number
-        beside a name is how many papers you can see for them.
+        in a name&apos;s box is how many papers you can see for them.
       </p>
     </section>
   );
@@ -222,11 +243,14 @@ function Label({ x, y, text }: { x: number; y: number; text: string }) {
 
 function Tag({ x, y, tag, more }: { x: number; y: number; tag: MapTag; more: number }) {
   const text = more > 0 ? `${tag.text} +${more}` : tag.text;
-  const width = text.length * 6.6 + 20;
+  // Stamped, not pinned: a ruled frame in the tone's ink, the words in capitals.
+  const width = text.length * 7.6 + 18;
+  const ink = tag.tone === "warn" ? "var(--warn)" : "var(--soon-ink)";
   return (
-    <g aria-hidden="true">
-      <rect x={x - width / 2} y={y - 22} width={width} height={22} rx={11} fill={`var(--${tag.tone})`} />
-      <text x={x} y={y - 11} dominantBaseline="central" textAnchor="middle" fill={`var(--on-${tag.tone})`} className="text-[12px] font-bold">
+    <g aria-hidden="true" transform={`rotate(-2 ${x} ${y - 12})`}>
+      <rect x={x - width / 2} y={y - 24} width={width} height={22} rx={1.5} fill="var(--sheet)" stroke={ink} strokeWidth={1.5} />
+      <rect x={x - width / 2 + 2.5} y={y - 21.5} width={width - 5} height={17} rx={1} fill="none" stroke={ink} strokeWidth={0.5} />
+      <text x={x} y={y - 13} dominantBaseline="central" textAnchor="middle" fill={ink} className="text-[11px] font-bold uppercase tracking-[0.1em]">
         {text}
       </text>
     </g>
@@ -235,4 +259,14 @@ function Tag({ x, y, tag, more }: { x: number; y: number; tag: MapTag; more: num
 
 function truncate(name: string): string {
   return name.length > 15 ? `${name.slice(0, 14)}…` : name;
+}
+
+/** The zoom buttons' marks, drawn rather than typed. */
+function ZoomGlyph({ plus }: { plus?: boolean }) {
+  return (
+    <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
+      <path d="M1.5 6h9" />
+      {plus ? <path d="M6 1.5v9" /> : null}
+    </svg>
+  );
 }

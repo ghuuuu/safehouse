@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import type { Route } from "./+types/tree";
 import type { OwnerLink } from "../tree";
+import { Masthead, Page } from "../masthead";
 import { Segmented } from "../segmented";
 import { TreePicture } from "../tree-picture";
 import { getFamilyTree } from "../tree.server";
@@ -57,50 +58,62 @@ export default function FamilyTree({ loaderData }: Route.ComponentProps) {
   const tabHref = (value: Tab) => `/tree?tab=${value}${as ? `&${as}` : ""}`;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-6 md:p-8">
-      {viewingAs ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          <p>
-            You are seeing the tree as{" "}
-            <strong className="font-medium">{viewingAs.name}</strong>.
-          </p>
-          <Link className="underline" to={`/tree?tab=${tab}`}>
-            Back to your own view
-          </Link>
-        </div>
-      ) : null}
-
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Family tree</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
-          Who documents belong to. Pick anyone to see their documents.
-        </p>
-      </div>
-
-      <Segmented
-        label="What to show"
-        options={TABS.map((t) => ({ to: tabHref(t.value), label: t.label, current: tab === t.value }))}
+    <>
+      <Masthead
+        title="Family tree"
+        serial={
+          <>
+            {tree.people.length} {tree.people.length === 1 ? "person" : "people"}
+            {viewingAs ? ` · viewing as ${viewingAs.name}` : null}
+          </>
+        }
       />
 
-      {tab === "family" ? (
-        tree.people.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">
-            Nobody in the family tree that you can see.{" "}
-            {canAdd && !viewingAs ? (
-              <Link className="underline" to="/people">Add somebody</Link>
-            ) : null}
+      <Page>
+        {viewingAs ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            <p>
+              You are seeing the tree as{" "}
+              <strong className="font-semibold">{viewingAs.name}</strong>.
+            </p>
+            <Link className="underline" to={`/tree?tab=${tab}`}>
+              Back to your own view
+            </Link>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <Segmented
+            label="What to show"
+            options={TABS.map((t) => ({ to: tabHref(t.value), label: t.label, current: tab === t.value }))}
+          />
+          <p className="text-sm text-gray-500 max-w-prose">
+            Who documents belong to. Pick anyone to see their documents.
           </p>
+        </div>
+
+        {tab === "family" ? (
+          <section className="sheet min-w-0 p-4 md:p-6">
+            {tree.people.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Nobody in the family tree that you can see.{" "}
+                {canAdd && !viewingAs ? (
+                  <Link className="underline" to="/people">Add somebody</Link>
+                ) : null}
+              </p>
+            ) : (
+              <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} />
+            )}
+          </section>
         ) : (
-          <TreePicture people={tree.people} edges={tree.edges} vaultFor={vaultFor} />
-        )
-      ) : (
-        <OwnerList
-          owners={tab === "businesses" ? tree.businesses : tree.households}
-          empty={tab === "businesses" ? "No businesses that you can see." : "No household that you can see."}
-          vaultFor={vaultFor}
-        />
-      )}
-    </main>
+          <OwnerList
+            owners={tab === "businesses" ? tree.businesses : tree.households}
+            empty={tab === "businesses" ? "No businesses that you can see." : "No household that you can see."}
+            vaultFor={vaultFor}
+          />
+        )}
+      </Page>
+    </>
   );
 }
 
@@ -114,17 +127,17 @@ function OwnerList({
   vaultFor: (ownerId: string) => string;
 }) {
   if (owners.length === 0) {
-    return <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">{empty}</p>;
+    return <p className="sheet p-5 text-sm text-gray-500">{empty}</p>;
   }
 
   return (
-    <ul className="rounded-lg border border-gray-200 bg-white text-sm">
+    <ul className="sheet text-sm">
       {owners.map((owner) => (
-        <li key={owner.ownerId} className="relative flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0">
-          <Link className="row-link underline" to={vaultFor(owner.ownerId)}>
+        <li key={owner.ownerId} className="relative flex items-baseline justify-between gap-4 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5">
+          <Link className="row-link font-semibold" to={vaultFor(owner.ownerId)}>
             {owner.name}
           </Link>
-          <span className="text-gray-500">
+          <span className="font-mono text-xs text-gray-500">
             {owner.papers} {owner.papers === 1 ? "paper" : "papers"}
           </span>
         </li>

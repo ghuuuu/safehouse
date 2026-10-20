@@ -70,16 +70,19 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   }));
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[13rem_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col gap-7 bg-side px-4 py-7 text-side-ink md:flex">
-        <Link to="/" className="flex items-center gap-2.5 px-2 text-lg font-bold tracking-tight">
+    <div className="min-h-screen md:grid md:grid-cols-[14rem_1fr]">
+      <aside className="sticky top-0 hidden [view-transition-name:sidebar] h-screen flex-col gap-7 overflow-y-auto bg-side px-4 py-6 text-side-ink md:flex">
+        <Link to="/" viewTransition className="flex items-center gap-3 border-b border-side-muted/30 px-2 pb-5">
           <Logo />
-          Safehouse
+          <span className="text-[0.95rem] font-bold uppercase tracking-[0.2em]">Safehouse</span>
+        </Link>
+        <Link to="/upload" viewTransition className="btn btn-serial mx-2">
+          File a document
         </Link>
         <nav aria-label="Safehouse" className="flex flex-col gap-6">
-          <Groups groups={groups} />
+          <Groups groups={groups.map((g) => ({ ...g, items: g.items.filter((i) => i.to !== "/upload") }))} />
         </nav>
-        <div className="mt-auto flex flex-col items-start gap-2 text-sm">
+        <div className="mt-auto flex flex-col items-start gap-1 border-t border-side-muted/30 pt-4 text-sm">
           <Who user={user} />
         </div>
       </aside>
@@ -118,20 +121,21 @@ function useSlashToSearch() {
 
 function Groups({ groups, tone = "side" }: { groups: { title: string; items: Item[] }[]; tone?: "side" | "sheet" }) {
   const quiet = tone === "side" ? "text-side-muted" : "text-gray-500";
-  const idle = tone === "side" ? "text-side-ink/90 hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100";
+  const idle = tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100";
   const here = tone === "side" ? "bg-side-on font-semibold text-side-on-ink" : "bg-accent font-semibold text-on-accent";
   return groups.map((group) => (
     <div key={group.title}>
       {/* Not a heading: the page's own h1 is the first heading a reader meets. */}
-      <p aria-hidden className={`mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider ${quiet}`}>{group.title}</p>
+      <p aria-hidden className={`index mb-1.5 px-3 ${quiet}`}>{group.title}</p>
       <ul aria-label={group.title} className="flex flex-col gap-0.5">
         {group.items.map((item) => (
           <li key={item.to}>
             <NavLink
               to={item.to}
+              viewTransition
               end={item.to === "/"}
               className={({ isActive }) =>
-                "block rounded-full px-3 py-2.5 text-sm md:py-1.5 " + (isActive ? here : idle)
+                "block rounded-md px-3 py-2.5 text-sm md:py-1.5 " + (isActive ? here : idle)
               }
             >
               {item.label}
@@ -152,7 +156,7 @@ function Who({ user, tone = "side" }: { user: { name: string; role: string }; to
       </p>
       <Form method="post" action="/sign-out">
         <button
-          className={`rounded-full px-3 py-2 underline ${tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`rounded-md px-3 py-2 underline ${tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100"}`}
           type="submit"
         >
           Sign out
@@ -181,19 +185,20 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
   return (
     <nav
       aria-label="Safehouse"
-      className="fixed inset-x-0 bottom-0 z-20 bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 [view-transition-name:tabbar] bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
     >
       <ul className="grid grid-cols-5">
         {TABS.map((item) => (
           <li key={item.to}>
             <NavLink
               to={item.to}
+              viewTransition
               end={item.to === "/"}
               className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-side-ink" : "text-side-muted"}`}
             >
               {({ isActive }) => (
                 <>
-                  <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${isActive ? "bg-[var(--logo)]" : "bg-transparent"}`} />
+                  <span aria-hidden className={`mb-1.5 h-0.5 w-7 ${isActive ? "bg-serial" : "bg-transparent"}`} />
                   {item.label}
                 </>
               )}
@@ -208,10 +213,10 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
             }}
           >
             <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "font-semibold text-side-ink" : "text-side-muted"}`}>
-              <span aria-hidden className={`mb-1 h-1 w-6 rounded-full ${inMore ? "bg-[var(--logo)]" : "bg-transparent"}`} />
+              <span aria-hidden className={`mb-1.5 h-0.5 w-7 ${inMore ? "bg-serial" : "bg-transparent"}`} />
               More
             </summary>
-            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white px-4 py-4 text-gray-900">
+            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto border-t-2 border-side bg-white px-4 py-4 text-gray-900">
               <div className="flex flex-col gap-4">
                 <Groups
                   tone="sheet"

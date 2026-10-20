@@ -1,224 +1,349 @@
 ---
 name: Safehouse
-description: A household's papers, with the family drawn as a line map.
+description: A household's papers, printed like the papers themselves.
 colors:
-  page: "#f6f4f6"
-  sheet: "#ffffff"
-  rule: "#ddd5de"
-  rule-strong: "#c9bdca"
-  ink-muted: "#6a5a6c"
-  ink: "#2e1a31"
-  plum: "#5a2b5f"
-  sidebar: "#3a1f3d"
-  sidebar-ink: "#ecdfee"
-  sidebar-muted: "#b59cb8"
-  logo-amber: "#f0a020"
-  line-1: "#2f6fe0"
-  line-2: "#d93a3f"
-  line-3: "#1f8a55"
-  line-4: "#0e7c86"
-  line-5: "#8a5a2b"
-  line-guardian: "#c47f00"
-  warn: "#c0262d"
-  soon: "#f0a020"
+  paper: "#e7eee9"
+  sheet: "#f6f9f6"
+  rule: "#c6d3cb"
+  rule-strong: "#a7b8ae"
+  ink-muted: "#4c5e65"
+  ink: "#14232b"
+  on-teal: "#ffffff"
+  teal: "#13394a"
+  teal-deep: "#0b2836"
+  side-deep: "#0d2c3a"
+  side-ink: "#dbe8ea"
+  side-muted: "#a1bec5"
+  side-hover: "#1c4a5e"
+  plate: "#2f6b80"
+  serial-gold: "#d9b25a"
+  intaglio-green: "#2f5e45"
+  claret: "#7a1f3d"
+  claret-deep: "#5f1830"
+  old-gold: "#b98a2e"
+  old-gold-ink: "#7c591b"
+  cat-personal: "#23597a"
+  cat-medical: "#2f6b4c"
+  cat-business: "#554a86"
+  cat-financial: "#7c591b"
+  cat-legal: "#6b3a2a"
+  cat-general: "#575447"
 typography:
-  headline:
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "1.5rem"
+  display:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.75rem"
     fontWeight: 700
-    letterSpacing: "-0.025em"
-  title:
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 500
+    lineHeight: 1.25
+    letterSpacing: "-0.02em"
+  headline:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 600
   body:
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
   label:
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "0.12em"
+  stamp:
+    fontFamily: "Public Sans, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.1em"
+  serial:
+    fontFamily: "Red Hat Mono, ui-monospace, Consolas, monospace"
     fontSize: "0.75rem"
     fontWeight: 500
-  index:
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "11px"
-    fontWeight: 600
+    letterSpacing: "0.12em"
+  reference:
+    fontFamily: "Red Hat Mono, ui-monospace, Consolas, monospace"
+    fontSize: "0.75rem"
+    fontWeight: 500
+    letterSpacing: "0.06em"
 rounded:
-  field: "8px"
-  card: "8px"
-  pill: "9999px"
+  xs: "1px"
+  sm: "2px"
+  md: "3px"
+  xl: "4px"
 spacing:
-  row: "16px"
-  section: "24px"
+  gutter-phone: "16px"
+  gutter-desk: "32px"
+  section: "32px"
 components:
   button-primary:
-    backgroundColor: "{colors.plum}"
-    textColor: "{colors.sheet}"
-    rounded: "{rounded.pill}"
-    padding: "8px 20px"
+    backgroundColor: "{colors.teal}"
+    textColor: "{colors.on-teal}"
+    rounded: "{rounded.md}"
+    padding: "8px 17.6px"
+    height: "40px"
+  button-primary-hover:
+    backgroundColor: "{colors.teal-deep}"
   button-secondary:
     backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.pill}"
-    padding: "8px 16px"
-  input:
+    rounded: "{rounded.md}"
+    padding: "8px 17.6px"
+    height: "40px"
+  button-danger:
+    backgroundColor: "{colors.claret}"
+    textColor: "{colors.on-teal}"
+    rounded: "{rounded.md}"
+    padding: "8px 17.6px"
+    height: "40px"
+  button-danger-hover:
+    backgroundColor: "{colors.claret-deep}"
+  button-serial:
+    backgroundColor: "{colors.serial-gold}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "8px 17.6px"
+    height: "40px"
+  button-sm:
+    rounded: "{rounded.md}"
+    padding: "4.8px 12px"
+    height: "32px"
+  field:
     backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.field}"
-    padding: "8px"
-  search:
+    rounded: "{rounded.md}"
+    padding: "8px 12px"
+    height: "40px"
+  sheet:
     backgroundColor: "{colors.sheet}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.pill}"
-    padding: "8px 16px"
+    rounded: "{rounded.md}"
+  masthead:
+    backgroundColor: "{colors.side-deep}"
+    textColor: "{colors.sheet}"
+    typography: "{typography.display}"
   nav-item-active:
     backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.md}"
     padding: "6px 12px"
-  name-on-map:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.pill}"
-    padding: "0 16px"
+  segmented-current:
+    backgroundColor: "{colors.teal}"
+    textColor: "{colors.on-teal}"
+    padding: "8px 16px"
+  stamp:
+    typography: "{typography.stamp}"
+    rounded: "{rounded.sm}"
+    padding: "4.8px 7.2px"
+  reference:
+    textColor: "{colors.intaglio-green}"
+    typography: "{typography.reference}"
 ---
 
 # Design System: Safehouse
 
 ## Overview
 
-**Creative North Star: "The household is a map"**
+**Creative North Star: "Security Print"**
 
-People are names on coloured family lines, the way stations sit on a metro
-map. A couple shares one line and their children hang from it; what is running
-out hangs as a tag on the person it belongs to. Around the map, the app is a
-calm porcelain page beside a plum sidebar, with a house-and-keyhole mark.
+The vault wears the grammar of the papers it guards: passport visa pages,
+banknotes, share certificates. A deep teal shell, pale security paper with
+sheets a step lighter, one ink, and a guilloché plate engraved behind each
+page's name. Every paper carries a printed reference; every state on a paper is
+stamped in words; every name in the family is entered in a ruled,
+double-framed box the way a certificate records it.
 
-It is an Operate surface: people come to find a paper, file one, or check who
-can see what, and leave. The map is the one expressive thing; everything else
-stays familiar so it can disappear into the task. At night the page goes dark
-and the plum deepens.
+It is an Operate surface, used two ways and both first-class: filing at a desk
+and finding on a phone. The print is the atmosphere, never the obstacle: the
+plate sits behind a quieter field so the words win, the paper is calm, and
+everything a person reads or types is a ruled sheet on that paper. It replaced
+porcelain-and-plum on 2026-10-18, which read as a toy (transit-map pills),
+generic (a purple SaaS sidebar) and cold rather than home. It refuses the
+cloud-drive grid, the SaaS stat card, and the transit-map toy.
 
-Chosen on 2026-10-09 from three rounds of directions; the mockups are in
-`.impeccable/sketches/` (`r4-porcelain.png` for the layout, `r5-plum.png` for
-the accent). The visual contract is at the top of `app/app.css` and ships in
-the built CSS.
+The world's tokens and their reasoning are at the top of `app/app.css`; the
+plate is `app/guilloche.ts`, the masthead `app/masthead.tsx`, the reference
+`app/reference.ts`.
 
-**Key characteristics:**
-- Plum sidebar, light porcelain page, white sheets for anything you read or type.
-- One grey scale with roles, not shades, tinted plum; it turns over in dark mode by itself.
-- The family as a line map: names in pills, a colour per family, tags on names.
-- Pills for actions, names and search; 8px corners for fields and cards.
-- Flat: no shadows. Depth is sheet against page and a 1px ruled edge.
+**Key Characteristics:**
+- Deep teal sidebar and masthead band; pale green-grey security paper; sheets a step lighter with a 1px ruled edge.
+- A guilloché plate (interlaced waves and one rosette) generated from each page's own name, so no two pages and no two households print alike.
+- Public Sans for every word; Red Hat Mono only for what is counted, dated or numbered. Both self-hosted.
+- Three meaning inks besides teal: claret (expired, emergency, destructive), old gold (running out, the serial line), intaglio green (references, confirmed).
+- Corners a hair off square (1-4px). Flat: no shadows anywhere.
+- States are stamps: ruled, capitalised words in the state's ink, never colour alone.
 
 ## Colors
 
-Restrained: plum and porcelain carry the app; the family lines are the only
-run of colour, and red and amber are kept for warnings.
+Restrained: teal and paper carry the app, one ink writes on it, and three inks
+are kept for meaning. Every value has a dark twin in `app/app.css`; every text
+step reads at 4.5:1 or better against every ground, in both modes.
 
 ### Primary
-- **Plum** (#5a2b5f, dark #c9a0cf): the primary button, the current option in a switch, the focus ring, checkboxes.
-- **Sidebar plum** (#3a1f3d, dark #24132a): the sidebar, the phone's tab bar, the signed-out pages behind their card.
+- **Engraver's Teal** (teal): the sidebar, the phone tab bar, the primary button, the current option in a switch, the focus ring, the reach bar, `accent-color` and caret. Its hover is **Deep Teal** (teal-deep).
+- **Masthead Teal** (side-deep): the masthead band and the signed-out pages, one step darker than the sidebar so the band reads as a printed plate across the page.
+- **Plate Ink** (plate): the guilloché lines only, faint behind the masthead's words. Never text, never a fill.
 
 ### Secondary
-- **Family lines** (blue #2f6fe0, red #d93a3f, green #1f8a55, teal #0e7c86, brown #8a5a2b; dark twins in `app.css`): each couple or single parent takes the next ink in turn. Each passes 3:1 against the page as a line.
-- **Guardianship amber** (#c47f00): always a guardian's line, so it is never a family's.
-- **Logo amber** (#f0a020): the house mark and the phone tab bar's current-tab bar.
-- **Category marks** (`--cat-*`): a small square beside a category's written name, and the folder tab on the vault. Never a region.
+- **Serial Gold** (serial-gold): the one ink that reads on teal. The serial line under a page title, the logo, the gold buttons on teal (`btn-serial`: File a document, Search), the phone tab bar's current-tab bar.
+- **Intaglio Green** (intaglio-green): a paper's printed reference, and a value somebody confirmed.
 
 ### Tertiary
-- **Warn** (#c0262d on white text, dark #ff7b7b on dark text): expired, an emergency window, a destructive action, a tag on the map.
-- **Soon** (#f0a020 on dark text): about to run out, as a tag on the map. Amber notices ("nobody has checked these details") stay quiet.
+- **Claret** (`red-*` scale, claret at 700): expired, an emergency window, anything destructive. The danger button, `stamp-warn`.
+- **Old Gold** (`amber-*` scale, old-gold at 500, old-gold-ink at 700): about to run out, a notice that something wants doing, and the guardian line in the family chart. `stamp-soon` writes in old-gold-ink.
+- **Category inks** (cat-personal through cat-general, banknote inks): a category's section head rule and name, and the small engraved diamond beside a category's written name. Each passes 4.5:1 as text. Never a region's fill.
 
 ### Neutral
-- **Page** (#f6f4f6), **sheet** (#ffffff), **rules** (#ddd5de, #c9bdca), **muted ink** (#6a5a6c, 5.8:1 on the page), **ink** (#2e1a31).
+- **Security Paper** (paper): the page ground.
+- **Sheet** (sheet): anything read closely or typed into; also every `white` class.
+- **Rules** (rule, rule-strong): a sheet's edge and row dividers; field and secondary-button edges.
+- **Muted Ink** (ink-muted) and **Ink** (ink): secondary text and everything else. A section head on a list sheet is ruled in full ink.
 
 ### Named Rules
-**The Roles Not Shades Rule.** The `gray-*` scale is a set of roles: 50–300 are the page and rules, 400–600 muted ink, 700–950 ink. In dark mode the scale turns over in `app/app.css`, so a component never writes `dark:` for a grey. Writing one is the bug. `accent`, `on-accent`, `side`, `side-ink`, `side-muted`, `side-hover`, `side-on` and `side-on-ink` are roles too.
+**The Roles Not Shades Rule.** The `gray-*` scale is a set of roles: 50-300 paper and ruled lines, 400-600 muted ink, 700-950 ink. In dark mode the scale turns over in `app/app.css`, so a component never writes `dark:` for a grey. Claret and gold do not turn over; pair them with `dark:` as Tailwind expects.
 
-**The Words Too Rule.** Colour is never the only cue. A family line has a legend; a tag carries words and is in the name's accessible label; a category's mark sits beside its name.
+**The Three Inks Rule.** Besides teal, only claret, old gold and intaglio green carry meaning, and each means one thing. A new state takes one of the three or is said in words.
+
+**The Words Too Rule.** Colour is never the only cue. A stamp carries words; a category's ink sits beside its name; a chart line has a legend.
 
 ## Typography
 
-**Font:** the system UI sans. Nothing is shipped from a third party; a private
-vault does not tell a font server which pages are open.
+**Body Font:** Public Sans (variable 100-900, roman and italic), fallback ui-sans-serif, system-ui
+**Mono Font:** Red Hat Mono (variable 300-700), fallback ui-monospace, Consolas
+
+**Character:** a plain civic grotesque for everything read and operated, and a
+typewriter mono for the numbers a form prints. Both ship from `public/fonts`
+(OFL); a private vault does not tell a font server which pages are open.
 
 ### Hierarchy
-- **Headline** (700, 1.5rem, tight): one per page, the page's name.
-- **Title** (500, 1rem): sections within a page.
-- **Body** (400, 0.875rem): lists, forms, explanations. A name on the map is 14px semibold.
-- **Label** (500, 0.75rem): small metadata, footnotes.
-- **Index** (600, 11px, uppercase, tracked): the sidebar's group names (Find, File, Household), and the small "guardian" and "step" labels on the map. The only uppercase in the app.
+- **Display** (700, 1.75rem on a phone to 2.25rem from 768px, line-height 1.25, -0.02em): the page's name in the masthead, one per page. Signed-out cards use 1.5rem bold.
+- **Headline** (600, 1.125rem): a section head on a sheet.
+- **Body** (400, 0.875rem): lists, forms, explanations. Lead sentences under the masthead are 1rem; footnotes on a sheet 0.75rem in muted ink.
+- **Label / Index** (600, 0.6875rem, 0.12em, uppercase): table heads, the sidebar's group names, field labels, legends. The way a form prints its field names.
+- **Stamp** (700, 0.6875rem, 0.1em, uppercase): states on a paper.
+- **Serial** (mono 500, 0.75rem, 0.12em, uppercase, serial gold): the line printed under the masthead title: date, counts, a reference.
+- **Reference** (mono 500, 0.75rem, 0.06em, intaglio green): a paper's reference, "PER-3F9A-21C0".
+
+### Named Rules
+**The Counted Not Said Rule.** Mono is only for what is counted, dated or numbered: references, numbers, dates, serials, codes. Words, labels and stamps are Public Sans, even when small and tracked. Tables, `<time>` and mono set tabular figures.
+
+**The Serial Under Rule.** The serial line prints under the page title, never above it. Nothing small and tracked sits above a heading.
 
 ## Layout
 
-A 13rem plum sidebar beside the page from 768px up; below that, a plum tab bar
-at the bottom (Dashboard, Vault, Search, File, More), with More opening the rest
-of the index as a white sheet. Pages are padded 16px on a phone and 32px wider.
-The dashboard is up to 72rem wide; forms and records about 48rem. Nothing
-scrolls sideways at 390px except the access matrix and the map, each inside its
-own frame.
+A 14rem teal sidebar beside the page from 768px up: the wordmark and seal, File
+a document as the one gold button, then Find / File / Household groups, the
+signed-in name and Sign out at the foot. Below 768px, a teal tab bar fixed at
+the bottom (Dashboard, Vault, Search, File, More), the current tab marked by a
+short gold bar above its word; More opens the rest of the index as a sheet
+above the bar. Pages leave room for the bar so it never covers the end.
 
-### The dashboard
-Title and the "N papers need you" line on the left, the pill search on the
-right. Then the Individuals / Businesses switch and quick-search chips, then the
-family map with its tags, then the household's and businesses' own pills with
-their counts, then Running out and the categories side by side. Running out
-stays a list under the map: it is what a screen reader reads, and it holds the
-household's and businesses' papers, which have no name on the map.
+Every signed-in page opens with the masthead band, then the page beneath it.
+Both share one container (max 72rem, 16px gutters on a phone, 32px from
+768px), so a page's work lines up with its name; a narrow page (forms, records,
+People, Settings) keeps the same left edge and stops at 48rem. Sections stack
+32px apart. On the dashboard, Running out moves above the family chart on a
+phone.
+
+Nothing scrolls sideways at 390px except the access matrix and the family
+chart, each inside its own sheet; the matrix shows a scroll cue.
 
 ### Named Rules
-**The Thumb Rule.** On touch, every control is at least 24px tall and list rows about 52px. A row that opens one thing is tappable across its whole width (`row-link`); fields are 16px so the phone does not zoom.
+**The Thumb Rule.** Buttons and fields are 40px tall (small buttons 32px); switches and chips grow on coarse pointers; list rows are about 52px. A row that opens one thing is a link across its whole width (`row-link`). Fields are 16px on coarse pointers so the phone does not zoom.
 
 ## Elevation & Depth
 
-Flat. Depth is a white sheet on the porcelain page with a 1px rule. No shadows.
+Flat. No shadows anywhere in the app. Depth is a lighter sheet on the paper
+with a 1px ruled edge, and the dark masthead band against the light page. A
+sheet's list head is ruled in full ink beneath it, the rows in a light rule.
+The only gradients are functional: the masthead's quiet field that keeps the
+plate off the words, and the scroll cue's soft edge.
+
+### Named Rules
+**The Engraved Not Lifted Rule.** Separation is a rule line, a double frame or a tonal step, never a shadow.
 
 ## Shapes
 
-Pills for anything you press or that stands for a person: buttons, the search,
-navigation items, chips, names on the map, tags. 8px corners for fields, cards
-and lists. The household and businesses on the dashboard are 12px-cornered
-boxes with a 2px ink edge, so they read as places rather than people.
+Engraved, not pressed: every corner is a hair off square (1px, 2px, 3px, 4px;
+3px for buttons, fields and sheets, 2px for stamps). No pills and no circles
+except the seal. Lines are 1px, with three heavier forms that each mean
+something: the double rule (a name box in the chart, the household's and
+businesses' certificate boxes, 3px double), a stamp's 1.5px frame, and a
+category's 2px ink rule above its section head. A category's mark is a small
+rotated square with a 1.5px edge.
 
 ## Components
 
 ### Buttons
-- **Primary:** plum pill, white text (dark mode: light plum, dark text). One per form.
-- **Secondary:** white pill with a ruled edge that darkens on hover.
-- **Danger:** red pill with fixed pale text.
+Square, ruled, like a stamp's frame.
+- **Shape:** 3px corners, 40px tall (32px small), 600 weight at 0.875rem.
+- **Primary:** teal with white text (on-teal); one per form. Hover deepens to teal-deep.
+- **Secondary:** sheet with a rule-strong edge; hover darkens the edge to gray-600.
+- **Danger:** claret with white text; hover claret-deep.
+- **Serial (on teal only):** gold with ink text; hover turns hollow, gold text on teal.
+- **Focus:** a 2px teal outline offset 2px on every control, never removed. Disabled is 55% opacity.
 
-### Switch
-Two or three views of one page are a segmented control (`app/segmented.tsx`): a ruled outline holding links, the current one plum. The view lives in the URL.
+### Stamps
+A state stamped on a paper: expired, running out, today, private, no sign-in.
+- **Style:** capitalised Public Sans 700, 1.5px frame in the text's own colour, 2px corners, no fill.
+- **Variants:** warn in claret, soon in old-gold-ink, quiet in muted ink. In the family chart a stamp is double-framed and tilted 2 degrees above the name it belongs to.
+
+### Cards / Containers (the sheet)
+- **Corner Style:** 3px.
+- **Background:** sheet on paper.
+- **Shadow Strategy:** none (see Elevation).
+- **Border:** 1px rule. A list sheet's head is ruled in ink below; rows divide with a light rule; a muted footnote closes it.
+- **Internal Padding:** 16px on a phone, 20-24px from 768px.
+
+### Inputs / Fields
+- **Style:** sheet background, 1px rule-strong edge, 3px corners, 40px tall. Placeholders in muted ink. In the masthead the search field drops its edge.
+- **Focus:** the edge turns teal, plus the focus ring.
+- **File picker:** its button is drawn as a secondary button.
 
 ### Navigation
-The sidebar on plum: the logo and wordmark, group names in the index style, items as pills (the current one a white pill with ink text). On the phone, the tab bar on plum with the current tab in sidebar ink and a short amber bar above it.
+- **Sidebar:** teal. Group names in the index voice, muted. Items 0.875rem in side-ink; hover side-hover; the current item is a sheet-coloured plate with ink text, 600 weight.
+- **Phone:** the teal tab bar; the current tab in side-ink with a gold bar above it; More is a native disclosure.
+- **Switch (`app/segmented.tsx`):** a ruled strip of links, the current one teal. The view lives in the URL.
+- **Quick searches:** 2px-cornered ruled chips on the sheet, the count beside the word in mono.
 
-### The family line map (signature)
-`app/tree-picture.tsx`, laid out by `app/tree-layout.ts`:
-- A person is a white pill with an ink edge, their name, and in muted ink the number of papers the viewer can see for them. Someone who has died: a dashed grey edge and a †.
-- `familyLines` gives each couple one ink, drawn between the two names; a child of the couple hangs from its middle in the same ink. Guardianship is amber; a step-parent or a single parent draws a line of their own; each line down runs across at its own height.
-- Ended relationships (divorce, a guardianship that ran out) are dotted, and give nobody access (D33).
-- A child stands under the couple they hang from; a lone parent stands over their child; somebody with no relationships goes last.
-- Tags (optional) hang above a name: warn for expired, soon for about to run out, with a "+N" when there are more.
-- Pan by dragging, zoom with the wheel or buttons; every name is a link and keyboard-reachable; the tag is in its label.
+### The masthead (signature)
+`app/masthead.tsx`. A deep teal band across every signed-in page: the page's name, the serial line in gold under it, and whatever the page needs (search, a button) at the right over the rosette. Behind them, the guilloché plate from `app/guilloche.ts`: twelve interlaced sine strands and one three-ring rosette at the right, seeded by the page's name (the dashboard by the household's), pure and deterministic, drawn in plate ink with a dark field fading in from the left. On first open the plate inks itself in (1400ms, `cubic-bezier(0.16, 1, 0.3, 1)`, staggered 60/140ms); with reduced motion it simply is there. Content is never hidden behind it. The signed-out pages put the same plate, seeded "Safehouse", behind one sheet, with the seal and a tracked wordmark above.
 
-### Dates
-A calendar date is "5 May 2034" (`longDate` in `app/when.tsx`), a moment adds a time in the reader's zone, and soon is "in 10 days". Never an ISO date on screen.
+### References
+`app/reference.ts`. A paper's printed reference is a category prefix (PER, MED, BUS, FIN, LEG, GEN) and eight hex digits hashed from the document id: "PER-3F9A-21C0". Never a running count: a count would say how many papers exist beyond the viewer's reach. Set in the reference style in intaglio green, after the owner's name.
+
+### The family chart
+`app/tree-picture.tsx`. One ink for every family line (1.5px, square joins). Guardianship is old gold, 2px, dash-and-dot. A tie that has ended is dashed and faded, and gives nobody access. A person is a ruled box, 2px corners, framed twice like an entry on a certificate, the name in 14px semibold and the viewer's count of their papers in mono at the right. Someone who has died: a single dashed grey frame and a †. Hover and focus ink the frame teal. A legend under the chart says all of it in words.
+
+### The reach bar
+On Access (PRODUCT.md specifies it): an 8px ruled track on the sheet, filled teal to the share of documents an account reaches. Hidden from assistive tech; the sentence beside it says the numbers.
 
 ### The logo
-`app/logo.tsx`: an amber house whose door is a keyhole, cut out in the sidebar's plum. `public/favicon.svg` is the same mark on a plum square.
+`app/logo.tsx`: a house whose door is a keyhole, inside a double-ruled seal, drawn in lines in serial gold. `public/favicon.svg` is the same mark on a 4px-cornered teal square.
+
+### Motion
+All of it lives in `app/app.css`, needs no library, and stops under reduced motion.
+- **Waiting:** a 2px serial-gold rule across the top of the page while the router or any fetcher is busy, shown after 150ms so a quick page never flickers (`Waiting` in `app/root.tsx`). The button that submitted carries `aria-busy`: no second press, and a rule sweeps its foot.
+- **Changing page:** the shell's links and the view switch carry `viewTransition`. The page cross-fades and the new one settles up 6px; the sidebar and tab bar hold still.
+- **Stamps:** a warn or soon stamp lands like an office stamp, a touch large and faint, then pressed flat. Quiet stamps just sit.
+- **A revealed number** inks in from the left in typewriter steps.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** use the grey roles (`gray-500` muted, `gray-900` ink) and the accent and side roles, and let dark mode follow.
-- **Do** put anything typed or read closely on a white sheet.
-- **Do** read every number on the map through the viewer's own transaction, as the vault does; a count is a listing.
+- **Do** put anything typed or read closely on a sheet with a 1px rule and 3px corners.
+- **Do** set every count, date, reference and serial in Red Hat Mono, and every word in Public Sans.
+- **Do** print the serial line under the masthead title.
+- **Do** say a state as a stamp in words: claret for expired or destructive, old gold for running out.
+- **Do** derive any printed reference from the document id, never from a count.
+- **Do** seed a guilloché plate from the page's own name, and keep the quiet field between it and the words.
 - **Do** keep every text colour at 4.5:1 or better in both modes.
 
 ### Don't:
+- **Don't** add shadows, pills, or corners rounder than 4px.
+- **Don't** set words, labels or stamps in mono.
+- **Don't** put a kicker or any small tracked line above a heading.
 - **Don't** add `dark:` variants for greys, or new hex colours in a component.
-- **Don't** use a family ink or a category colour as a region's background.
-- **Don't** add drop shadows.
-- **Don't** load fonts from a third party.
+- **Don't** fill a region with a category ink, or use plate ink for anything but the plate.
+- **Don't** give the family chart a colour per family; one ink, gold for guardianship, dashed for ended.
+- **Don't** load a font from a font server.
+- **Don't** rebuild the cloud-drive grid, the SaaS stat card, or the transit-map toy.

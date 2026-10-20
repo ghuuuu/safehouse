@@ -5,6 +5,7 @@ import type { Route } from "./+types/upload";
 import { withVault } from "../session.server";
 import { ACCEPTED_TYPES, CATEGORIES, MAX_UPLOAD_BYTES } from "../documents";
 import { fileDocument, UploadRefused } from "../upload.server";
+import { Masthead, Page } from "../masthead";
 
 export function meta() {
   return [{ title: "File a document — Safehouse" }];
@@ -86,112 +87,114 @@ export default function Upload({ loaderData, actionData }: Route.ComponentProps)
   const filing = navigation.state === "submitting";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 py-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">File a document</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
+    <>
+      <Masthead title="File a document" />
+      <Page narrow>
+        <p className="-mb-2 max-w-prose text-base text-gray-700">
           It is encrypted before it reaches the disk. Up to{" "}
-          {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB, PDF or an image.
+          <span className="font-mono">{Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}</span> MB, PDF or an image.
         </p>
-      </div>
 
-      {canFile ? (
-        <Form
-          method="post"
-          encType="multipart/form-data"
-          className="flex flex-col gap-4"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            Whose is it?
-            <select
-              name="ownerId"
-              required
-              // Nothing pre-chosen when there is a choice: a default here is
-              // how a passport gets filed under whoever sorts first.
-              defaultValue={owners.length === 1 ? owners[0].id : ""}
-              className="rounded-lg border border-gray-300 p-2"
-            >
-              {owners.length === 1 ? null : (
-                <option value="" disabled>
-                  Choose a person, business or the household
-                </option>
-              )}
-              {owners.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.displayName}
-                  {owner.kind === "person" ? "" : ` (${owner.kind})`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            What is it?
-            <input
-              name="title"
-              required
-              maxLength={200}
-              placeholder="Passport, council tax bill, boiler warranty"
-              className="rounded-lg border border-gray-300 p-2"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            Where does it belong?
-            <select
-              name="category"
-              required
-              defaultValue=""
-              className="rounded-lg border border-gray-300 p-2"
-            >
-              <option value="" disabled>
-                Choose a kind
-              </option>
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            The file
-            <input
-              type="file"
-              name="file"
-              required
-              accept={ACCEPTED_TYPES.join(",")}
-              className="rounded-lg border border-gray-300 p-2"
-            />
-          </label>
-
-          {actionData?.error ? (
-            <p
-              role="alert"
-              className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
-            >
-              {actionData.error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={filing}
-            className="self-start rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent disabled:opacity-60"
+        {canFile ? (
+          <Form
+            method="post"
+            encType="multipart/form-data"
+            className="sheet flex flex-col gap-5 p-5 md:p-6"
           >
-            {filing ? "Filing…" : "File it"}
-          </button>
-        </Form>
-      ) : (
-        <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
-          Your account can read the vault but not add to it.
-        </p>
-      )}
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Whose is it?
+              <select
+                name="ownerId"
+                required
+                // Nothing pre-chosen when there is a choice: a default here is
+                // how a passport gets filed under whoever sorts first.
+                defaultValue={owners.length === 1 ? owners[0].id : ""}
+                className="field font-normal"
+              >
+                {owners.length === 1 ? null : (
+                  <option value="" disabled>
+                    Choose a person, business or the household
+                  </option>
+                )}
+                {owners.map((owner) => (
+                  <option key={owner.id} value={owner.id}>
+                    {owner.displayName}
+                    {owner.kind === "person" ? "" : ` (${owner.kind})`}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-      <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
-        Back to the vault
-      </Link>
-    </main>
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              What is it?
+              <input
+                name="title"
+                required
+                maxLength={200}
+                placeholder="Passport, council tax bill, boiler warranty"
+                className="field font-normal"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Where does it belong?
+              <select
+                name="category"
+                required
+                defaultValue=""
+                className="field font-normal"
+              >
+                <option value="" disabled>
+                  Choose a kind
+                </option>
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category[0].toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              The file
+              <input
+                type="file"
+                name="file"
+                required
+                accept={ACCEPTED_TYPES.join(",")}
+                className="border-t border-gray-200 pt-3 font-normal"
+              />
+            </label>
+
+            {actionData?.error ? (
+              <p
+                role="alert"
+                className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
+              >
+                {actionData.error}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-4 border-t border-gray-200 pt-5">
+              <button type="submit" disabled={filing} className="btn btn-primary">
+                {filing ? "Filing…" : "File it"}
+              </button>
+              <Link className="py-2 text-sm text-gray-500 underline hover:text-gray-900" to="/vault">
+                Back to the vault
+              </Link>
+            </div>
+          </Form>
+        ) : (
+          <>
+            <p className="sheet p-5 text-sm text-gray-500">
+              Your account can read the vault but not add to it.
+            </p>
+            <Link className="self-start py-2 text-sm text-gray-500 underline hover:text-gray-900" to="/vault">
+              Back to the vault
+            </Link>
+          </>
+        )}
+      </Page>
+    </>
   );
 }

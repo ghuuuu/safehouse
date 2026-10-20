@@ -4,6 +4,7 @@ import type { Route } from "./+types/record.$documentId";
 import { ACTIONS, record as logEvent } from "../activity.server";
 import { findFile, readFileContents } from "../download.server";
 import { CategoryMark } from "../folder-tab";
+import { Masthead, Page } from "../masthead";
 import { readDocument } from "../ocr.server";
 import {
   EDITABLE_FIELDS,
@@ -13,6 +14,7 @@ import {
   saveFields,
   saveProposals,
 } from "../record.server";
+import { reference } from "../reference";
 import { withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
 import { longDate } from "../when";
@@ -167,196 +169,234 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
   const expired = view.versions.find((version) => version.id === view.document.id)?.expired ?? false;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{view.title}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-gray-500">
-          {view.ownerName ?? "owner not shown to you"} ·
-          <CategoryMark category={view.category} />
-          <span className="capitalize">{view.category}</span>
-          {view.subcategory ? ` · ${view.subcategory}` : ""}
-          {view.isPrivate ? " · private" : ""}
-        </p>
+    <>
+      <Masthead
+        title={view.title}
+        serial={
+          <>
+            {reference(view.category, view.document.id)} · {view.ownerName ?? "owner not shown to you"}
+          </>
+        }
+      />
+
+      <Page narrow>
         {!view.document.isCurrent && current ? (
-          <p className="mt-3 text-sm">
+          <p className="sheet px-4 py-3 text-sm md:px-5">
             This is an older version (version {view.document.versionNo}).{" "}
             <Link className="underline" to={`/record/${current.id}`}>
               See the current one
             </Link>
           </p>
         ) : null}
-      </div>
 
-      <section className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-4">
-          <h2 className="text-base font-medium">What it says</h2>
-          {canEdit && !editing ? (
-            <Link className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-3 py-1.5 text-sm" to={`${here}?edit`}>
-              Edit
-            </Link>
-          ) : null}
-        </div>
+        <p className="-mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
+          <CategoryMark category={view.category} />
+          <span className="capitalize">{view.category}</span>
+          {view.subcategory ? <span>· {view.subcategory}</span> : null}
+          {view.isPrivate ? <span className="stamp stamp-quiet ml-1">Private</span> : null}
+        </p>
 
-        {saved && !editing ? <p role="status" className="text-sm text-gray-500">Saved.</p> : null}
-
-        {editing ? (
-          <EditDetails
-            values={values}
-            confirmed={view.document.confirmedFields}
-            cancel={here}
-            hasPages={view.pages.length > 0}
-            message={actionData && "read" in actionData ? actionData.read : null}
-            error={actionData && "error" in actionData ? actionData.error : null}
-          />
-        ) : (
-          <>
-            {unconfirmed.length > 0 ? (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
-                {unconfirmed.length === 1 ? "One detail was" : `${unconfirmed.length} details were`} read from the scan
-                and nobody has checked {unconfirmed.length === 1 ? "it" : "them"} yet.{" "}
-                {canEdit ? (
-                  <Link className="inline-block py-1 underline" to={`${here}?edit`}>
-                    Check {unconfirmed.length === 1 ? "it" : "them"}
-                  </Link>
-                ) : null}
-              </p>
+        <section aria-labelledby="what-it-says" className="sheet flex flex-col">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
+            <h2 id="what-it-says" className="text-lg font-semibold">What it says</h2>
+            {canEdit && !editing ? (
+              <Link className="btn btn-secondary btn-sm" to={`${here}?edit`}>
+                Edit
+              </Link>
             ) : null}
+          </div>
 
-            <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white text-sm">
-              {Object.entries(LABELS).map(([field, label]) => {
-                const value = values[field];
-                return (
-                  <div key={field} className="flex flex-col gap-0.5 px-4 py-3 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-4">
-                    <dt className="text-gray-500">{label}</dt>
-                    <dd className="flex flex-wrap items-baseline gap-x-2">
-                      {value ? (
-                        <span className="font-medium">{DATES.has(field) ? longDate(value) : value}</span>
-                      ) : (
-                        <span className="text-gray-500">Not recorded</span>
-                      )}
-                      {field === "expires_on" && value && expired ? (
-                        <span className="text-xs font-medium text-red-700 dark:text-red-400">expired</span>
-                      ) : null}
-                      {value && unconfirmed.includes(field) ? (
-                        <span className="text-xs text-amber-700 dark:text-amber-400">unconfirmed</span>
-                      ) : null}
+          {saved && !editing ? <p role="status" className="px-4 pt-3 text-sm text-gray-500 md:px-5">Saved.</p> : null}
+
+          {editing ? (
+            <EditDetails
+              values={values}
+              confirmed={view.document.confirmedFields}
+              cancel={here}
+              hasPages={view.pages.length > 0}
+              message={actionData && "read" in actionData ? actionData.read : null}
+              error={actionData && "error" in actionData ? actionData.error : null}
+            />
+          ) : (
+            <>
+              {unconfirmed.length > 0 ? (
+                <p className="mx-4 mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100 md:mx-5">
+                  {unconfirmed.length === 1 ? "One detail was" : `${unconfirmed.length} details were`} read from the scan
+                  and nobody has checked {unconfirmed.length === 1 ? "it" : "them"} yet.{" "}
+                  {canEdit ? (
+                    <Link className="inline-block py-1 underline" to={`${here}?edit`}>
+                      Check {unconfirmed.length === 1 ? "it" : "them"}
+                    </Link>
+                  ) : null}
+                </p>
+              ) : null}
+
+              <dl className="text-sm">
+                {Object.entries(LABELS).filter(([field]) => values[field]).map(([field, label]) => {
+                  const value = values[field];
+                  return (
+                    <div key={field} className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 md:px-5">
+                      <dt className="index text-gray-500">{label}</dt>
+                      <dd className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        {value ? (
+                          <span className={DATES.has(field) ? "font-mono font-medium" : "font-medium"}>
+                            {DATES.has(field) ? longDate(value) : value}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">Not recorded</span>
+                        )}
+                        {field === "expires_on" && value && expired ? (
+                          <span className="stamp stamp-warn">expired</span>
+                        ) : null}
+                        {value && unconfirmed.includes(field) ? (
+                          <span className="stamp stamp-soon">unconfirmed</span>
+                        ) : null}
+                      </dd>
+                    </div>
+                  );
+                })}
+                <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 md:px-5">
+                  <dt className="index text-gray-500">Number</dt>
+                  <dd>
+                    <MaskedNumber hasIdentifier={view.document.hasIdentifier} />
+                  </dd>
+                </div>
+                {Object.entries(LABELS).some(([field]) => !values[field]) ? (
+                  <div className="flex flex-col gap-1 px-4 py-3 md:px-5">
+                    <dt className="index text-gray-500">Not recorded</dt>
+                    <dd className="text-gray-600">
+                      {Object.entries(LABELS)
+                        .filter(([field]) => !values[field])
+                        .map(([, label]) => label.toLowerCase())
+                        .join(", ")}
                     </dd>
                   </div>
-                );
-              })}
-              <div className="flex flex-col gap-0.5 px-4 py-3 sm:grid sm:grid-cols-[11rem_1fr] sm:gap-4">
-                <dt className="text-gray-500">Number</dt>
-                <dd>
-                  <MaskedNumber hasIdentifier={view.document.hasIdentifier} />
-                </dd>
-              </div>
-            </dl>
-          </>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">Pages</h2>
-        {view.pages.length === 0 ? (
-          <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
-            Nothing scanned behind this one yet.
-          </p>
-        ) : (
-          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
-            {view.pages.map((page) => (
-              <li
-                key={page.id}
-                className="relative flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
-              >
-                <span>Page {page.pageNo}</span>
-                <span className="flex gap-3 text-xs text-gray-500">
-                  <span>{Math.max(1, Math.round(page.byteSize / 1024))} KB</span>
-                  <Link className="row-link underline" to={`/file/${page.id}`} reloadDocument>
-                    open
-                  </Link>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {facts.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">What your insurer wrote</h2>
-          <p className="text-xs text-gray-500 max-w-prose">
-            Quoted exactly, with their own wording and the page. Nothing here is
-            added up or interpreted — where a policy states several figures, all
-            of them are shown.
-          </p>
-          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
-            {facts.map((fact, index) => (
-              <li
-                key={`${fact.label}-${index}`}
-                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 p-3 last:border-b-0"
-              >
-                <span>
-                  <span className="text-gray-500">{fact.label}</span>{" "}
-                  <strong className="font-medium">{fact.value}</strong>
-                </span>
-                <span className="text-xs text-gray-500">page {fact.page}</span>
-              </li>
-            ))}
-          </ul>
+                ) : null}
+              </dl>
+            </>
+          )}
         </section>
-      ) : null}
 
-      {signposts.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">Where the conditions are</h2>
-          <p className="text-xs text-gray-500 max-w-prose">
-            Headings found in the document. Safehouse does not read these for
-            you — it tells you which page to turn to.
-          </p>
-          <ul className="flex flex-wrap gap-2 text-sm">
-            {signposts.map((signpost, index) => (
-              <li
-                key={`${signpost.heading}-${index}`}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2"
-              >
-                {signpost.heading}
-                <span className="ml-2 text-xs text-gray-500">p. {signpost.page}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {view.versions.length > 1 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">Versions</h2>
-          <ul className="rounded-lg border border-gray-200 bg-white text-sm">
-            {view.versions.map((version) => (
-              <li
-                key={version.id}
-                className="relative flex items-baseline justify-between gap-2 border-b border-gray-100 p-4 last:border-b-0"
-              >
-                <Link
-                  className={"row-link " + (version.id === view.document.id ? "font-medium" : "underline")}
-                  to={`/record/${version.id}`}
+        <section aria-labelledby="pages" className="sheet flex flex-col">
+          <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
+            <h2 id="pages" className="text-lg font-semibold">Pages</h2>
+            <span className="text-xs text-gray-500">
+              <span className="font-mono">{view.pages.length}</span> {view.pages.length === 1 ? "page" : "pages"}
+            </span>
+          </div>
+          {view.pages.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-gray-500 md:px-5">
+              Nothing scanned behind this one yet.
+            </p>
+          ) : (
+            <ul className="text-sm">
+              {view.pages.map((page) => (
+                <li
+                  key={page.id}
+                  className="relative flex items-baseline justify-between gap-2 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5"
                 >
-                  Version {version.versionNo}
-                  {version.isCurrent ? " (current)" : ""}
-                </Link>
-                <span className="text-xs text-gray-500">
-                  {version.pageCount} {version.pageCount === 1 ? "page" : "pages"}
-                  {version.expiresOn ? ` · ${version.expired ? "expired" : "expires"} ${longDate(version.expiresOn)}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
+                  <span className="font-medium">Page <span className="font-mono">{page.pageNo}</span></span>
+                  <span className="flex gap-3 text-xs text-gray-500">
+                    <span><span className="font-mono">{Math.max(1, Math.round(page.byteSize / 1024))}</span> KB</span>
+                    <Link className="row-link underline" to={`/file/${page.id}`} reloadDocument>
+                      open
+                    </Link>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
-      ) : null}
 
-      <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
-        Back to the vault
-      </Link>
-    </main>
+        {facts.length > 0 ? (
+          <section aria-labelledby="insurer" className="sheet flex flex-col">
+            <div className="border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="insurer" className="text-lg font-semibold">What your insurer wrote</h2>
+            </div>
+            <p className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">
+              Quoted exactly, with their own wording and the page. Nothing here is
+              added up or interpreted — where a policy states several figures, all
+              of them are shown.
+            </p>
+            <ul className="text-sm">
+              {facts.map((fact, index) => (
+                <li
+                  key={`${fact.label}-${index}`}
+                  className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-200 px-4 py-3 last:border-b-0 md:px-5"
+                >
+                  <span>
+                    <span className="text-gray-500">{fact.label}</span>{" "}
+                    <strong className="font-semibold">{fact.value}</strong>
+                  </span>
+                  <span className="text-xs text-gray-500">page <span className="font-mono">{fact.page}</span></span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {signposts.length > 0 ? (
+          <section aria-labelledby="conditions" className="flex flex-col gap-3">
+            <div className="border-b border-gray-900 pb-2">
+              <h2 id="conditions" className="text-lg font-semibold">Where the conditions are</h2>
+            </div>
+            <p className="text-xs text-gray-500 max-w-prose">
+              Headings found in the document. Safehouse does not read these for
+              you — it tells you which page to turn to.
+            </p>
+            <ul className="flex flex-wrap gap-2 text-sm">
+              {signposts.map((signpost, index) => (
+                <li
+                  key={`${signpost.heading}-${index}`}
+                  className="rounded-sm border border-gray-300 bg-white px-2.5 py-1.5"
+                >
+                  {signpost.heading}
+                  <span className="ml-2 text-xs text-gray-500">p. <span className="font-mono">{signpost.page}</span></span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {view.versions.length > 1 ? (
+          <section aria-labelledby="versions" className="sheet flex flex-col">
+            <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="versions" className="text-lg font-semibold">Versions</h2>
+              <span className="text-xs text-gray-500"><span className="font-mono">{view.versions.length}</span> versions</span>
+            </div>
+            <ul className="text-sm">
+              {view.versions.map((version) => (
+                <li
+                  key={version.id}
+                  className="relative grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5"
+                >
+                  <Link
+                    className={"row-link " + (version.id === view.document.id ? "font-semibold" : "underline")}
+                    to={`/record/${version.id}`}
+                  >
+                    Version {version.versionNo}
+                    {version.isCurrent ? " (current)" : ""}
+                  </Link>
+                  <span className="justify-self-end">
+                    {version.isCurrent ? null : <span className="stamp stamp-quiet">Superseded</span>}
+                  </span>
+                  <span className="col-span-2 text-xs text-gray-500">
+                    <span className="font-mono">{version.pageCount}</span> {version.pageCount === 1 ? "page" : "pages"}
+                    {version.expiresOn ? (
+                      <> · {version.expired ? "expired" : "expires"} <span className="font-mono">{longDate(version.expiresOn)}</span></>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
+          Back to the vault
+        </Link>
+      </Page>
+    </>
   );
 }
 
@@ -365,16 +405,18 @@ function MaskedNumber({ hasIdentifier }: { hasIdentifier: boolean }) {
   const reveal = useFetcher<{ revealed: string | null }>();
 
   if (reveal.data?.revealed) {
-    return <code className="rounded bg-gray-100 px-2 py-1">{reveal.data.revealed}</code>;
+    return <code className="ink-in rounded-sm bg-gray-100 px-2 py-1 font-mono tracking-wider">{reveal.data.revealed}</code>;
   }
   if (!hasIdentifier) return <span className="text-gray-500">Not recorded</span>;
 
   return (
-    <span className="flex flex-wrap items-baseline gap-x-2">
-      <span className="text-gray-500">•••••••• on file</span>
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="text-gray-500">
+        <span className="font-mono tracking-wider">••••••••</span> on file
+      </span>
       <button
         type="button"
-        className="-my-2 px-1 py-2 underline"
+        className="btn btn-secondary btn-sm"
         onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
       >
         {reveal.state === "submitting" ? "checking…" : "reveal"}
@@ -406,25 +448,25 @@ function EditDetails({
     <Form
       key={JSON.stringify(values)}
       method="post"
-      className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4"
+      className="flex flex-col gap-4 p-4 md:p-5"
     >
       <p className="text-sm text-gray-500 max-w-prose">
         Saving confirms every detail left filled in. Clear anything that is wrong rather than leave it.
       </p>
 
       {Object.entries(LABELS).map(([field, label]) => (
-        <label key={field} className="flex flex-col gap-1 text-sm">
-          <span className="flex items-baseline gap-2">
+        <label key={field} className="flex flex-col gap-1 text-sm font-medium">
+          <span className="flex items-center gap-2">
             {label}
             {values[field] && !confirmed.includes(field) ? (
-              <em className="text-xs not-italic text-amber-700 dark:text-amber-400">unconfirmed</em>
+              <em className="stamp stamp-soon not-italic">unconfirmed</em>
             ) : null}
           </span>
           <input
             name={field}
             type={DATES.has(field) ? "date" : "text"}
             defaultValue={values[field] ?? ""}
-            className="rounded-lg border border-gray-300 p-2"
+            className={"field font-normal" + (DATES.has(field) ? " font-mono" : "")}
           />
         </label>
       ))}
@@ -433,10 +475,10 @@ function EditDetails({
       {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={busy} className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent">
+        <button type="submit" disabled={busy} className="btn btn-primary">
           Save
         </button>
-        <Link className="rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2 text-sm" to={cancel}>
+        <Link className="btn btn-secondary" to={cancel}>
           Cancel
         </Link>
         {hasPages ? (

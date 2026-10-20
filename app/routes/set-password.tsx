@@ -3,7 +3,7 @@ import { Form, redirect } from "react-router";
 
 import type { Route } from "./+types/set-password";
 import { MIN_PASSWORD, setPasswordWithLink } from "../auth.server";
-import { Logo } from "../logo";
+import { SignedOut } from "../signed-out";
 
 export function meta() {
   return [{ title: "Set your password — Safehouse" }];
@@ -45,30 +45,25 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
-      <Logo size={48} />
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Set your password</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
-          Then sign in with your email and this password.
-        </p>
-      </div>
+    <SignedOut title="Set your password">
+      <p className="-mt-4 text-sm text-gray-500 max-w-prose">
+        Then sign in with your email and this password.
+      </p>
 
       <Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="token" value={token} />
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">New password</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          New password
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             type="password"
             name="password"
             autoComplete="new-password"
             minLength={minPassword}
             required
           />
-          <span className="text-xs text-gray-500">
+          <span className="text-xs font-normal text-gray-500">
             At least {minPassword} characters.
           </span>
         </label>
@@ -79,11 +74,10 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
           </p>
         ) : null}
 
-        <button className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent" type="submit">
+        <button className="btn btn-primary w-full" type="submit">
           Set password
         </button>
       </Form>
-      </div>
-    </main>
+    </SignedOut>
   );
 }

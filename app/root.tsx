@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -6,6 +6,8 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useFetchers,
+  useNavigation,
   useSubmit,
 } from "react-router";
 
@@ -13,6 +15,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { getSignedInUser, withVault } from "./session.server";
 import { readSettings } from "./settings.server";
+import { SignedOut } from "./signed-out";
 
 /**
  * Only what auto-lock needs: how long, and only for somebody signed in.
@@ -58,6 +61,38 @@ function AutoLock({ minutes }: { minutes: number }) {
   return null;
 }
 
+/**
+ * While the vault is waiting on the server, a gold rule runs along the top of
+ * the page, and the button that was pressed says it is busy. The rule waits
+ * 150ms before it shows (app.css), so a quick page never flickers. One place
+ * for every form: whichever button submitted is marked `aria-busy` while the
+ * router and every fetcher are idle again.
+ */
+function Waiting() {
+  const navigation = useNavigation();
+  const fetchers = useFetchers();
+  const idle = navigation.state === "idle" && fetchers.every((f) => f.state === "idle");
+  // The last button that submitted. Marked only once the router is actually
+  // busy, so a submit that never reaches the server leaves nothing stuck.
+  const pressed = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const onSubmit = (event: SubmitEvent) => (pressed.current = event.submitter);
+    document.addEventListener("submit", onSubmit);
+    return () => document.removeEventListener("submit", onSubmit);
+  }, []);
+  useEffect(() => {
+    const button = pressed.current;
+    if (!button) return;
+    if (idle) {
+      button.removeAttribute("aria-busy");
+      pressed.current = null;
+    } else button.setAttribute("aria-busy", "true");
+  }, [idle]);
+
+  return <div aria-hidden className="loading-rule" data-busy={idle ? undefined : ""} />;
+}
+
 export const links: Route.LinksFunction = () => [{ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }];
 
 // Fonts are not loaded from a third party. A private vault should not tell
@@ -85,6 +120,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
+      <Waiting />
       {loaderData.autoLockMinutes ? <AutoLock minutes={loaderData.autoLockMinutes} /> : null}
       <Outlet />
     </>
@@ -108,14 +144,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <SignedOut title={message} wide={Boolean(stack)}>
+      <p className="-mt-4 text-sm text-gray-600">{details}</p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre className="w-full overflow-x-auto border-t border-gray-200 pt-4 font-mono text-xs">
           <code>{stack}</code>
         </pre>
       )}
-    </main>
+    </SignedOut>
   );
 }

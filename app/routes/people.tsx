@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm";
 
 import { inviteToSignIn, NotAllowed, signInLinkFor } from "../auth.server";
 import { addPerson, listAnchors, listHousehold } from "../people.server";
+import { Masthead, Page } from "../masthead";
 import { roleLabel } from "../roles";
 import { withVault } from "../session.server";
 import { longDate } from "../when";
@@ -181,11 +182,11 @@ function SignInControls({
 }) {
   if (result?.link) {
     return (
-      <div className="mt-2 flex flex-col gap-1 text-xs">
+      <div className="sheet flex flex-col gap-2 p-3 text-xs">
         <input
           readOnly
           aria-label={`Sign-in link for ${row.displayName}`}
-          className="rounded-lg border border-gray-300 p-2 font-mono"
+          className="field font-mono text-xs tracking-wide"
           value={result.link}
           onFocus={(event) => event.currentTarget.select()}
         />
@@ -198,28 +199,28 @@ function SignInControls({
   }
 
   return (
-    <Form method="post" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+    <Form method="post" className="flex flex-wrap items-center gap-2 text-sm">
       <input type="hidden" name="ownerId" value={row.ownerId} />
       {row.hasAccount ? (
-        <button className="py-2 underline" type="submit" name="intent" value="link">
+        <button className="btn btn-secondary btn-sm" type="submit" name="intent" value="link">
           New sign-in link
         </button>
       ) : (
         <>
           <input
-            className="rounded-lg border border-gray-300 p-1 pointer-coarse:p-2"
+            className="field min-h-8 w-auto min-w-0 flex-1 py-1 sm:max-w-64"
             type="email"
             name="email"
             placeholder="their email"
             aria-label={`Email for ${row.displayName}`}
             required
           />
-          <button className="px-1 py-2 underline" type="submit" name="intent" value="invite">
+          <button className="btn btn-secondary btn-sm" type="submit" name="intent" value="invite">
             Invite
           </button>
         </>
       )}
-      {result?.error ? <span className="text-red-700 dark:text-red-400">{result.error}</span> : null}
+      {result?.error ? <span className="text-xs text-red-700 dark:text-red-400">{result.error}</span> : null}
     </Form>
   );
 }
@@ -239,202 +240,221 @@ export default function People({ loaderData, actionData }: Route.ComponentProps)
     roster.some((row) => row.kind === kind),
   );
 
+  const serial = groups
+    .map((kind) => {
+      const n = roster.filter((row) => row.kind === kind).length;
+      return kind === "person" ? `${n} ${n === 1 ? "person" : "people"}` : kind === "business" ? `${n} ${n === 1 ? "business" : "businesses"}` : `${n} household`;
+    })
+    .join(" · ");
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">People</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">
+    <>
+      <Masthead title="People" serial={serial || undefined} />
+
+      <Page narrow>
+        <p className="-mb-2 max-w-prose text-base text-gray-700">
           Everyone and everything documents can be filed to.
         </p>
-      </div>
 
-      {groups.map((kind) => (
-        <section key={kind}>
-          <h2 className="text-sm font-medium">{KIND_LABELS[kind]}</h2>
-          <ul className="mt-2 rounded-lg border border-gray-200 text-sm">
-            {roster
-              .filter((row) => row.kind === kind)
-              .map((row) => (
-                <li
-                  key={row.ownerId}
-                  className="flex items-baseline justify-between gap-4 border-b border-gray-100 p-4 last:border-b-0"
-                >
-                  <span>
-                    {row.displayName}
-                    {row.diedOn ? (
-                      <span className="text-gray-500"> · died {longDate(row.diedOn)}</span>
-                    ) : null}
-                    {row.archived ? (
-                      <span className="text-gray-500"> · archived</span>
-                    ) : null}
+        {groups.map((kind) => {
+          const members = roster.filter((row) => row.kind === kind);
+          return (
+            <section key={kind} aria-labelledby={`group-${kind}`} className="sheet flex flex-col">
+              <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
+                <h2 id={`group-${kind}`} className="text-lg font-semibold">{KIND_LABELS[kind]}</h2>
+                <span className="font-mono text-xs text-gray-500">{members.length}</span>
+              </div>
+              <ul className="text-sm">
+                {members.map((row) => (
+                  <li
+                    key={row.ownerId}
+                    className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 border-b border-gray-200 px-4 py-3 last:border-b-0 md:px-5"
+                  >
+                    <span>
+                      <span className="font-semibold">{row.displayName}</span>
+                      {row.diedOn ? (
+                        <span className="text-gray-500"> · died <span className="font-mono text-xs">{longDate(row.diedOn)}</span></span>
+                      ) : null}
+                      {row.archived ? (
+                        <span className="text-gray-500"> · archived</span>
+                      ) : null}
+                    </span>
+                    <span className="justify-self-end text-xs text-gray-500">
+                      <span className="font-mono">{row.recordCount}</span> {row.recordCount === 1 ? "record" : "records"}
+                    </span>
+                    <span className="col-span-2 text-gray-600">
+                      {row.account ? (
+                        `${roleLabel(row.account.role)}${row.account.disabled ? ", disabled" : ""}`
+                      ) : (
+                        <span className="stamp stamp-quiet">no sign-in</span>
+                      )}
+                    </span>
                     {/* Presentation, like `canAdd`: auth.server.ts refuses anybody else. */}
                     {canAdd && kind === "person" && !row.archived && !row.diedOn ? (
-                      <SignInControls
-                        row={{ ...row, hasAccount: row.account !== null }}
-                        result={
-                          actionData && "ownerId" in actionData && actionData.ownerId === row.ownerId
-                            ? actionData
-                            : undefined
-                        }
-                      />
+                      <div className="col-span-2">
+                        <SignInControls
+                          row={{ ...row, hasAccount: row.account !== null }}
+                          result={
+                            actionData && "ownerId" in actionData && actionData.ownerId === row.ownerId
+                              ? actionData
+                              : undefined
+                          }
+                        />
+                      </div>
                     ) : null}
-                  </span>
-                  <span className="text-right text-xs text-gray-500">
-                    {row.recordCount} {row.recordCount === 1 ? "record" : "records"}
-                    <br />
-                    {row.account
-                      ? `${roleLabel(row.account.role)}${row.account.disabled ? ", disabled" : ""}`
-                      : "no sign-in"}
-                  </span>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
 
-      {canAdd ? (
-        <section>
-          <h2 className="text-sm font-medium">Add somebody</h2>
-
-          {/*
-            One sentence, in the order it is spoken: "___ is the ___ of ___."
-            The relationship is the middle of it rather than a separate step,
-            because every person added to a household is added *in relation to*
-            somebody already there — except the first, who gets "the root".
-          */}
-          <Form method="post" className="mt-2 flex flex-col gap-4 text-sm">
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-gray-500">Given name</span>
-                <input
-                  className="rounded-lg border border-gray-300 p-2"
-                  name="givenName"
-                  required
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-gray-500">Family name</span>
-                <input
-                  className="rounded-lg border border-gray-300 p-2"
-                  name="familyName"
-                  required
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-gray-500">Born</span>
-                <input
-                  className="rounded-lg border border-gray-300 p-2"
-                  type="date"
-                  name="bornOn"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-gray-500">Sex</span>
-                <select
-                  className="rounded-lg border border-gray-300 p-2"
-                  name="sex"
-                  defaultValue=""
-                >
-                  <option value="">not recorded</option>
-                  {SEXES.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+        {canAdd ? (
+          <section aria-labelledby="add-somebody" className="flex flex-col gap-4">
+            <div className="border-b border-gray-900 pb-2">
+              <h2 id="add-somebody" className="text-lg font-semibold">Add somebody</h2>
             </div>
 
-            <div className="flex flex-wrap items-end gap-2">
-              <span className="pb-2 text-gray-500">is the</span>
+            {/*
+              One sentence, in the order it is spoken: "___ is the ___ of ___."
+              The relationship is the middle of it rather than a separate step,
+              because every person added to a household is added *in relation to*
+              somebody already there — except the first, who gets "the root".
+            */}
+            <Form method="post" className="flex flex-col gap-5 text-lg">
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
+                <label className="flex flex-col gap-1">
+                  <span className="index text-gray-500">Given name</span>
+                  <input
+                    className="field w-auto max-w-44 text-lg"
+                    name="givenName"
+                    required
+                  />
+                </label>
 
-              <select
-                className="rounded-lg border border-gray-300 p-2"
-                name="relation"
-                aria-label="How they are related"
-                defaultValue={anchors.length === 0 ? "root" : "child_of"}
-              >
-                {anchors.length === 0 ? (
-                  <option value="root">root of the tree</option>
-                ) : (
-                  RELATIONS.map((relation) => (
-                    <option key={relation.value} value={relation.value}>
-                      {relation.label}
-                    </option>
-                  ))
-                )}
-              </select>
+                <label className="flex flex-col gap-1">
+                  <span className="index text-gray-500">Family name</span>
+                  <input
+                    className="field w-auto max-w-44 text-lg"
+                    name="familyName"
+                    required
+                  />
+                </label>
 
-              {anchors.length > 0 ? (
+                <label className="flex flex-col gap-1">
+                  <span className="index text-gray-500">Born</span>
+                  <input
+                    className="field w-auto font-mono text-base"
+                    type="date"
+                    name="bornOn"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1">
+                  <span className="index text-gray-500">Sex</span>
+                  <select
+                    className="field w-auto text-lg"
+                    name="sex"
+                    defaultValue=""
+                  >
+                    <option value="">not recorded</option>
+                    {SEXES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
+                <span className="pb-2">is the</span>
+
                 <select
-                  className="rounded-lg border border-gray-300 p-2"
-                  name="anchorOwnerId"
-                  aria-label="To whom"
-                  required
+                  className="field w-auto text-lg"
+                  name="relation"
+                  aria-label="How they are related"
+                  defaultValue={anchors.length === 0 ? "root" : "child_of"}
                 >
-                  {anchors.map((anchor) => (
-                    <option key={anchor.ownerId} value={anchor.ownerId}>
-                      {anchor.displayName}
-                    </option>
-                  ))}
+                  {anchors.length === 0 ? (
+                    <option value="root">root of the tree</option>
+                  ) : (
+                    RELATIONS.map((relation) => (
+                      <option key={relation.value} value={relation.value}>
+                        {relation.label}
+                      </option>
+                    ))
+                  )}
                 </select>
+
+                {anchors.length > 0 ? (
+                  <select
+                    className="field w-auto text-lg font-semibold"
+                    name="anchorOwnerId"
+                    aria-label="To whom"
+                    required
+                  >
+                    {anchors.map((anchor) => (
+                      <option key={anchor.ownerId} value={anchor.ownerId}>
+                        {anchor.displayName}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+
+                <label className="flex flex-col gap-1">
+                  <span className="index text-gray-500">Parent type</span>
+                  <select
+                    className="field w-auto text-lg"
+                    name="parentType"
+                    defaultValue="biological"
+                  >
+                    {PARENT_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {anchors.length === 0 ? (
+                <p className="sheet max-w-prose p-4 text-sm text-gray-700">
+                  There is nobody here yet, so this person is the root of the tree
+                  and attaches to nobody.
+                </p>
+              ) : (
+                <p className="max-w-prose text-xs text-gray-500">
+                  Brothers and sisters are worked out from a shared parent rather
+                  than stored, so adding one copies the parents of the person you
+                  pick.
+                </p>
+              )}
+
+              {actionData && !("ownerId" in actionData) && "error" in actionData && actionData.error ? (
+                <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
               ) : null}
 
-              <label className="flex flex-col gap-1">
-                <span className="text-gray-500">Parent type</span>
-                <select
-                  className="rounded-lg border border-gray-300 p-2"
-                  name="parentType"
-                  defaultValue="biological"
-                >
-                  {PARENT_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+              {actionData && "added" in actionData ? (
+                <p className="max-w-prose text-sm text-gray-500">Added.</p>
+              ) : null}
 
-            {anchors.length === 0 ? (
-              <p className="text-xs text-gray-500 max-w-prose">
-                There is nobody here yet, so this person is the root of the tree
-                and attaches to nobody.
-              </p>
-            ) : (
-              <p className="text-xs text-gray-500 max-w-prose">
-                Brothers and sisters are worked out from a shared parent rather
-                than stored, so adding one copies the parents of the person you
-                pick.
-              </p>
-            )}
+              <button
+                className="btn btn-primary self-start"
+                type="submit"
+                disabled={saving}
+              >
+                {saving ? "Adding…" : "Add to the household"}
+              </button>
+            </Form>
 
-            {actionData && !("ownerId" in actionData) && "error" in actionData && actionData.error ? (
-              <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
-            ) : null}
-
-            {actionData && "added" in actionData ? (
-              <p className="text-sm text-gray-500 max-w-prose">Added.</p>
-            ) : null}
-
-            <button
-              className="self-start rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
-              type="submit"
-              disabled={saving}
-            >
-              {saving ? "Adding…" : "Add to the household"}
-            </button>
-          </Form>
-
-          <p className="mt-4 text-xs text-gray-500 max-w-prose">
-            Adding somebody here does not create a sign-in for them. A person and
-            an account are different things, and the second is a separate step.
-          </p>
-        </section>
-      ) : null}
-    </main>
+            <p className="max-w-prose border-t border-gray-200 pt-3 text-xs text-gray-500">
+              Adding somebody here does not create a sign-in for them. A person and
+              an account are different things, and the second is a separate step.
+            </p>
+          </section>
+        ) : null}
+      </Page>
+    </>
   );
 }

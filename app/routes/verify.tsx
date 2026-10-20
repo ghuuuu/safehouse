@@ -4,7 +4,7 @@ import type { Route } from "./+types/verify";
 import { passwordMatches } from "../auth.server";
 import { requireUser } from "../session.server";
 import { grantStepUp, STEP_UP_SECONDS } from "../stepup.server";
-import { Logo } from "../logo";
+import { SignedOut } from "../signed-out";
 
 export function meta() {
   return [{ title: "Confirm it is you — Safehouse" }];
@@ -51,22 +51,17 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function Verify({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
-      <Logo size={48} />
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Confirm it is you</h1>
-        <p className="mt-2 text-sm text-gray-500 max-w-prose">
-          Opening a document asks for your password again, {loaderData.name}. A
-          signed-in browser somebody walked away from should not be able to pull
-          papers out of the vault. It will not ask again for {loaderData.minutes} minutes.
-        </p>
-      </div>
+    <SignedOut title="Confirm it is you">
+      <p className="-mt-4 text-sm text-gray-500 max-w-prose">
+        Opening a document asks for your password again, {loaderData.name}. A
+        signed-in browser somebody walked away from should not be able to pull
+        papers out of the vault. It will not ask again for {loaderData.minutes} minutes.
+      </p>
 
       <Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="next" value={loaderData.next} />
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm font-medium">
           Password
           <input
             type="password"
@@ -74,23 +69,20 @@ export default function Verify({ loaderData, actionData }: Route.ComponentProps)
             autoComplete="current-password"
             autoFocus
             required
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
           />
         </label>
 
         {actionData?.error ? (
           <p
             role="alert"
-            className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
+            className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
           >
             {actionData.error}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
-        >
+        <button type="submit" className="btn btn-primary w-full">
           Confirm
         </button>
       </Form>
@@ -98,7 +90,6 @@ export default function Verify({ loaderData, actionData }: Route.ComponentProps)
       <Link className="text-sm text-gray-500 underline" to="/vault">
         Back to the vault
       </Link>
-      </div>
-    </main>
+    </SignedOut>
   );
 }

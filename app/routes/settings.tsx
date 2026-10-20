@@ -9,6 +9,7 @@ import { readSettings, saveSettings } from "../settings.server";
 import { deliveryStatus, message } from "../notify.server";
 import { sql } from "drizzle-orm";
 import { When } from "../when";
+import { Masthead, Page } from "../masthead";
 
 export function meta() {
   return [{ title: "Settings — Safehouse" }];
@@ -144,15 +145,21 @@ export async function action({ request }: Route.ActionArgs) {
   return { section: "", error: "Nothing to do." } satisfies Result;
 }
 
-const card = "flex flex-col gap-3 rounded-lg border border-gray-200 p-4";
-const input = "rounded-lg border border-gray-300 p-2";
+const panel = "sheet flex flex-col gap-4 p-5 md:p-6";
+const panelHead = "border-b border-gray-900 pb-2 text-lg font-semibold";
+/** A part of a panel, ruled off from the part above it. */
+const part = "flex flex-col gap-3 border-t border-gray-200 pt-4";
+const input = "field";
+const numberInput = "field max-w-40 font-mono font-normal";
 /** The most recent devices are shown; the rest wait behind "Show all". */
 const RECENT_DEVICES = 5;
 
 /** A stored message starts mid-sentence after its prefix; on screen it starts a sentence. */
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-const button = "self-start rounded-full border border-gray-300 bg-white hover:border-gray-500 px-4 py-2 text-sm";
+const button = "btn btn-secondary self-start";
+const deviceRow = "flex items-center justify-between gap-4 border-b border-gray-200 py-3 last:border-b-0";
+const deviceOut = "btn btn-secondary btn-sm";
 
 function Note({ result, section }: { result: Result | undefined; section: string }) {
   if (!result || result.section !== section) return null;
@@ -168,19 +175,19 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
   const setup = result?.section === "2fa" ? result.setup : undefined;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-6 md:p-8">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">Account</h2>
-        <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
-          <dt className="text-gray-500">Name</dt><dd>{user.name}</dd>
-          <dt className="text-gray-500">Email</dt><dd>{user.email}</dd>
-          <dt className="text-gray-500">Role</dt><dd>{roleLabel(user.role)}</dd>
+    <>
+    <Masthead title="Settings" serial={<>{user.name} · {roleLabel(user.role)}</>} />
+    <Page narrow>
+      <section className={panel}>
+        <h2 className={panelHead}>Account</h2>
+        <dl className="grid grid-cols-[6rem_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+          <dt className="index text-gray-500">Name</dt><dd className="min-w-0 break-words">{user.name}</dd>
+          <dt className="index text-gray-500">Email</dt><dd className="min-w-0 break-words">{user.email}</dd>
+          <dt className="index text-gray-500">Role</dt><dd>{roleLabel(user.role)}</dd>
         </dl>
 
-        <Form method="post" className={card}>
-          <h3 className="text-sm font-medium">Change your password</h3>
+        <Form method="post" className="flex flex-col gap-3 border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold">Change your password</h3>
           <input type="hidden" name="intent" value="password" />
           <input className={input} type="password" name="currentPassword" autoComplete="current-password" placeholder="Current password" aria-label="Current password" required />
           <input className={input} type="password" name="newPassword" autoComplete="new-password" minLength={minPassword} placeholder={`New password, at least ${minPassword} characters`} aria-label="New password" required />
@@ -189,22 +196,22 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
         </Form>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">Security</h2>
+      <section className={panel}>
+        <h2 className={panelHead}>Security</h2>
 
-        <div className={card}>
-          <h3 className="text-sm font-medium">Two-factor sign-in</h3>
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold">Two-factor sign-in</h3>
           {setup ? (
             <Form method="post" className="flex flex-col gap-3 text-sm">
               <p>
                 In your authenticator app, add an account by typing this key. Then type the six digits it shows.
               </p>
-              <code className="break-all rounded bg-gray-100 p-2 text-base tracking-wider">{setup.secret}</code>
+              <code className="break-all rounded-md border border-gray-200 bg-gray-50 p-3 font-mono text-base tracking-wider">{setup.secret}</code>
               <p>
                 Keep these backup codes somewhere safe and offline. Each one signs you in once if you lose your phone,
                 and they are not shown again:
               </p>
-              <ul className="grid grid-cols-2 gap-1 font-mono">
+              <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-3 font-mono tracking-wider sm:grid-cols-3">
                 {setup.backupCodes.map((code) => <li key={code}>{code}</li>)}
               </ul>
               <input type="hidden" name="intent" value="2fa-confirm" />
@@ -229,16 +236,16 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           <Note result={result} section="2fa" />
         </div>
 
-        <div className={card}>
-          <h3 className="text-sm font-medium">Signed-in devices</h3>
-          <ul className="flex flex-col divide-y divide-gray-100 text-sm">
+        <div className={part}>
+          <h3 className="text-sm font-semibold">Signed-in devices</h3>
+          <ul className="flex flex-col border-y border-gray-200 text-sm">
             {devices.slice(0, RECENT_DEVICES).map((device) => (
-              <li key={device.id} className="flex items-center justify-between gap-4 py-2">
-                <span>
-                  {device.device}
+              <li key={device.id} className={deviceRow}>
+                <span className="min-w-0">
+                  <span className="font-medium">{device.device}</span>
                   {device.current ? <span className="text-gray-500"> · this one</span> : null}
                   <span className="block text-xs text-gray-500">
-                    {device.ipAddress ? `${device.ipAddress} · ` : ""}
+                    {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
                     last seen <When at={device.lastSeenAt} />
                   </span>
                 </span>
@@ -246,7 +253,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
                   <Form method="post">
                     <input type="hidden" name="intent" value="device-out" />
                     <input type="hidden" name="sessionId" value={device.id} />
-                    <button className="-my-2 py-2 pl-2 text-gray-500 underline" type="submit" disabled={busy}>sign out</button>
+                    <button className={deviceOut} type="submit" disabled={busy}>sign out</button>
                   </Form>
                 )}
               </li>
@@ -255,22 +262,22 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           {devices.length > RECENT_DEVICES ? (
             <details className="text-sm">
               <summary className="cursor-pointer py-1 text-gray-600 underline">
-                Show all {devices.length}
+                Show all <span className="font-mono">{devices.length}</span>
               </summary>
-              <ul className="mt-1 flex flex-col divide-y divide-gray-100">
+              <ul className="mt-1 flex flex-col border-b border-gray-200">
                 {devices.slice(RECENT_DEVICES).map((device) => (
-                  <li key={device.id} className="flex items-center justify-between gap-4 py-2">
-                    <span>
-                      {device.device}
+                  <li key={device.id} className={deviceRow}>
+                    <span className="min-w-0">
+                      <span className="font-medium">{device.device}</span>
                       <span className="block text-xs text-gray-500">
-                        {device.ipAddress ? `${device.ipAddress} · ` : ""}
+                        {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
                         last seen <When at={device.lastSeenAt} />
                       </span>
                     </span>
                     <Form method="post">
                       <input type="hidden" name="intent" value="device-out" />
                       <input type="hidden" name="sessionId" value={device.id} />
-                      <button className="-my-2 py-2 pl-2 text-gray-500 underline" type="submit" disabled={busy}>sign out</button>
+                      <button className={deviceOut} type="submit" disabled={busy}>sign out</button>
                     </Form>
                   </li>
                 ))}
@@ -287,14 +294,14 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
         </div>
 
         {settings ? (
-          <p className="text-sm text-gray-500 max-w-prose">
-            Auto-lock: a page left alone for {settings.autoLockMinutes} minutes signs itself out.
+          <p className="border-t border-gray-200 pt-4 text-sm text-gray-500 max-w-prose">
+            Auto-lock: a page left alone for <span className="font-mono">{settings.autoLockMinutes}</span> minutes signs itself out.
           </p>
         ) : null}
       </section>
 
-      <section id="notifications" className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">Notifications</h2>
+      <section id="notifications" className={panel}>
+        <h2 className={panelHead}>Notifications</h2>
         {delivery ? (
           <p className="text-sm">
             {delivery.channel
@@ -306,9 +313,9 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           <p className="text-sm text-gray-500 max-w-prose">What is running out is on your dashboard. Messages outside the app go to the administrator.</p>
         )}
         {notifications.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+          <ul className="flex flex-col border-y border-gray-200 text-sm">
             {notifications.map((n) => (
-              <li key={n.id} className="flex flex-col gap-1 p-3">
+              <li key={n.id} className="flex flex-col gap-1 border-b border-gray-200 py-3 last:border-b-0">
                 <span>{sentence(n.text.replace(/^Safehouse: /, ""))}</span>
                 <span className="text-xs text-gray-500">
                   <When at={n.createdAt} /> ·{" "}
@@ -324,25 +331,25 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
       </section>
 
       {settings ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-base font-medium">Household</h2>
-          <Form method="post" className={card}>
+        <section className={panel}>
+          <h2 className={panelHead}>Household</h2>
+          <Form method="post" className="flex flex-col gap-3">
             <input type="hidden" name="intent" value="household" />
-            <fieldset disabled={!isAdmin || busy} className="flex flex-col gap-3 text-sm">
-              <label className="flex flex-col gap-1">
+            <fieldset disabled={!isAdmin || busy} className="flex flex-col gap-4 text-sm">
+              <label className="flex flex-col gap-1 font-medium">
                 Warn this many days before a document expires
-                <input className={input} type="number" name="expiryReminderLeadDays" defaultValue={settings.expiryReminderLeadDays} min={LIMITS.expiryReminderLeadDays.min} max={LIMITS.expiryReminderLeadDays.max} required />
+                <input className={numberInput} type="number" name="expiryReminderLeadDays" defaultValue={settings.expiryReminderLeadDays} min={LIMITS.expiryReminderLeadDays.min} max={LIMITS.expiryReminderLeadDays.max} required />
               </label>
-              <label className="flex flex-col gap-1">
+              <label className="flex flex-col gap-1 font-medium">
                 An emergency window lasts this many hours
-                <input className={input} type="number" name="emergencyWindowHours" defaultValue={settings.emergencyWindowHours} min={LIMITS.emergencyWindowHours.min} max={LIMITS.emergencyWindowHours.max} required />
-                <span className="text-xs text-gray-500">
+                <input className={numberInput} type="number" name="emergencyWindowHours" defaultValue={settings.emergencyWindowHours} min={LIMITS.emergencyWindowHours.min} max={LIMITS.emergencyWindowHours.max} required />
+                <span className="text-xs font-normal text-gray-500">
                   At most {LIMITS.emergencyWindowHours.max}. That ceiling is fixed in the code, not a setting.
                 </span>
               </label>
-              <label className="flex flex-col gap-1">
+              <label className="flex flex-col gap-1 font-medium">
                 Auto-lock after this many idle minutes
-                <input className={input} type="number" name="autoLockMinutes" defaultValue={settings.autoLockMinutes} min={LIMITS.autoLockMinutes.min} max={LIMITS.autoLockMinutes.max} required />
+                <input className={numberInput} type="number" name="autoLockMinutes" defaultValue={settings.autoLockMinutes} min={LIMITS.autoLockMinutes.min} max={LIMITS.autoLockMinutes.max} required />
               </label>
               {isAdmin ? (
                 <button className={button} type="submit">Save</button>
@@ -354,6 +361,7 @@ export default function Settings({ loaderData, actionData }: Route.ComponentProp
           </Form>
         </section>
       ) : null}
-    </main>
+    </Page>
+    </>
   );
 }

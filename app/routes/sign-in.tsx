@@ -5,7 +5,7 @@ import { auth, noUsersYet } from "../auth.server";
 import { DEV_LOGINS, devCredentials, devLoginsEnabled } from "../dev-logins.server";
 import { getSignedInUser } from "../session.server";
 import { safeNext } from "../next";
-import { Logo } from "../logo";
+import { SignedOut } from "../signed-out";
 
 export function meta() {
   return [{ title: "Sign in — Safehouse" }];
@@ -65,17 +65,11 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
   const [params] = useSearchParams();
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-side px-4 py-10">
-      <Logo size={48} />
-      <div className="flex w-full flex-col items-center justify-center gap-6 md:flex-row md:items-start">
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-2xl bg-white p-6 md:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Safehouse</h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-prose">Sign in to the household.</p>
-      </div>
+    <SignedOut title="Sign in">
+      <p className="-mt-4 text-sm text-gray-500 max-w-prose">Sign in to the household.</p>
 
       {loaderData.firstRun ? (
-        <p className="rounded-lg border border-gray-200 p-4 text-sm text-gray-600">
+        <p className="border-y border-gray-200 py-3 text-sm text-gray-600">
           Nobody has an account here yet.{" "}
           <Link className="underline" to="/setup">
             Create the first one
@@ -87,10 +81,10 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
       <Form method="post" className="flex flex-col gap-4">
         <input type="hidden" name="next" value={params.get("next") ?? "/"} />
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Email</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Email
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             type="email"
             name="email"
             autoComplete="username"
@@ -98,10 +92,10 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-500">Password</span>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Password
           <input
-            className="rounded-lg border border-gray-300 p-2"
+            className="field font-normal"
             type="password"
             name="password"
             autoComplete="current-password"
@@ -113,17 +107,12 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
           <p className="text-sm text-red-700 dark:text-red-400">{actionData.error}</p>
         ) : null}
 
-        <button
-          className="rounded-full bg-accent px-5 py-2 font-medium text-sm text-on-accent"
-          type="submit"
-        >
+        <button className="btn btn-primary w-full" type="submit">
           Sign in
         </button>
       </Form>
-      </div>
       {import.meta.env.DEV && loaderData.devLogins.length > 0 ? <DevLogins logins={loaderData.devLogins} next={params.get("next") ?? "/"} /> : null}
-      </div>
-    </main>
+    </SignedOut>
   );
 }
 
@@ -134,13 +123,10 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
  */
 function DevLogins({ logins, next }: { logins: { email: string; name: string; role: string; note: string }[]; next: string }) {
   return (
-    <section
-      aria-labelledby="dev-logins"
-      className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border-2 border-dashed border-side-muted p-5 text-side-ink md:w-72"
-    >
+    <section aria-labelledby="dev-logins" className="flex flex-col gap-3 border-t border-gray-900 pt-4">
       <div>
         <h2 id="dev-logins" className="text-sm font-semibold">Sign in as… (development)</h2>
-        <p className="mt-1 text-xs text-side-muted">Fictional accounts. These buttons do not exist in a real install.</p>
+        <p className="mt-1 text-xs text-gray-500">Fictional accounts. These buttons do not exist in a real install.</p>
       </div>
       <ul className="flex flex-col gap-2">
         {logins.map((login) => (
@@ -150,10 +136,10 @@ function DevLogins({ logins, next }: { logins: { email: string; name: string; ro
               <input type="hidden" name="dev-login" value={login.email} />
               <button
                 type="submit"
-                className="flex w-full flex-col items-start rounded-xl bg-side-hover px-4 py-2.5 text-left hover:bg-side-on hover:text-side-on-ink"
+                className="btn btn-secondary w-full flex-col items-start gap-0.5 whitespace-normal text-left"
               >
                 <span className="text-sm font-semibold">{login.role}</span>
-                <span className="text-xs opacity-80">{login.name} · {login.note}</span>
+                <span className="text-xs font-normal text-gray-500">{login.name} · {login.note}</span>
               </button>
             </Form>
           </li>
