@@ -11,7 +11,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { OWNER, USER } from "./fixture";
+import { DOCUMENT, OWNER, RECORD, USER } from "./fixture";
 import {
   asUserRollingBack,
   closeTestDatabase,
@@ -120,6 +120,36 @@ describe("making an intake", () => {
       });
     });
     expect(error).toBeNull();
+  });
+});
+
+describe("the version a conversion started from", () => {
+  function convertingFrom(sql: Sql, recordId: string, baseDocumentId: string) {
+    return sql`
+      insert into intakes (id, created_by, owner_id, category, title, record_id, base_document_id)
+      values (${INTAKE}, ${USER.maya}, ${OWNER.maya}, 'personal', 'Converting', ${recordId}, ${baseDocumentId})
+    `;
+  }
+
+  test("may be a version the converter can see", async () => {
+    const error = await asUserRollingBack(USER.maya, (sql) =>
+      refusal(() => convertingFrom(sql, RECORD.mayaPassport, DOCUMENT.mayaPassport)),
+    );
+    expect(error).toBeNull();
+  });
+
+  test("may not be one out of reach, which would say it exists", async () => {
+    const error = await asUserRollingBack(USER.maya, (sql) =>
+      refusal(() => convertingFrom(sql, RECORD.mayaPassport, DOCUMENT.nadiaPassport)),
+    );
+    expect(error?.code).toBe("42501");
+  });
+
+  test("is fixed when the draft is made", async () => {
+    const offenders = await owner()`
+      select 1 where has_column_privilege('safehouse_app', 'public.intakes', 'base_document_id', 'UPDATE')
+    `;
+    expect(offenders).toEqual([]);
   });
 });
 

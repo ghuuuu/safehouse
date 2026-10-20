@@ -26,6 +26,8 @@ export default [
     route("unfinished", "routes/unfinished.tsx"),
     route("intake/:intakeId", "routes/intake.$intakeId.tsx"),
     route("intake/:intakeId/corners/:pageId", "routes/intake.$intakeId.corners.$pageId.tsx"),
+    // A newer version was filed while the draft was open: both side by side (D42).
+    route("intake/:intakeId/compare", "routes/intake.$intakeId.compare.tsx"),
     // Words and numbers, through the policies; /search?q=…&as=<userId> for view-as.
     route("search", "routes/search.tsx"),
     // One record: its fields, its pages, its versions.

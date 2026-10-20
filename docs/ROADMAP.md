@@ -722,6 +722,10 @@ version; `/folders` browses and downloads a ZIP.
   85.60 × 54.00 mm; the same paper came back in a ZIP under
   `Maya Adeyemi/General/`. At 390 px nothing scrolls sideways.
 - **The drill** passed on a backup taken after the migration, grants included.
+- **Two drafts converting the same paper** (D42, migration `0018`): the second
+  to be filed is stopped and shown both versions side by side. Tested in
+  `intake-flow.test.ts` (a stale "file over" is refused too; removing the
+  check turns it red) and in a browser, where filing over made version 3.
 
 **Not done.**
 - **Reading scanned PDFs.** A PDF with no text layer, including one this step
@@ -729,8 +733,6 @@ version; `/folders` browses and downloads a ZIP.
   flattened photos at review, before the PDF exists, so new drafts are read;
   an uploaded scanned PDF is not.
 - **HEIC.** Refused; an iPhone sends JPEG when the page does not ask for HEIC.
-- **Two drafts converting the same record** can each be filed by members who
-  cannot see each other's drafts; the second becomes version 3.
 
 **Size.** L. **Depends on.** Steps 8, 15.
 

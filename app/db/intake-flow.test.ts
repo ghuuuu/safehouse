@@ -163,6 +163,40 @@ describe("a paper filed as an image before D39", () => {
   });
 });
 
+describe("two drafts converting the same paper", () => {
+  test("the second is not filed over the first until somebody says so", async () => {
+    const { fileDocument } = await import("../upload.server");
+    const photo = await photographedCard();
+    const old = await asUser(USER.maya, (db) =>
+      fileDocument(db, { ownerId: OWNER.maya, category: "personal", title: `${MARK} twice`, mime: "image/jpeg", bytes: photo }),
+    );
+
+    // Maya and Priya each open one. Neither can see the other's draft.
+    const mine = await asUser(USER.maya, (db) => intake.convertDocument(db, USER.maya, old.documentId));
+    const theirs = await asUser(USER.priya, (db) => intake.convertDocument(db, USER.priya, old.documentId));
+
+    const first = await asUser(USER.priya, (db) => intake.submitIntake(db, theirs));
+    await Promise.all(first.released.map((key) => storage.deleteBlob(key)));
+
+    const refused = await asUser(USER.maya, (db) => intake.submitIntake(db, mine)).catch((e) => e);
+    expect(refused).toBeInstanceOf(intake.NewerVersion);
+    expect((refused as InstanceType<typeof intake.NewerVersion>).newerDocumentId).toBe(first.documentId);
+
+    // Saying yes to a version that is no longer the newest is still refused.
+    const stale = await asUser(USER.maya, (db) => intake.submitIntake(db, mine, { over: old.documentId })).catch((e) => e);
+    expect(stale).toBeInstanceOf(intake.NewerVersion);
+
+    const second = await asUser(USER.maya, (db) => intake.submitIntake(db, mine, { over: first.documentId }));
+    await Promise.all(second.released.map((key) => storage.deleteBlob(key)));
+
+    const versions = await owner()`
+      select version_no as "versionNo", is_current as "isCurrent" from documents
+      where record_id = ${old.recordId} order by version_no
+    `;
+    expect(versions.map((v) => [v.versionNo, v.isCurrent])).toEqual([[1, false], [2, false], [3, true]]);
+  });
+});
+
 describe("what stops a draft being filed", () => {
   test("a photo with no outline and no recorded resolution has no size, and says so", async () => {
     const blank = await sharp({ create: { width: 900, height: 700, channels: 3, background: "#808080" } }).jpeg().toBuffer();

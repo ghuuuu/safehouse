@@ -383,6 +383,8 @@ export const intakes = pgTable(
     category: category("category"),
     title: text("title"),
     recordId: uuid("record_id").references(() => records.id),
+    /** The version current when a conversion was opened (D42). */
+    baseDocumentId: uuid("base_document_id").references(() => documents.id),
     fields: jsonb("fields").notNull().default({}),
     identifierSealed: bytea("identifier_sealed"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

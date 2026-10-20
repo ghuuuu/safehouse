@@ -1504,6 +1504,34 @@ readable by exactly whom the policies say.
 
 ---
 
+## D42 — Filing over a version you have not seen asks first
+
+**Decision.** A draft that will become a record's next version (converting an
+old image, D39) remembers the version that was current when it was opened
+(`intakes.base_document_id`, migration `0018`). Filing compares. If somebody
+filed another version since, nothing is filed: the person is shown both side
+by side (pages, every detail, the differences stamped) and chooses to file
+theirs as the newest, keep the other and discard theirs, or go back to the
+draft. Choosing to file passes the id of the version they were shown, so a
+third version filed meanwhile asks again.
+
+**Why.** Two members converting the same paper cannot see each other's drafts
+(D40), so each would otherwise quietly supersede work they never saw. A
+version is never deleted (D20), so this is not about losing a file; it is
+about which version the household reads as current, and an expiry date on the
+wrong one reaches a reminder.
+
+**Consequences.**
+- **The starting version is fixed when the draft is made,** outside the update
+  grant, and must be a version the person can see: the insert would otherwise
+  confirm that a document id exists.
+- **A version the person cannot see never stops them.** It produces no row,
+  so it cannot be shown or compared, and says nothing about itself.
+- **Checked without a lock.** Two presses in the same instant can both pass;
+  the unique version number still keeps them apart.
+
+---
+
 ## Open decisions
 
 None. D9–D21 closed the list that stood here; D22 to D38 record what building

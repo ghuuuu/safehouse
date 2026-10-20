@@ -15,6 +15,7 @@ import {
   removePage,
   saveDetails,
   setPage,
+  NewerVersion,
   submitIntake,
   UploadRefused,
 } from "../intake.server";
@@ -131,6 +132,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     await Promise.all(released.map((key) => deleteBlob(key)));
     return null;
   } catch (error) {
+    // Somebody filed a newer version while this was open: show both, and ask.
+    if (error instanceof NewerVersion) return redirect(`/intake/${id}/compare`);
     if (error instanceof UploadRefused) return { error: error.message };
     if (refusedByPolicy(error)) return { error: "You cannot file a document for that person." };
     throw error;

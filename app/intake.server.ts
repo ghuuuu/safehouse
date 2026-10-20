@@ -45,6 +45,16 @@ import { fileDocument, fileVersion, UploadRefused } from "./upload.server";
 
 export { UploadRefused };
 
+/**
+ * Filing would supersede a version filed after this draft was opened (D42).
+ * Not a refusal of the person: the route shows both and asks.
+ */
+export class NewerVersion extends Error {
+  constructor(readonly newerDocumentId: string) {
+    super("A newer version was filed while this draft was open.");
+  }
+}
+
 /** A photo's outline, in its upright pixels, and whether it was found or is the photo's edges. */
 export type Outline = { points: Corners; found: boolean; width: number; height: number };
 
@@ -70,6 +80,8 @@ export type IntakeView = {
   category: Category | null;
   title: string | null;
   recordId: string | null;
+  /** The version current when a conversion was opened (D42). */
+  baseDocumentId: string | null;
   values: Partial<Record<EditableField, FieldState>>;
   /** The reader's own sentence about how it read. Null before it has. */
   how: string | null;
@@ -139,13 +151,20 @@ export async function examine(bytes: Buffer, mime: string): Promise<Examined> {
 export async function startIntake(
   db: VaultTransaction,
   createdBy: string,
-  init: { ownerId?: string | null; category?: string | null; title?: string | null; recordId?: string | null } = {},
+  init: {
+    ownerId?: string | null;
+    category?: string | null;
+    title?: string | null;
+    recordId?: string | null;
+    baseDocumentId?: string | null;
+  } = {},
 ): Promise<string> {
   const id = randomUUID();
   const category = init.category && CATEGORIES.includes(init.category as Category) ? init.category : null;
   await db.execute(sql`
-    insert into intakes (id, created_by, owner_id, category, title, record_id)
-    values (${id}, ${createdBy}, ${init.ownerId || null}, ${category}, ${init.title?.trim() || null}, ${init.recordId || null})
+    insert into intakes (id, created_by, owner_id, category, title, record_id, base_document_id)
+    values (${id}, ${createdBy}, ${init.ownerId || null}, ${category}, ${init.title?.trim() || null},
+            ${init.recordId || null}, ${init.baseDocumentId || null})
   `);
   return id;
 }
@@ -195,10 +214,10 @@ export async function addSource(
 export async function loadIntake(db: VaultTransaction, intakeId: string): Promise<IntakeView | null> {
   const rows = await db.execute<{
     id: string; createdBy: string; ownerId: string | null; category: Category | null; title: string | null;
-    recordId: string | null; fields: Stored["fields"]; hasIdentifier: boolean;
+    recordId: string | null; baseDocumentId: string | null; fields: Stored["fields"]; hasIdentifier: boolean;
   }>(sql`
     select id, created_by as "createdBy", owner_id as "ownerId", category, title, record_id as "recordId",
-           fields, (identifier_sealed is not null) as "hasIdentifier"
+           base_document_id as "baseDocumentId", fields, (identifier_sealed is not null) as "hasIdentifier"
     from intakes where id = ${intakeId}
   `);
   const row = [...rows][0];
@@ -219,6 +238,7 @@ export async function loadIntake(db: VaultTransaction, intakeId: string): Promis
     category: row.category,
     title: row.title,
     recordId: row.recordId,
+    baseDocumentId: row.baseDocumentId,
     values: row.fields.values ?? {},
     how: row.fields.how ?? null,
     hasIdentifier: row.hasIdentifier,
@@ -531,6 +551,8 @@ export async function saveRead(db: VaultTransaction, intakeId: string, reads: (R
 export async function submitIntake(
   db: VaultTransaction,
   intakeId: string,
+  /** The newer version the person has seen and chosen to file over (D42). */
+  confirm: { over?: string } = {},
 ): Promise<{ documentId: string; released: string[] }> {
   const intake = await loadIntake(db, intakeId);
   if (!intake) throw new Response("No such draft.", { status: 404 });
@@ -538,6 +560,7 @@ export async function submitIntake(
   if (!intake.title) throw new UploadRefused("Give it a name.");
   if (!intake.category) throw new UploadRefused("Choose where it belongs.");
   if (intake.pages.length === 0) throw new UploadRefused("Add at least one page.");
+  if (intake.recordId) await checkStillNewest(db, intake.recordId, intake.baseDocumentId, confirm.over);
 
   const sources = new Map<string, Buffer>();
   const bytesOf = async (sourceId: string) => {
@@ -654,6 +677,7 @@ export async function convertDocument(db: VaultTransaction, createdBy: string, d
     category: view.category,
     title: view.title,
     recordId: view.recordId,
+    baseDocumentId: documentId,
   });
   for (const page of pages) await addSource(db, id, page, page.examined);
 
@@ -684,6 +708,28 @@ export async function convertDocument(db: VaultTransaction, createdBy: string, d
     where id = ${id}
   `);
   return id;
+}
+
+/**
+ * Stop a draft filing over a version its filer has not seen (D42).
+ *
+ * The record's current version must be the one the draft started from, or the
+ * newer one the person was shown and said to file over. Anything else, and
+ * what is current now is handed back to be shown. A version the person cannot
+ * see is no version here: it produces no row, so it cannot be compared and
+ * cannot stop anything, which says nothing about it either.
+ *
+ * ponytail: checked, then filed, in one transaction without a lock. Two
+ * people pressing File it in the same instant can both pass; the unique
+ * version number still keeps them apart. Lock the record's row if that ever
+ * matters.
+ */
+async function checkStillNewest(db: VaultTransaction, recordId: string, base: string | null, over?: string): Promise<void> {
+  const [current] = [
+    ...(await db.execute<{ id: string }>(sql`select id from documents where record_id = ${recordId} and is_current`)),
+  ];
+  if (!current || current.id === base || current.id === over) return;
+  throw new NewerVersion(current.id);
 }
 
 function extensionOf(mime: string): string {
