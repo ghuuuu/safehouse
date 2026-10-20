@@ -53,32 +53,36 @@ Out, and why:
 
 ### The intake (D40)
 
-Two new tables, outside the vault's own:
+Three new tables, outside the vault's own (`drizzle/0017_intakes.sql`):
 
 - `intakes`: `id`, `created_by` (users), `owner_id`, `category`, `title`,
   `record_id` (set when converting or renewing an existing record),
-  `fields` jsonb (proposals and edits, identifier sealed as D35 seals it),
+  `fields` jsonb (proposals and edits), `identifier_sealed` (D35),
   `created_at`, `updated_at`.
-- `intake_pages`: `id`, `intake_id`, `position`, `kind` (`pdf-page` |
-  `photo`), `source_page` (page index within a source PDF), sealed blob
-  columns as `document_files` has them, `corners` jsonb, `size` (preset key
-  or `{w_mm, h_mm}`), `rotation` (0/90/180/270).
+- `intake_sources`: each upload, sealed as a document file is (D12). A
+  source PDF is stored once and referenced by each of its pages.
+- `intake_pages`: `intake_id`, `source_id`, `source_page` (index within a
+  source PDF, 0 for a photo), `position`, `corners` jsonb, `size` (preset
+  key or `{w, h}` in mm), `rotation` (0/90/180/270).
 
 **Who sees an intake: its uploader and the admins, and nobody else.** Not
-view-as, not another member. An intake is a half-sorted pile on somebody's
-desk, possibly a private paper (D17) not yet marked so; the admin can reach it
-so an upload left half done is never stuck. The policy calls
-`perm.my_intake_ids()`, a zero-argument `security definer` function over
-`perm.visible_intake` (D25). The app role gets SELECT, INSERT, UPDATE and
-DELETE on the two intake tables only; the self-checks are amended to allow
-exactly those and nothing on vault tables.
+another member, a third party or an emergency contact. An intake is a
+half-sorted pile on somebody's desk, possibly a private paper (D17) not yet
+marked so; the admin can reach it so an upload left half done is never stuck.
+The policies need no new `perm` view: the uploader is
+`public.current_app_user()` and the admin test is the existing
+`perm.current_user_is_admin()`. Sources and pages are reached through a
+subquery over `intakes`, so reach is decided in one place. A new intake must
+be the caller's own, by someone who may file, for an owner and record already
+in reach; `created_by` is outside the update grant. The app role gets SELECT,
+INSERT, UPDATE (named columns) and DELETE on these three tables only; the
+self-check restates the whole write surface and allows nothing new on vault
+tables.
 
 Because intakes are separate tables, no vault list, search, tree, count or
 download can reach a draft by forgetting a status filter. That is the reason
-for two tables rather than a `status` column on `documents`.
+for separate tables rather than a `status` column on `documents`.
 
-Sealed blobs for intake pages use the same storage and crypto as documents
-(D12); a source PDF is stored once and referenced by each of its pages.
 Discarding an intake deletes its rows and blobs.
 
 ### Photo to page

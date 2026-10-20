@@ -367,6 +367,61 @@ export const documentFiles = pgTable(
   (t) => [unique("document_files_page_unique").on(t.documentId, t.pageNo)],
 );
 
+/**
+ * An import not finished yet (D40): its uploader's and the admins' alone,
+ * apart from the vault so no vault query can reach it. Policies in
+ * `drizzle/0017_intakes.sql`.
+ */
+export const intakes = pgTable(
+  "intakes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    ownerId: uuid("owner_id").references(() => owners.id),
+    category: category("category"),
+    title: text("title"),
+    recordId: uuid("record_id").references(() => records.id),
+    fields: jsonb("fields").notNull().default({}),
+    identifierSealed: bytea("identifier_sealed"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("intakes_created_by").on(t.createdBy)],
+);
+
+/** Each upload into an intake, sealed as a document file is (D12). */
+export const intakeSources = pgTable("intake_sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  intakeId: uuid("intake_id")
+    .notNull()
+    .references(() => intakes.id, { onDelete: "cascade" }),
+  storageKey: text("storage_key").notNull().unique(),
+  sha256: text("sha256").notNull(),
+  byteSize: integer("byte_size").notNull(),
+  mime: text("mime").notNull(),
+  wrappedDek: bytea("wrapped_dek").notNull(),
+  nonce: bytea("nonce").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** An intake's pages, in order, each a page of one of its sources. */
+export const intakePages = pgTable("intake_pages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  intakeId: uuid("intake_id")
+    .notNull()
+    .references(() => intakes.id, { onDelete: "cascade" }),
+  sourceId: uuid("source_id")
+    .notNull()
+    .references(() => intakeSources.id, { onDelete: "cascade" }),
+  sourcePage: integer("source_page").notNull().default(0),
+  position: integer("position").notNull(),
+  corners: jsonb("corners"),
+  size: jsonb("size"),
+  rotation: integer("rotation").notNull().default(0),
+});
+
 /** Third-party grants: whose papers (D18). */
 export const grantOwners = pgTable(
   "grant_owners",

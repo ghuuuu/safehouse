@@ -1454,9 +1454,9 @@ known size at 300 dpi prints at that size.
 
 ## D40 — An import is a draft until somebody says it is finished
 
-**Decision.** An upload becomes an *intake*, in two tables of its own
-(`intakes`, `intake_pages`), not a document. Its uploader and the household's
-admins can see and change it; nobody else, and nothing under view-as. Pages are
+**Decision.** An upload becomes an *intake*, in three tables of its own
+(`intakes`, `intake_sources`, `intake_pages`), not a document. Its
+uploader and the household's admins can see and change it; nobody else. Pages are
 added, straightened, sized, turned and ordered there, OCR runs there, and the
 proposed fields are corrected there. Submit builds the PDF, checks it, and files
 record, document and file in one transaction, deleting the intake.
@@ -1470,7 +1470,7 @@ elsewhere cannot be reached by those queries at all.
 around is otherwise stuck where nobody can finish it.
 
 **Consequences.**
-- **The application role gets SELECT, INSERT, UPDATE and DELETE on the two
+- **The application role gets SELECT, INSERT, UPDATE and DELETE on the three
   intake tables, and nothing new on any vault table.** The pinned self-checks
   are extended to say so.
 - **An unfinished intake waits** until it is submitted or discarded; it is
