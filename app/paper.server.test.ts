@@ -4,10 +4,11 @@
  * test: a blank card on a dark table, nothing anybody owns.
  */
 
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFDocument, StandardFonts } from "@cantoo/pdf-lib";
 import sharp from "sharp";
 import { describe, expect, test } from "vitest";
 
+import { readPdf } from "./ocr.server";
 import { mmToPt, sizesShaped } from "./paper";
 import { buildPdf, checkPdf, type Corners, findCorners, flatten, ordered, scannedSize, sizeFor } from "./paper.server";
 
@@ -155,6 +156,34 @@ describe("one PDF", () => {
     expect(second).toEqual({ width: 595.28, height: 841.89 });
     expect(Buffer.from(back.getAttachments()[0].data).equals(original)).toBe(true);
     expect(back.getTitle()).toBe("A blank card");
+  });
+
+  /** Stands in for Tesseract's text-only page: words, nothing drawn but them. */
+  async function wordsPage(words: string): Promise<Buffer> {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([1011, 638]);
+    page.drawText(words, { x: 40, y: 560, size: 40, font: await pdf.embedFont(StandardFonts.Helvetica) });
+    return Buffer.from(await pdf.save());
+  }
+
+  test("a page's words are laid over it, so the PDF is searchable, and its size does not change", async () => {
+    const original = await photo(8);
+    const { jpeg, mm } = await flatten(original, card(8), sizeFor("id1", card(8)));
+    const { bytes, expected } = await buildPdf("Searchable", [
+      { kind: "image", bytes: jpeg, format: "jpg", mm, text: await wordsPage("SAMPLE CARD ZZ0000003") },
+      { kind: "pdf", source: await emailedPdf(), index: 0, rotation: 0, text: await wordsPage("SCANNED PAGE") },
+    ]);
+    await expect(checkPdf(bytes, expected)).resolves.toBeUndefined();
+    const read = await readPdf(bytes);
+    expect(read.pages[0]).toContain("ZZ0000003");
+    expect(read.pages[1]).toContain("SCANNED PAGE");
+  });
+
+  test("a text layer that will not open is left off, and the page still is", async () => {
+    const { bytes, expected } = await buildPdf("Broken layer", [
+      { kind: "pdf", source: await emailedPdf(), index: 0, rotation: 0, text: Buffer.from("not a pdf") },
+    ]);
+    await expect(checkPdf(bytes, expected)).resolves.toBeUndefined();
   });
 
   test("a PDF that is not what was asked for is refused", async () => {

@@ -1451,6 +1451,15 @@ known size at 300 dpi prints at that size.
   the page does not ask for HEIC.
 - **The page size is a choice, guessed and shown.** An aspect ratio within 3%
   of a preset picks it; otherwise the reviewer picks.
+- **Every PDF the vault builds is searchable.** Each photographed page, and
+  each page of an uploaded scan, gets an invisible text layer: Tesseract's
+  text-only PDF of that page, laid over it at the same size. A viewer outside
+  the vault can search and copy it. A turned scan (its own /Rotate) gets none
+  for now, because its words would sit crosswise.
+- **Scanned PDFs are read.** A PDF with no text of its own has its first ten
+  pages drawn at 300 dpi by `@hyzyla/pdfium` (MIT, the WebAssembly build of
+  Chrome's PDF engine, named in D27) and read as photos are. This closes what
+  D27 and D29 left open.
 
 ---
 

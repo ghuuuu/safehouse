@@ -722,16 +722,20 @@ version; `/folders` browses and downloads a ZIP.
   85.60 × 54.00 mm; the same paper came back in a ZIP under
   `Maya Adeyemi/General/`. At 390 px nothing scrolls sideways.
 - **The drill** passed on a backup taken after the migration, grants included.
+- **Scanned PDFs read, and every built PDF searchable** (D39). In the app
+  container, with Tesseract 5.5.2: a fictional scanned A5 PDF with no text
+  layer had its expiry read; filed together with a photographed card, the
+  PDF came back as 148 × 210 mm and 85.6 × 54 mm pages, both searchable,
+  photo attached. `pdf-pages.server.test.ts` and `paper.server.test.ts`
+  cover drawing pages and laying words over them.
 - **Two drafts converting the same paper** (D42, migration `0018`): the second
   to be filed is stopped and shown both versions side by side. Tested in
   `intake-flow.test.ts` (a stale "file over" is refused too; removing the
   check turns it red) and in a browser, where filing over made version 3.
 
 **Not done.**
-- **Reading scanned PDFs.** A PDF with no text layer, including one this step
-  built from photos, still reads nothing (D27, D29): the reader runs on the
-  flattened photos at review, before the PDF exists, so new drafts are read;
-  an uploaded scanned PDF is not.
+- **A turned scan gets no text layer.** A PDF page with its own /Rotate is
+  filed without one, since its words would sit crosswise.
 - **HEIC.** Refused; an iPhone sends JPEG when the page does not ask for HEIC.
 
 **Size.** L. **Depends on.** Steps 8, 15.

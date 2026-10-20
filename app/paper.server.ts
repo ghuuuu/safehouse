@@ -192,8 +192,10 @@ export type BuiltPage =
       mm: { w: number; h: number };
       /** The untouched photo this page was made from, attached inside the PDF. */
       original?: { bytes: Buffer; mime: string; name: string };
+      /** A one-page PDF of invisible words, laid over the picture (`textLayer`). */
+      text?: Buffer | null;
     }
-  | { kind: "pdf"; source: Buffer; index: number; rotation: number };
+  | { kind: "pdf"; source: Buffer; index: number; rotation: number; text?: Buffer | null };
 
 /** What a built PDF must turn out to be: each page's size in points, and how many attachments. */
 export type Expected = { pages: { w: number; h: number }[]; attachments: number };
@@ -220,6 +222,13 @@ export async function buildPdf(title: string, pages: BuiltPage[]): Promise<{ byt
         sources.set(page.source, source);
       }
       const [copied] = await pdf.copyPages(source, [page.index]);
+      // Only on a page drawn the right way up: a page that turns itself (its
+      // own /Rotate) is drawn turned by PDFium, so words read from that picture
+      // would sit crosswise over the unturned page beneath.
+      // ponytail: turned scans get no text layer; map the words through the turn if they ever matter.
+      if (page.text && copied.getRotation().angle % 360 === 0) {
+        await overlay(pdf, copied, page.text, copied.getSize().width, copied.getSize().height);
+      }
       if (page.rotation) copied.setRotation(degrees((copied.getRotation().angle + page.rotation) % 360));
       pdf.addPage(copied);
       const { width, height } = copied.getSize();
@@ -230,7 +239,9 @@ export async function buildPdf(title: string, pages: BuiltPage[]): Promise<{ byt
     const w = mmToPt(page.mm.w);
     const h = mmToPt(page.mm.h);
     const embedded = page.format === "jpg" ? await pdf.embedJpg(page.bytes) : await pdf.embedPng(page.bytes);
-    pdf.addPage([w, h]).drawImage(embedded, { x: 0, y: 0, width: w, height: h });
+    const drawn = pdf.addPage([w, h]);
+    drawn.drawImage(embedded, { x: 0, y: 0, width: w, height: h });
+    if (page.text) await overlay(pdf, drawn, page.text, w, h);
     expected.pages.push({ w, h });
 
     if (page.original) {
@@ -243,6 +254,19 @@ export async function buildPdf(title: string, pages: BuiltPage[]): Promise<{ byt
   }
 
   return { bytes: Buffer.from(await pdf.save()), expected };
+}
+
+/**
+ * Lay a page of invisible words over a page, stretched to cover it exactly.
+ * A text layer that will not open is left off: the page is still the page.
+ */
+async function overlay(pdf: PDFDocument, page: ReturnType<PDFDocument["addPage"]>, text: Buffer, w: number, h: number) {
+  try {
+    const [layer] = await pdf.embedPdf(text, [0]);
+    page.drawPage(layer, { x: 0, y: 0, width: w, height: h });
+  } catch {
+    // Not logged, and not fatal.
+  }
 }
 
 /**

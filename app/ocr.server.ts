@@ -22,7 +22,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -384,6 +384,32 @@ async function tesseract(
   }
 }
 
+/**
+ * An invisible text layer for one page image: a PDF page holding only the
+ * words Tesseract read, each where it sits on the page, drawn in no colour.
+ * Laid over the picture it makes the page searchable and selectable in any
+ * PDF viewer. Null when the reader is not installed or cannot read the page;
+ * a page without a text layer is still a page.
+ */
+export async function textLayer(image: Buffer): Promise<Buffer | null> {
+  if (!(await readerAvailable())) return null;
+  const dir = await mkdtemp(join(tmpdir(), "safehouse-ocr-"));
+  try {
+    const input = join(dir, "page.img");
+    await writeFile(input, image);
+    await run("tesseract", [input, join(dir, "layer"), "-l", "eng", "--psm", "3", "-c", "textonly_pdf=1", "pdf"], {
+      timeout: TIMEOUT_MS,
+      env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+    });
+    return await readFile(join(dir, "layer.pdf"));
+  } catch {
+    // Not logged: the error could quote the page.
+    return null;
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
 /** Whether the engine is installed at all. False on a developer's laptop. */
 export async function readerAvailable(): Promise<boolean> {
   try {
@@ -600,11 +626,7 @@ export async function readDocument(
       };
     }
 
-    return {
-      proposals: [],
-      text: "",
-      how: "This PDF holds no text of its own — it is a picture of a document. Reading pictures inside PDFs is not built yet.",
-    };
+    return readScannedPdf(bytes);
   }
 
   if (!(await readerAvailable())) {
@@ -615,6 +637,47 @@ export async function readDocument(
     };
   }
 
+  return readImage(bytes);
+}
+
+/**
+ * A PDF with no text of its own: a picture of a document in a wrapper. Each
+ * page is drawn as an image (pdf-pages.server.ts) and read as a photo would
+ * be. The first page to propose a field wins, so a passport's data page read
+ * first is not overruled by a visa page after it.
+ */
+async function readScannedPdf(bytes: Buffer): Promise<ReadResult> {
+  if (!(await readerAvailable())) {
+    return {
+      proposals: [],
+      text: "",
+      how: "This PDF holds no text of its own, and the reader is not installed in this environment.",
+    };
+  }
+
+  const { MAX_PAGES, pagesAsImages } = await import("./pdf-pages.server");
+  const pages = await pagesAsImages(bytes).catch(() => null);
+  if (!pages?.length) {
+    return { proposals: [], text: "", how: "This PDF could not be opened to read its pages." };
+  }
+
+  const reads: ReadResult[] = [];
+  for (const page of pages) reads.push(await readImage(page.png));
+
+  const seen = new Set<string>();
+  const proposals = reads.flatMap((r) => r.proposals).filter((p) => !seen.has(p.field) && seen.add(p.field));
+  const text = reads.map((r) => r.text).filter(Boolean).join("\n\n");
+  const capped = pages.length === MAX_PAGES ? ` Only the first ${MAX_PAGES} pages were read.` : "";
+
+  return {
+    proposals,
+    text,
+    how: `This PDF is a scan, so its pages were read as pictures. ${reads[0].how}${capped}`,
+  };
+}
+
+/** One photographed or scanned page: the passport strip if there is one, then the page's text. */
+async function readImage(bytes: Buffer): Promise<ReadResult> {
   // Prepared once and shared, so the two readers cannot disagree about which
   // way up the page is.
   const page = await preparePage(bytes).catch(() => ({ bytes, how: "" }));

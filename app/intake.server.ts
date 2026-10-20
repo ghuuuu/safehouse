@@ -26,7 +26,8 @@ import { ACCEPTED_TYPES, CATEGORIES, MAX_UPLOAD_BYTES, type Category } from "./d
 import { openFile, sealFile } from "./crypto.server";
 import type { VaultTransaction } from "./db.server";
 import { openIdentifier, sealIdentifier } from "./field-crypto.server";
-import type { ReadResult } from "./ocr.server";
+import { readPdf, textLayer, type ReadResult } from "./ocr.server";
+import { pagesAsImages } from "./pdf-pages.server";
 import { PAPER_SIZES, sizesShaped, type PaperSize } from "./paper";
 import {
   buildPdf,
@@ -518,7 +519,9 @@ export async function saveRead(db: VaultTransaction, intakeId: string, reads: (R
     proposed += 1;
   }
 
-  const how = reads.map((r) => r?.how).filter(Boolean).join(" ") || "The reader could not open these pages.";
+  // Each upload explains itself; a sentence said twice is said once.
+  const sentences = reads.flatMap((r) => r?.how?.split(/(?<=\.)\s+/) ?? []).filter(Boolean);
+  const how = [...new Set(sentences)].join(" ") || "The reader could not open these pages.";
   const fields = { values, how, ...(terms ? { terms } : {}) };
   await db.execute(sql`
     update intakes set fields = ${JSON.stringify(fields)}::jsonb,
@@ -568,11 +571,31 @@ export async function submitIntake(
     return sources.get(sourceId)!;
   };
 
+  // Whether each uploaded PDF already carries words. A scan does not, and
+  // gets an invisible text layer read from its pages, as a photo does.
+  const scanned = new Map<string, boolean>();
+  const isScan = async (sourceId: string, bytes: Buffer) => {
+    if (!scanned.has(sourceId)) {
+      const text = await readPdf(bytes).then((r) => r.pages.join("").trim()).catch(() => "");
+      scanned.set(sourceId, text.length <= 40);
+    }
+    return scanned.get(sourceId)!;
+  };
+
   const built: BuiltPage[] = [];
   for (const [i, page] of intake.pages.entries()) {
     const bytes = await bytesOf(page.sourceId);
     if (page.kind === "pdf-page") {
-      built.push({ kind: "pdf", source: bytes, index: page.sourcePage, rotation: page.rotation });
+      const picture = (await isScan(page.sourceId, bytes))
+        ? (await pagesAsImages(bytes, { only: page.sourcePage }).catch(() => []))[0]
+        : undefined;
+      built.push({
+        kind: "pdf",
+        source: bytes,
+        index: page.sourcePage,
+        rotation: page.rotation,
+        text: picture ? await textLayer(picture.png) : null,
+      });
       continue;
     }
     const image = await renderImagePage(bytes, { ...page, position: i + 1 });
@@ -582,6 +605,8 @@ export async function submitIntake(
       format: image.format,
       mm: image.mm,
       original: image.isOriginal ? undefined : { bytes, mime: page.mime, name: `page-${i + 1}-original.${extensionOf(page.mime)}` },
+      // Searchable in any viewer, not only here (D39).
+      text: await textLayer(image.bytes),
     });
   }
 
