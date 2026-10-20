@@ -38,9 +38,10 @@ import {
   scannedSize,
   sizeFor,
 } from "./paper.server";
-import { EDITABLE_FIELDS, saveExtraction, saveFields, type EditableField } from "./record.server";
+import { EDITABLE_FIELDS, findRecordView, saveExtraction, saveFields, type EditableField } from "./record.server";
+import { findFile, readFileContents } from "./download.server";
 import { getBlob, putBlob, storageKeyFor } from "./storage.server";
-import { fileDocument, UploadRefused } from "./upload.server";
+import { fileDocument, fileVersion, UploadRefused } from "./upload.server";
 
 export { UploadRefused };
 
@@ -537,7 +538,6 @@ export async function submitIntake(
   if (!intake.title) throw new UploadRefused("Give it a name.");
   if (!intake.category) throw new UploadRefused("Choose where it belongs.");
   if (intake.pages.length === 0) throw new UploadRefused("Add at least one page.");
-  if (intake.recordId) throw new UploadRefused("Converting a filed document is not built yet.");
 
   const sources = new Map<string, Buffer>();
   const bytesOf = async (sourceId: string) => {
@@ -565,13 +565,17 @@ export async function submitIntake(
   const pdf = await buildPdf(intake.title, built);
   await checkPdf(pdf.bytes, pdf.expected);
 
-  const filed = await fileDocument(db, {
-    ownerId: intake.ownerId,
-    category: intake.category,
-    title: intake.title,
-    mime: "application/pdf",
-    bytes: pdf.bytes,
-  });
+  // A conversion files the PDF as the record's next version (D39, D20); the
+  // image version before it stays as history. Anything else is a new record.
+  const filed = intake.recordId
+    ? await fileVersion(db, intake.recordId, { mime: "application/pdf", bytes: pdf.bytes })
+    : await fileDocument(db, {
+        ownerId: intake.ownerId,
+        category: intake.category,
+        title: intake.title,
+        mime: "application/pdf",
+        bytes: pdf.bytes,
+      });
 
   const values: Partial<Record<EditableField, string>> = {};
   for (const field of EDITABLE_FIELDS) {
@@ -593,6 +597,93 @@ export async function submitIntake(
   }
 
   return { documentId: filed.documentId, released: await discardIntake(db, intakeId) };
+}
+
+/* ------------------------------------------------------------------ */
+/* Converting what was filed before D39                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Current documents the caller can see that still hold an image rather than a
+ * PDF, and are not already being converted in a draft the caller reaches.
+ * Only meaningful for somebody who may file; the route asks only for them.
+ */
+export async function convertible(db: VaultTransaction) {
+  const rows = await db.execute<{ documentId: string; title: string; ownerName: string | null; pages: number }>(sql`
+    select d.id as "documentId", r.title, o.display_name as "ownerName",
+           (select count(*)::int from document_files f where f.document_id = d.id) as pages
+    from documents d
+    join records r on r.id = d.record_id
+    left join owners o on o.id = r.owner_id
+    where d.is_current
+      and exists (select 1 from document_files f where f.document_id = d.id and f.mime <> 'application/pdf')
+      and not exists (select 1 from intakes i where i.record_id = r.id)
+    order by o.display_name, r.title
+  `);
+  return [...rows];
+}
+
+/**
+ * Open a draft from a filed document: its pages copied in (decrypted from the
+ * vault and sealed again under the draft), its details carried over, the
+ * record it will become the next version of remembered. Nothing in the vault
+ * changes until the draft is filed.
+ */
+export async function convertDocument(db: VaultTransaction, createdBy: string, documentId: string): Promise<string> {
+  const view = await findRecordView(db, documentId);
+  if (!view || !view.document.isCurrent) throw new Response("No such document.", { status: 404 });
+
+  const pages = [];
+  for (const page of view.pages) {
+    if (page.mime === "image/heic" || page.mime === "image/heif") {
+      throw new UploadRefused("A page of this one is a HEIC photo, which cannot be converted here. Upload it again as a JPEG.");
+    }
+    const row = await findFile(db, page.id);
+    if (!row) throw new Response("No such document.", { status: 404 });
+    // A file that will not open (a key that is gone, a blob that does not
+    // match its digest) is said plainly, not thrown as a server error.
+    const bytes = await readFileContents(row).catch(() => {
+      throw new UploadRefused("A page of this one cannot be opened, so it cannot be converted.");
+    });
+    pages.push({ mime: page.mime, bytes, examined: await examine(bytes, page.mime) });
+  }
+
+  const ownerRow = [...(await db.execute<{ ownerId: string | null }>(sql`select owner_id as "ownerId" from records where id = ${view.recordId}`))][0];
+  const id = await startIntake(db, createdBy, {
+    ownerId: ownerRow?.ownerId ?? null,
+    category: view.category,
+    title: view.title,
+    recordId: view.recordId,
+  });
+  for (const page of pages) await addSource(db, id, page, page.examined);
+
+  // What was on file comes along, as it stood: confirmed values as a person's,
+  // the rest as the reader's.
+  const d = view.document;
+  const was: Partial<Record<EditableField, string | null>> = {
+    document_date: d.documentDate,
+    issued_on: d.issuedOn,
+    expires_on: d.expiresOn,
+    issuer_country: d.issuerCountry,
+    place_of_issue: d.placeOfIssue,
+    original_location_note: d.originalLocationNote,
+  };
+  const values: IntakeView["values"] = {};
+  for (const [field, value] of Object.entries(was) as [EditableField, string | null][]) {
+    if (value) values[field] = { value, source: d.confirmedFields.includes(field) ? "person" : "page-text" };
+  }
+  let identifier: Buffer | null = null;
+  if (d.hasIdentifier) {
+    const [{ sealed }] = [...(await db.execute<{ sealed: Buffer }>(sql`select identifier_sealed as sealed from documents where id = ${documentId}`))];
+    identifier = sealIdentifier(openIdentifier(Buffer.from(sealed), documentId), id);
+    values.identifier = { source: d.confirmedFields.includes("identifier") ? "person" : "page-text", masked: true };
+  }
+  await db.execute(sql`
+    update intakes set fields = ${JSON.stringify({ values, how: "Carried over from the version already filed." })}::jsonb,
+      identifier_sealed = ${identifier}
+    where id = ${id}
+  `);
+  return id;
 }
 
 function extensionOf(mime: string): string {

@@ -123,6 +123,46 @@ describe("a photographed card, filed", () => {
   });
 });
 
+describe("a paper filed as an image before D39", () => {
+  test("is offered for converting, and converting files the PDF as its next version", async () => {
+    const photo = await photographedCard();
+    const { fileDocument } = await import("../upload.server");
+    const old = await asUser(USER.maya, async (db) => {
+      const filed = await fileDocument(db, { ownerId: OWNER.maya, category: "personal", title: `${MARK} an old image`, mime: "image/jpeg", bytes: photo });
+      const { saveFields } = await import("../record.server");
+      await saveFields(db, filed.documentId, { expires_on: "2029-02-28", identifier: "ZZ0000002" });
+      return filed;
+    });
+
+    const offered = await asUser(USER.maya, (db) => intake.convertible(db));
+    expect(offered.map((d) => d.documentId)).toContain(old.documentId);
+
+    const id = await asUser(USER.maya, (db) => intake.convertDocument(db, USER.maya, old.documentId));
+    const draft = await asUser(USER.maya, (db) => intake.loadIntake(db, id));
+    expect(draft!.recordId).toBe(old.recordId);
+    expect(draft!.pages).toHaveLength(1);
+    expect(draft!.pages[0].size).toBe("id1");
+    expect(draft!.values.expires_on).toEqual({ value: "2029-02-28", source: "person" });
+    expect(draft!.hasIdentifier).toBe(true);
+    expect(await asUser(USER.maya, (db) => intake.convertible(db))).not.toContainEqual(expect.objectContaining({ documentId: old.documentId }));
+
+    const { documentId, released } = await asUser(USER.maya, (db) => intake.submitIntake(db, id));
+    await Promise.all(released.map((key) => storage.deleteBlob(key)));
+
+    const versions = await owner()`
+      select d.id, d.version_no as "versionNo", d.is_current as "isCurrent", f.mime, d.identifier_sealed as sealed
+      from documents d join document_files f on f.document_id = d.id
+      where d.record_id = ${old.recordId} order by d.version_no
+    `;
+    expect(versions.map((v) => [v.versionNo, v.isCurrent, v.mime])).toEqual([
+      [1, false, "image/jpeg"],
+      [2, true, "application/pdf"],
+    ]);
+    expect(versions[1].id).toBe(documentId);
+    expect(openIdentifier(versions[1].sealed, documentId)).toBe("ZZ0000002");
+  });
+});
+
 describe("what stops a draft being filed", () => {
   test("a photo with no outline and no recorded resolution has no size, and says so", async () => {
     const blank = await sharp({ create: { width: 900, height: 700, channels: 3, background: "#808080" } }).jpeg().toBuffer();

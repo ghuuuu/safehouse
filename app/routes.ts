@@ -20,6 +20,8 @@ export default [
     route("bulk", "routes/bulk.tsx"),
     // A draft: its pages straightened and sized, its details checked, then
     // filed as one PDF (D39, D40). The only surface that files into the vault.
+    // Drafts waiting to be filed, and papers filed as images, to convert.
+    route("unfinished", "routes/unfinished.tsx"),
     route("intake/:intakeId", "routes/intake.$intakeId.tsx"),
     route("intake/:intakeId/corners/:pageId", "routes/intake.$intakeId.corners.$pageId.tsx"),
     // Words and numbers, through the policies; /search?q=…&as=<userId> for view-as.

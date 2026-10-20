@@ -1,27 +1,38 @@
 import { useEffect, useRef } from "react";
 import { Form, Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/shell";
 import { Logo } from "../logo";
 import { roleLabel } from "../roles";
-import { getSignedInUser } from "../session.server";
+import { getSignedInUser, withVault } from "../session.server";
 
 /**
  * The index every signed-in page shares (PRODUCT.md, Screens): one sidebar,
  * grouped the way a filing cabinet is used. Find a paper, file one, run the
  * household.
  *
- * Only the signed-in user's own name and role are read here. Nothing about the
- * vault is: each page still reads its own data through `withVault`, and a page
- * a role may not open (Access) still refuses on its own. The link is hidden
- * from non-admins for tidiness, not for security.
+ * Read here: the signed-in user's own name and role, and how many drafts they
+ * reach (D40), counted through `intakes_reach` so it is their own or, for an
+ * admin, everybody's. Nothing about the vault's documents: each page reads
+ * its own data through `withVault`, and a page a role may not open (Access)
+ * still refuses on its own. The link is hidden from non-admins for tidiness,
+ * not for security.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getSignedInUser(request);
-  return { user: user ? { name: user.name, role: user.role } : null };
+  if (!user) return { user: null, drafts: 0 };
+  const drafts =
+    user.role === "admin" || user.role === "individual"
+      ? await withVault(request, async (db) => {
+          const [row] = [...(await db.execute<{ n: number }>(sql`select count(*)::int as n from intakes`))];
+          return row?.n ?? 0;
+        })
+      : 0;
+  return { user: { name: user.name, role: user.role }, drafts };
 }
 
-type Item = { to: string; label: string; adminOnly?: boolean };
+type Item = { to: string; label: string; adminOnly?: boolean; fileOnly?: boolean; count?: number };
 
 const GROUPS: { title: string; items: Item[] }[] = [
   {
@@ -38,6 +49,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { to: "/upload", label: "File a document" },
       { to: "/bulk", label: "File many" },
+      { to: "/unfinished", label: "Unfinished", fileOnly: true },
     ],
   },
   {
@@ -59,14 +71,17 @@ const TABS: Item[] = [
 ];
 
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { user } = loaderData;
+  const { user, drafts } = loaderData;
   useSlashToSearch();
   // Signed out: the page's own loader has already redirected to sign-in.
   if (!user) return <Outlet />;
 
   const groups = GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.adminOnly || user.role === "admin"),
+    items: group.items
+      .filter((item) => !item.adminOnly || user.role === "admin")
+      .filter((item) => !item.fileOnly || user.role === "admin" || user.role === "individual")
+      .map((item) => (item.to === "/unfinished" ? { ...item, count: drafts } : item)),
   }));
 
   return (
@@ -139,6 +154,12 @@ function Groups({ groups, tone = "side" }: { groups: { title: string; items: Ite
               }
             >
               {item.label}
+              {item.count ? (
+                <span className="ml-2 font-mono text-xs">
+                  {item.count}
+                  <span className="sr-only"> waiting</span>
+                </span>
+              ) : null}
             </NavLink>
           </li>
         ))}

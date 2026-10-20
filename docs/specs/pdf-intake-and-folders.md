@@ -209,7 +209,7 @@ Tests first for every rule:
 2. Intake tables, policies, self-check amendments; tests first.
 3. Page engine: corners, size guess, warp, PDF build, check; tests.
 4. Upload and bulk make intakes; the review screen; submit.
-5. Unfinished list (dashboard and sidebar count) and converting old images.
+5. The Unfinished page (a count beside it in the index) and converting old images.
 6. The folders page and ZIP download; tests.
 7. DESIGN.md for the new screens, drill, browser pass at phone and desk widths.
 
@@ -219,4 +219,4 @@ Tests first for every rule:
    Deleting them would be the vault's first DELETE grant and its own decision.
 2. **Who sees a draft:** its uploader and the admins.
 3. **An intake left for months** is kept until finished or discarded, and
-   listed on the dashboard meanwhile.
+   listed under Unfinished meanwhile.

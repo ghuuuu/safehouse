@@ -1476,7 +1476,7 @@ around is otherwise stuck where nobody can finish it.
   intake tables, and nothing new on any vault table.** The pinned self-checks
   are extended to say so.
 - **An unfinished intake waits** until it is submitted or discarded; it is
-  listed on the dashboard and counted in the index.
+  listed under Unfinished, with a count beside it in the index.
 - **Intake pages are sealed like documents (D12).** Discarding deletes rows and
   blobs.
 
