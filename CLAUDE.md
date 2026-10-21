@@ -57,6 +57,8 @@ without it.
 #             needs the database:  docker compose up -d db
 #             start.bat does all of it on Windows: tools, .env, install,
 #             database, migrate, key, sample household if empty, browser
+#             from another device on the tailnet (https, tailnet only):
+#             tailscale serve --bg --https=4021 http://localhost:4021
 # build:      npm run build
 # test:       npm test            (npm run test:watch while working)
 # lint:       npm run lint

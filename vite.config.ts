@@ -4,6 +4,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter()],
+  // Reached from other devices through `tailscale serve`, which keeps the
+  // dev server on localhost and passes the tailnet name through as the Host.
+  server: { allowedHosts: [".ts.net"] },
   // The version in package.json, baked in so Settings can say which one is
   // running. npm sets it for `npm run build` and `npm run dev`.
   define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "dev") },
