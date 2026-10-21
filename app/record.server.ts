@@ -20,6 +20,7 @@ import { sql } from "drizzle-orm";
 import { ACTIONS, record as logEvent } from "./activity.server";
 import type { VaultTransaction } from "./db.server";
 import { identifierColumns, openIdentifier } from "./field-crypto.server";
+import { isUuid } from "./ids";
 
 /** The fields a person may fill in or correct. */
 export const EDITABLE_FIELDS = [
@@ -82,6 +83,7 @@ export async function findRecordView(
   db: VaultTransaction,
   documentId: string,
 ): Promise<RecordView | null> {
+  if (!isUuid(documentId)) return null;
   const rows = await db.execute<Record<string, unknown>>(sql`
     select
       r.id as "recordId", r.title, r.category, r.is_private as "isPrivate",
@@ -146,10 +148,17 @@ export async function findRecordView(
       hasIdentifier: row.hasIdentifier as boolean,
       confirmedFields: (row.confirmedFields as string[]) ?? [],
     },
-    extraction: (row.extraction as Record<string, unknown>) ?? {},
+    extraction: sealedExtraction(row.extraction),
     pages: [...pages],
     versions: [...versions],
   };
+}
+
+/** What was read, as it may leave the server: a stored row may predate `sealedProposal`. */
+function sealedExtraction(value: unknown): Record<string, unknown> {
+  const extraction = (value as Record<string, unknown> | null) ?? {};
+  const proposals = extraction.proposals;
+  return Array.isArray(proposals) ? { ...extraction, proposals: proposals.map(sealedProposal) } : extraction;
 }
 
 function asDate(value: unknown): string | null {
@@ -312,6 +321,18 @@ export async function saveProposals(
 /**
  * Store the reader's working notes.
  *
+ * A masked field's proposal as it may be stored or sent: no value, and no note
+ * that repeats it. With the value in hand the note keeps its provenance unless
+ * it quotes the number; a row stored before this rule has no value left to
+ * look for, so its note goes.
+ */
+export function sealedProposal<P extends { field: string; value?: string; note?: string }>(proposal: P): P {
+  if (!MASKED_FIELDS.includes(proposal.field as EditableField)) return proposal;
+  const note = proposal.value && proposal.note && !proposal.note.includes(proposal.value) ? proposal.note : undefined;
+  return { ...proposal, value: undefined, note, masked: true };
+}
+
+/**
  * A proposal for a masked field keeps its provenance and loses its value. The
  * number itself is sealed into `identifier_sealed`, where seeing it costs a
  * password check and a line in the log (D35); leaving a copy in a column the
@@ -323,14 +344,7 @@ export async function saveExtraction(
   documentId: string,
   extraction: { proposals: { field: string; value: string }[] } & Record<string, unknown>,
 ): Promise<void> {
-  const safe = {
-    ...extraction,
-    proposals: extraction.proposals.map((proposal) =>
-      MASKED_FIELDS.includes(proposal.field as EditableField)
-        ? { ...proposal, value: undefined, masked: true }
-        : proposal,
-    ),
-  };
+  const safe = { ...extraction, proposals: extraction.proposals.map(sealedProposal) };
 
   await db.execute(sql`
     update documents set extraction = ${JSON.stringify(safe)}::jsonb

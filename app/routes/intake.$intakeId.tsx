@@ -23,12 +23,12 @@ import { draftFromUploads, readInto, refusedByPolicy } from "../intake-request.s
 import { Masthead, Page } from "../masthead";
 import { PAPER_SIZES, type PaperSize } from "../paper";
 import type { EditableField } from "../record.server";
-import { withVault } from "../session.server";
+import { requireUser, withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
 import { deleteBlob } from "../storage.server";
 
 export function meta() {
-  return [{ title: "Finish filing — Safehouse" }];
+  return [{ title: "Finish filing — SafeHouse" }];
 }
 
 /**
@@ -71,6 +71,8 @@ const FIELDS = Object.keys(FIELD_LABELS) as EditableField[];
 
 export async function action({ request, params }: Route.ActionArgs) {
   const id = params.intakeId;
+  // Before the body: a stranger's pages are refused, not read into memory.
+  await requireUser(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
   const pageId = String(form.get("pageId") ?? "");
@@ -162,7 +164,7 @@ export default function Intake({ loaderData, actionData }: Route.ComponentProps)
     <>
       <Masthead
         title={intake.title || "Unfinished document"}
-        seed="Unfinished"
+       
         serial={`Unfinished · ${intake.pages.length} ${intake.pages.length === 1 ? "page" : "pages"}`}
       />
       <Page narrow>
@@ -178,7 +180,7 @@ export default function Intake({ loaderData, actionData }: Route.ComponentProps)
         ) : null}
 
         <section aria-labelledby="pages" className="sheet">
-          <h2 id="pages" className="border-b border-gray-900 px-4 py-3 text-lg font-semibold md:px-5">Pages</h2>
+          <h2 id="pages" className="border-b border-gray-200 px-4 py-3 text-2xl font-semibold tracking-[-0.02em] md:px-5">Pages</h2>
           <ol className="divide-y divide-gray-200">
             {intake.pages.map((page, i) => (
               <PageRow key={page.id} intakeId={intake.id} page={page} n={i + 1} last={i === intake.pages.length - 1} />
@@ -194,28 +196,43 @@ export default function Intake({ loaderData, actionData }: Route.ComponentProps)
         </section>
 
         <Form id="details" method="post" className="sheet flex flex-col gap-5 p-4 md:p-5" key={JSON.stringify([intake.values, intake.ownerId, intake.title, intake.category])}>
-          <h2 className="-mx-4 -mt-4 border-b border-gray-900 px-4 py-3 text-lg font-semibold md:-mx-5 md:-mt-5 md:px-5">Details</h2>
+          <h2 className="-mx-4 -mt-4 border-b border-gray-200 px-4 py-3 text-2xl font-semibold tracking-[-0.02em] md:-mx-5 md:-mt-5 md:px-5">Details</h2>
 
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Whose is it?
-            <select name="ownerId" defaultValue={intake.ownerId ?? ""} className="field font-normal">
-              <option value="">Choose a person, business or the household</option>
-              {owners.map((o) => (
-                <option key={o.id} value={o.id}>{o.displayName}{o.kind === "person" ? "" : ` (${o.kind})`}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            What is it?
-            <input name="title" maxLength={200} defaultValue={intake.title ?? ""} placeholder="Passport, council tax bill" className="field font-normal" />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium">
-            Where does it belong?
-            <select name="category" defaultValue={intake.category ?? ""} className="field font-normal">
-              <option value="">Choose a kind</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
-            </select>
-          </label>
+          {intake.recordId ? (
+            // A conversion files the next version of a record that already has
+            // an owner, a name and a kind (D39). Fields here would be ignored.
+            <p className="text-sm text-gray-600">
+              This becomes the next version of <span className="font-medium text-gray-900">{intake.title}</span> (
+              {[owners.find((o) => o.id === intake.ownerId)?.displayName, intake.category].filter(Boolean).join(", ")}). Whose
+              it is, its name and its kind stay as they are on the record.
+              <input type="hidden" name="ownerId" value={intake.ownerId ?? ""} />
+              <input type="hidden" name="title" value={intake.title ?? ""} />
+              <input type="hidden" name="category" value={intake.category ?? ""} />
+            </p>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1.5 text-sm font-medium">
+                Whose is it?
+                <select name="ownerId" defaultValue={intake.ownerId ?? ""} className="field font-normal">
+                  <option value="">Choose a person, business or the household</option>
+                  {owners.map((o) => (
+                    <option key={o.id} value={o.id}>{o.displayName}{o.kind === "person" ? "" : ` (${o.kind})`}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium">
+                What is it?
+                <input name="title" maxLength={200} defaultValue={intake.title ?? ""} placeholder="Passport, council tax bill" className="field font-normal" />
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium">
+                Where does it belong?
+                <select name="category" defaultValue={intake.category ?? ""} className="field font-normal">
+                  <option value="">Choose a kind</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
+                </select>
+              </label>
+            </>
+          )}
 
           <p className="border-t border-gray-200 pt-4 text-sm text-gray-500">
             {intake.how ?? "Not read yet."} Whatever is here when you file it is recorded as checked, so clear anything that is wrong.

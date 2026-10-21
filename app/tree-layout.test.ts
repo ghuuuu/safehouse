@@ -136,6 +136,28 @@ describe("the family lines", () => {
     expect(of("parent:rose:bram").label).toBe("former guardian");
   });
 
+  test("two lines leaving one card leave from different points, in their children's order", () => {
+    const exitX = (key: string) => Number(of(key).d.split(" ")[1]);
+    const { positions } = layoutTree(PEOPLE, edges);
+    expect(exitX("parent:rose:lena")).not.toBe(exitX("parent:rose:bram"));
+    expect(Math.sign(exitX("parent:rose:lena") - exitX("parent:rose:bram"))).toBe(Math.sign(positions.lena.x - positions.bram.x));
+  });
+
+  test("a step line lands beside the parents' line on the child, on its own side", () => {
+    // Every path ends "H x V top": x is where it lands.
+    const landsAt = (key: string) => Number(of(key).d.split(" ").at(-3));
+    const { positions } = layoutTree(PEOPLE, edges);
+    const fromLeft = positions.maya.x < positions.theo.x;
+    expect(Math.sign(landsAt("parent:maya:theo") - landsAt("child:theo"))).toBe(fromLeft ? -1 : 1);
+    expect(of("parent:maya:theo").landing!.side).toBe(fromLeft ? "left" : "right");
+  });
+
+  test("a line that crosses another's drop hops over it; a child hanging from a couple does not", () => {
+    const hops = lines.filter((line) => line.d.includes(" a "));
+    expect(hops.length).toBeGreaterThan(0);
+    expect(of("child:ivy").d).not.toContain(" a ");
+  });
+
   test("a step-parent is a line of their own, labelled", () => {
     expect(of("parent:maya:theo").label).toBe("step");
   });

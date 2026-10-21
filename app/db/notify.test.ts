@@ -12,7 +12,7 @@ import type { AddressInfo } from "node:net";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
-import { USER } from "./fixture";
+import { DOCUMENT, USER } from "./fixture";
 import { closeTestDatabase, owner, prepareTestDatabase } from "./test-harness";
 
 let notify: typeof import("../notify.server");
@@ -104,6 +104,51 @@ describe("a sweep", () => {
     for (const forbidden of ["Passport", "Rose", "Daniel", "Hale", "insurance", "FIXTURE", "Medic", "Emergency Contact"]) {
       expect(everything).not.toContain(forbidden);
     }
+  });
+});
+
+describe("stages", () => {
+  const stagesOf = async (documentId: string) =>
+    (await owner()`
+      select stage from notifications where kind = 'expiry.soon' and subject_id = ${documentId} order by created_at
+    `).map((r) => r.stage);
+
+  /** Moves Daniel's passport through the days given, sweeping twice on each. */
+  const walk = async (days: number[]) => {
+    const [{ was }] = await owner()`select expires_on::text as was from documents where id = ${DOCUMENT.danielPassport}`;
+    try {
+      for (const left of days) {
+        await owner()`update documents set expires_on = current_date + ${left}::int where id = ${DOCUMENT.danielPassport}`;
+        await notify.sweep(null, admins);
+        await notify.sweep(null, admins);
+      }
+      return await stagesOf(DOCUMENT.danielPassport);
+    } finally {
+      await owner()`update documents set expires_on = ${was}::date where id = ${DOCUMENT.danielPassport}`;
+    }
+  };
+
+  test("one each: entering the window, a week out, three days out, and on the day", async () => {
+    expect(await walk([60, 30, 7, 5, 3, 1, 0, -2])).toEqual(["early", "week", "three", "today"]);
+  });
+
+  test("a paper first seen two days out is told of that, not of the stages it missed", async () => {
+    expect(await walk([2, 1, 0])).toEqual(["three", "today"]);
+  });
+});
+
+describe("two deliveries at once", () => {
+  test("send each message once, not once each", async () => {
+    // A break-glass delivers straight away (deliverNow) while the sweep may be
+    // part-way through the same rows. Both read them as undelivered.
+    await notify.sweep(null, admins);
+    const pending = (await rows()).filter((r) => !r.delivered_at).length;
+    const send = notify.webhookSender(url)!;
+
+    await Promise.all([notify.deliverFor(USER.priya, send), notify.deliverFor(USER.priya, send)]);
+
+    expect(pending).toBeGreaterThan(0);
+    expect(received.length).toBe(pending);
   });
 });
 

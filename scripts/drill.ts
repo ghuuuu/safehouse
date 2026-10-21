@@ -141,6 +141,7 @@ console.log("  the app's grants came back with it");
 const drill = postgres(withDatabase(ownerUrl, DRILL_DATABASE), { max: 1, onnotice: () => {} });
 let checked = 0;
 let missing = 0;
+let lost = 0;
 let retired = 0;
 let identifiers = 0;
 let retiredIdentifiers = 0;
@@ -157,9 +158,10 @@ try {
     try {
       sealed = await readFile(join(backupDir, "storage", file.storage_key as string));
     } catch {
-      // Fixture rows have no blob behind them; a real one missing is the thing
-      // worth shouting about, and the counts below say which this was.
-      missing += 1;
+      // The fixture's rows have no blob behind them, and say so in their key.
+      // Any other row without one is a document this backup lost.
+      if ((file.storage_key as string).startsWith("fixture/")) missing += 1;
+      else lost += 1;
       continue;
     }
 
@@ -249,6 +251,14 @@ if (retiredIdentifiers > 0) {
   console.error(
     `  ${retiredIdentifiers} identifier${retiredIdentifiers === 1 ? "" : "s"} sealed under a key this machine no longer has (D12).`,
   );
+}
+
+if (lost > 0) {
+  console.error(
+    `Drill FAILED: ${lost} file${lost === 1 ? " is" : "s are"} in the restored database ` +
+      `but not in the backup. Restored, ${lost === 1 ? "that document" : "those documents"} would not open.`,
+  );
+  process.exit(1);
 }
 
 if (checked === 0 && missing + retired > 0) {

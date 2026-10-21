@@ -552,9 +552,9 @@ export async function insertFixture(sql: Sql, provider: KeyProvider): Promise<vo
   `;
 
   await sql`
-    insert into notifications (user_id, kind, subject_type, subject_id) values
-      (${USER.maya}, 'expiry.soon', 'document', ${DOCUMENT.mayaDrivingLicence}),
-      (${USER.priya}, 'emergency.activated', 'user', ${USER.medic})
+    insert into notifications (user_id, kind, subject_type, subject_id, stage) values
+      (${USER.maya}, 'expiry.soon', 'document', ${DOCUMENT.mayaDrivingLicence}, 'early'),
+      (${USER.priya}, 'emergency.activated', 'user', ${USER.medic}, null)
   `;
 
   await sql`insert into settings (id) values (1)`;

@@ -12,7 +12,7 @@ import { deleteBlob } from "../storage.server";
 import { longDate, When } from "../when";
 
 export function meta() {
-  return [{ title: "A newer version was filed — Safehouse" }];
+  return [{ title: "A newer version was filed — SafeHouse" }];
 }
 
 /**
@@ -93,7 +93,7 @@ export default function Compare({ loaderData, actionData }: Route.ComponentProps
 
   return (
     <>
-      <Masthead title="A newer version was filed" seed="Unfinished" serial={draft.title ?? undefined} />
+      <Masthead title="A newer version was filed" serial={draft.title ?? undefined} />
       <Page>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
           While your draft was open, somebody filed a version of this paper. Filing yours now makes it the newest and puts
@@ -105,7 +105,7 @@ export default function Compare({ loaderData, actionData }: Route.ComponentProps
         <div className="sheet overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
-              <tr className="border-b border-gray-900 text-left">
+              <tr className="border-b border-gray-200 text-left">
                 <th scope="col" className="index w-40 px-4 py-3 font-semibold text-gray-500 md:px-5"><span className="sr-only">Detail</span></th>
                 <th scope="col" className="px-4 py-3 md:px-5">
                   <span className="block font-semibold">Filed, version <span className="font-mono">{newer.document.versionNo}</span></span>

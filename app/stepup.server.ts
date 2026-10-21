@@ -36,7 +36,10 @@ const cookie = createCookie("safehouse_stepup", {
   httpOnly: true,
   sameSite: "lax",
   path: "/",
-  secure: process.env.NODE_ENV === "production",
+  // The library's rule for its own cookies: Secure exactly when the vault is
+  // served over https. A browser drops a Secure cookie set over plain http,
+  // so marking it Secure by build would ask for the password forever there.
+  secure: requireEnv("BETTER_AUTH_URL").startsWith("https://"),
   maxAge: STEP_UP_SECONDS,
   secrets: [requireEnv("BETTER_AUTH_SECRET")],
 });

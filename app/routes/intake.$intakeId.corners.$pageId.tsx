@@ -9,7 +9,7 @@ import { withVault } from "../session.server";
 import { requireStepUp } from "../stepup.server";
 
 export function meta() {
-  return [{ title: "Adjust the corners — Safehouse" }];
+  return [{ title: "Adjust the corners — SafeHouse" }];
 }
 
 /**
@@ -72,7 +72,7 @@ export default function CornerEditor({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <Masthead title={`Corners of page ${n}`} seed="Unfinished" />
+      <Masthead title={`Corners of page ${n}`} />
       <Page>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
           Drag each square onto a corner of the paper, or pick a square and use the arrow keys (Shift for small

@@ -8,7 +8,7 @@ import { Masthead, Page } from "../masthead";
 import { withVault } from "../session.server";
 
 export function meta() {
-  return [{ title: "Folders — Safehouse" }];
+  return [{ title: "Folders — SafeHouse" }];
 }
 
 /**
@@ -49,7 +49,7 @@ export default function Folders({ loaderData }: Route.ComponentProps) {
       <Masthead title="Folders" serial={`${folders.length} ${folders.length === 1 ? "folder" : "folders"} · ${papers} papers`} />
       <Page narrow>
         <p className="-mb-2 max-w-prose text-base text-gray-700">
-          Every paper you can see, filed under whose it is. Tick papers or whole folders and download them as one ZIP,
+          Every paper you can see that has pages on file, filed under whose it is. Tick papers or whole folders and download them as one ZIP,
           laid out the same way.
         </p>
 
@@ -63,7 +63,7 @@ export default function Folders({ loaderData }: Route.ComponentProps) {
         ) : (
           <Form method="post" action="/folders/download" reloadDocument className="flex flex-col gap-4">
             <div className="sheet">
-              <div className="flex items-center gap-3 border-b border-gray-900 px-4 py-3 md:px-5">
+              <div className="flex items-center gap-3 border-b border-gray-200 px-4 py-3 md:px-5">
                 <Tick ids={all} chosen={chosen} toggle={toggle} label="Everything" />
                 <span className="font-semibold">Everything</span>
               </div>

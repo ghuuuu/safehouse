@@ -9,7 +9,7 @@
 
 import { describe, expect, test } from "vitest";
 
-import { proposalsFromMrz, proposalsFromText } from "./ocr.server";
+import { normaliseDate, proposalsFromMrz, proposalsFromText } from "./ocr.server";
 
 /** A fictional strip, in the shape a TD3 passport carries. */
 const FIELDS = {
@@ -74,12 +74,18 @@ describe("what a passport strip offers", () => {
     expect(proposed(FIELDS).identifier.note).toBeUndefined();
   });
 
-  test("an expiry in the eighties is next century, not the last one", () => {
-    // Two digits of year, so the century is inferred. An expiry is ahead of
-    // today; a passport expiring in '85 means 2085.
-    const p = proposed({ ...FIELDS, expirationDate: "850131" });
+  test("an expiry is never read as more than twenty years ahead", () => {
+    // Two digits of year, so the century is inferred. No passport runs for
+    // decades, but an expired one is filed all the time: '85 is 1985, and a
+    // passport that ran out in '15 ran out in 2015, not 2115.
+    const year = (yy: string) => proposed({ ...FIELDS, expirationDate: `${yy}0131` }).expires_on.value;
+    const now = new Date().getFullYear();
+    const yy = (y: number) => String(y % 100).padStart(2, "0");
 
-    expect(p.expires_on.value).toBe("2085-01-31");
+    expect(year("85")).toBe("1985-01-31");
+    expect(year(yy(now - 11))).toBe(`${now - 11}-01-31`);
+    expect(year(yy(now + 10))).toBe(`${now + 10}-01-31`);
+    expect(year(yy(now + 21))).toBe(`${now + 21 - 100}-01-31`);
   });
 
   test("nonsense in a date field is dropped rather than offered", () => {
@@ -130,6 +136,29 @@ describe("what loose text offers", () => {
 
   test("empty text offers nothing", () => {
     expect(proposalsFromText("")).toEqual([]);
+  });
+
+  test.each(["Valid until 38/06/2027", "Expires 31/02/2027", "Expires 2027-13-40", "Expiry 32 March 2027"])(
+    "a date no calendar has is not offered: %s",
+    (text) => {
+      // A misread digit made 2027-06-38, which the database refuses as a date:
+      // "Read it from the scan" failed outright instead of offering nothing.
+      expect(proposalsFromText(text)).toEqual([]);
+    },
+  );
+});
+
+describe("a date as the vault stores it", () => {
+  test.each([
+    ["14/03/2027", "2027-03-14"],
+    ["14.03.27", "2027-03-14"],
+    ["14 March 2027", "2027-03-14"],
+    ["2028-02-29", "2028-02-29"],
+    ["29/02/2027", null],
+    ["2027-00-10", null],
+    ["no date", null],
+  ])("%s is %s", (raw, expected) => {
+    expect(normaliseDate(raw)).toBe(expected);
   });
 });
 

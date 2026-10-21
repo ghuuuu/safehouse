@@ -96,7 +96,7 @@ graphify-out/
 !.impeccable/config.json
 .serena/
 .claude/settings.local.json
-.claude/.headroom_wrap_marker.json
+.claude/.headroom_wrap_*
 
 # React Router build output
 /.react-router/

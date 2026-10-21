@@ -1095,7 +1095,7 @@ role's alone.
 
 **Consequences.**
 - `app/entry.server.tsx` exists now: React Router's default, with one awaited
-  call at the top. `react-router-serve` imports it at startup, so a refusal
+  call at the top. The server (`server.mjs`, D44) imports it at startup, so a refusal
   stops the process; under Compose, `restart: unless-stopped` turns that into
   a loop whose log says why.
 - The server needs the database up to start. Compose already waits for it.
@@ -1317,8 +1317,8 @@ disagree.
   `SAFEHOUSE_NOTIFY_WEBHOOK` (an ntfy topic, a Telegram bot, anything that
   takes a POST).
 - **The sweep.** At boot and every 15 minutes, it writes one `expiry.soon` row
-  per admin per expiring document, then delivers whatever is undelivered. A
-  break-glass is delivered at once.
+  per admin per expiring document per stage, then delivers whatever is
+  undelivered. A break-glass is delivered at once.
 
 **Why.**
 - **Who opens it:** break-glass exists for the day the admin cannot be
@@ -1346,15 +1346,26 @@ disagree.
   - The admin's dashboard warns about undelivered rows, and about a sweep that
     has not finished in an hour.
 - **Expiry reminders go to admins only.** Members keep the live list on the
-  dashboard (D30). One reminder per document per admin, ever. Renewing the
-  document is what makes the in-app list go quiet; the outside world is told
-  once.
+  dashboard (D30). Renewing the document is what makes the in-app list go
+  quiet.
+- **Four reminders per document per admin, at most** (amended 2026-10-21,
+  0019): one when it enters the household's window, one a week out, one three
+  days out, one on the day. Each row carries its stage, and the index allows
+  one of each.
+  - Originally it was one, ever. A single message sixty days ahead was easy to
+    forget by the week it mattered.
+  - The sweep writes only the stage a paper is in now. A paper first seen two
+    days out is told of once, not three times in a row.
+  - Nothing after the day itself. A lapsed paper stays at the top of the
+    dashboard (D30) rather than messaging every morning.
+  - The stage is not updatable, like `kind`. Rewriting it would free a stage,
+    and that reminder would go out again.
 - **D30 narrowed further.** Expiry rows now exist, because delivery needs
   something to mark as sent. The in-app list is still the live query, not
   these rows.
 - **The sweep is an in-process timer,** which fits one container (D3). A
   second container would sweep twice; the unique index keeps that to one row
-  per document, but a message could go out twice.
+  per document per stage, but a message could go out twice.
 - **The admin closes a window** from the contact's access-console panel. The
   dashboard shows every open window with the contact's reason. Opening and
   closing are both logged (`emergency.opened`, `emergency.revoked`).
@@ -1538,6 +1549,57 @@ wrong one reaches a reminder.
   so it cannot be shown or compared, and says nothing about itself.
 - **Checked without a lock.** Two presses in the same instant can both pass;
   the unique version number still keeps them apart.
+
+---
+
+## D43 — Five password tries per account per quarter hour
+
+**Decision.** Every door that takes a password spends a try from a count kept
+per account (`app/tries.server.ts`): signing in (keyed on the address), and
+anything a signed-in account proves itself with — the step-up check before a
+file opens, changing the password, turning two-factor on or off (keyed on the
+account). Five tries in fifteen minutes; the sixth is refused, right password
+or not, until the window has passed. The right password before then starts the
+count again. The library's own endpoints are counted in its `before` hook, so
+the sign-in page's direct call and a request to `/api/auth` spend from the same
+count.
+
+**Why.** Nothing limited guessing. The library has a rate limiter, but it runs
+only for requests over HTTP, not for the direct calls the pages make, and it
+keys on the client's address — which, with nothing in front of the server,
+the client names for itself in `X-Forwarded-For`, a new one each try.
+
+**Consequences.**
+- **Somebody guessing at an account shuts its owner out too,** for up to a
+  quarter of an hour. For a vault, locked is the right way to fail.
+- **A try is spent before the password is checked,** so a burst sent at once
+  cannot all start before any counts.
+- **In memory, in the one app process.** A restart forgets, which nobody
+  outside can cause. A second app process would need the count in Postgres.
+- An unknown address is counted like a real one, so the refusal says nothing
+  about who has an account.
+
+---
+
+## D44 — The app's own server, which logs no query strings
+
+**Decision.** `npm start` runs `server.mjs`: Express, compression and React
+Router's Express adapter — the parts `react-router-serve` is made of — with a
+request log of method, path, status and time. Those three packages are listed
+directly; `@react-router/serve` and morgan are gone.
+
+**Why.** `react-router-serve` logs every request with morgan's "tiny" format,
+which writes the whole URL. A search is a GET, so `/search?q=<a passport
+number>` reached the container log in the clear, against the rule that record
+values are never logged. Making search a POST would have kept it out of the
+log, but lost the back button and the address bar for every search.
+
+**Consequences.**
+- Nothing new is installed: these were already the server's dependencies.
+- `NODE_ENV` defaults to production before anything is imported, as it did,
+  so React runs its production build and the sweeper starts.
+- The browser's own history still holds the address of a search. That is the
+  person's own device, and outside what the server can decide.
 
 ---
 

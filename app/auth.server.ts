@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twoFactor } from "better-auth/plugins";
 import { and, count, eq, isNull, or } from "drizzle-orm";
@@ -10,6 +10,7 @@ import postgres from "postgres";
 
 import { requireEnv } from "./config.server";
 import * as schema from "./db/schema";
+import { forgetTries, spendTry, TOO_MANY_TRIES } from "./tries.server";
 
 /**
  * Sign-in, sessions and passwords (D10).
@@ -64,7 +65,12 @@ export async function noUsersYet(): Promise<boolean> {
 export async function passwordMatches(
   userId: string,
   password: string,
-): Promise<boolean> {
+): Promise<"match" | "wrong" | "locked"> {
+  // The same count as the library's own password endpoints (`triesKey`), so
+  // a stolen session cannot guess here and there by turns.
+  const key = `user:${userId}`;
+  if (!spendTry(key)) return "locked";
+
   const [account] = await authDb()
     .select({ password: schema.accounts.password })
     .from(schema.accounts)
@@ -75,10 +81,39 @@ export async function passwordMatches(
       ),
     );
 
-  if (!account?.password) return false;
+  if (!account?.password) return "wrong";
 
   const context = await auth.$context;
-  return context.password.verify({ hash: account.password, password });
+  if (!(await context.password.verify({ hash: account.password, password }))) return "wrong";
+  forgetTries(key);
+  return "match";
+}
+
+/**
+ * A direct library call, with the count of tries' refusal as `null`. Called
+ * directly, the library throws a hook's refusal rather than answering with it,
+ * and the only refusal a password-taking call can meet is that one. Saying so
+ * gives nothing away: an unknown address is counted the same as a real one.
+ */
+export function unlessLocked(call: Promise<Response>): Promise<Response | null> {
+  return call.catch((error: unknown) => {
+    if (isAPIError(error) && error.statusCode === 429) return null;
+    throw error;
+  });
+}
+
+/**
+ * Whose count a library request spends a try from, when it carries a
+ * password: the address signing in, or the signed-in account proving itself
+ * (change-password, two-factor on and off, verify-password). Sign-up's
+ * password is a new one, not a proof, and spends nothing.
+ */
+async function triesKey(ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]): Promise<string | null> {
+  const body = ctx.body as { email?: unknown; password?: unknown; currentPassword?: unknown } | undefined;
+  if (ctx.path === "/sign-in/email") return `email:${String(body?.email ?? "").trim().toLowerCase()}`;
+  if (ctx.path === "/sign-up/email" || (body?.password === undefined && body?.currentPassword === undefined)) return null;
+  const session = await getSessionFromCtx(ctx);
+  return session ? `user:${session.user.id}` : null;
 }
 
 /**
@@ -119,7 +154,7 @@ async function requireAdmin(headers: Headers): Promise<void> {
  * A link that sets the password of the account on this person, once.
  *
  * The token is in the fragment, so the browser never sends it anywhere: not in
- * the request line `react-router-serve` logs, and not in a Referer header. The
+ * the server's request log, and not in a Referer header. The
  * page reads it out and posts it.
  */
 export async function signInLinkFor(
@@ -340,7 +375,7 @@ export const auth = betterAuth({
   // codes. Turning it on needs the password and a working code, so a stolen
   // session cannot quietly enrol an attacker's phone. Secrets are encrypted by
   // the library before they reach `two_factors`, which only this role can read.
-  plugins: [twoFactor({ issuer: "Safehouse" })],
+  plugins: [twoFactor({ issuer: "SafeHouse" })],
 
   emailAndPassword: {
     enabled: true,
@@ -394,6 +429,13 @@ export const auth = betterAuth({
      * attached to it reaches no owner (0003_identity_boundary.sql).
      */
     before: createAuthMiddleware(async (ctx) => {
+      // Five tries per account per quarter hour (tries.server.ts). Here
+      // rather than in the library's rate limiter, which keys on an address
+      // a client can name for itself and runs only for requests over HTTP —
+      // not for the sign-in page's direct call.
+      const tries = await triesKey(ctx);
+      if (tries && !spendTry(tries)) throw new APIError("TOO_MANY_REQUESTS", { message: TOO_MANY_TRIES });
+
       if (ctx.path === "/sign-up/email") {
         if (await noUsersYet()) return;
         if (isActiveAdmin((await getSessionFromCtx(ctx))?.user)) return;
@@ -414,6 +456,12 @@ export const auth = betterAuth({
           message: "Sign-in links are made by the household administrator.",
         });
       }
+    }),
+
+    // The right password starts the count again.
+    after: createAuthMiddleware(async (ctx) => {
+      const tries = await triesKey(ctx);
+      if (tries && !isAPIError(ctx.context.returned)) forgetTries(tries);
     }),
   },
 

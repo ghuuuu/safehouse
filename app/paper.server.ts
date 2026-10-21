@@ -146,8 +146,9 @@ export async function scannedSize(image: Buffer): Promise<{ w: number; h: number
 }
 
 /**
- * The photo warped flat onto its corners, at exactly `mm` and 300 dpi, then
- * turned a quarter at a time if asked. JPEG at quality 92 (D39).
+ * The photo warped flat onto its corners, at exactly `mm` and 300 dpi (less
+ * only past 40 million pixels), then turned a quarter at a time if asked. JPEG
+ * at quality 92 (D39).
  */
 export async function flatten(
   image: Buffer,
@@ -156,8 +157,11 @@ export async function flatten(
   rotation = 0,
 ): Promise<{ jpeg: Buffer; mm: { w: number; h: number } }> {
   const { cv } = await opencv();
-  const outW = Math.round((mm.w / 25.4) * DPI);
-  const outH = Math.round((mm.h / 25.4) * DPI);
+  // 300 dpi, or fewer for a page so large it would pass the pixel ceiling. It
+  // keeps its size in millimetres either way, and its density says so.
+  const dpi = Math.min(DPI, Math.floor(Math.sqrt(MAX_PIXELS / ((mm.w / 25.4) * (mm.h / 25.4)))));
+  const outW = Math.round((mm.w / 25.4) * dpi);
+  const outH = Math.round((mm.h / 25.4) * dpi);
 
   const raw = await upright(image).removeAlpha().toColourspace("srgb").raw().toBuffer({ resolveWithObject: true });
   const source = new cv.Mat(raw.info.height, raw.info.width, cv.CV_8UC3);
@@ -170,7 +174,7 @@ export async function flatten(
     cv.warpPerspective(source, flat, transform, new cv.Size(outW, outH), cv.INTER_LINEAR, cv.BORDER_REPLICATE);
     const jpeg = await sharp(Buffer.from(flat.data), { raw: { width: outW, height: outH, channels: 3 } })
       .rotate(rotation)
-      .withMetadata({ density: DPI })
+      .withMetadata({ density: dpi })
       .jpeg({ quality: 92 })
       .toBuffer();
     const turned = rotation === 90 || rotation === 270;
@@ -208,8 +212,8 @@ export type Expected = { pages: { w: number; h: number }[]; attachments: number 
 export async function buildPdf(title: string, pages: BuiltPage[]): Promise<{ bytes: Buffer; expected: Expected }> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
-  pdf.setCreator("Safehouse");
-  pdf.setProducer("Safehouse");
+  pdf.setCreator("SafeHouse");
+  pdf.setProducer("SafeHouse");
 
   const expected: Expected = { pages: [], attachments: 0 };
   const sources = new Map<Buffer, PDFDocument>();

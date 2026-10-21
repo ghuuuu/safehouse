@@ -12,9 +12,9 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
-import { downloadName } from "./download.server";
+import { contentDisposition, downloadName } from "./download.server";
 import type { SignedInUser } from "./session.server";
 import {
   clearStepUp,
@@ -165,5 +165,46 @@ describe("the name the browser is given", () => {
     expect(downloadName({ ...row, title: "Carte d'identité" })).toBe(
       "Carte didentité.pdf",
     );
+  });
+});
+
+describe("the download header", () => {
+  test("carries any script's name, and a header Node will actually send", () => {
+    // A header value must be bytes under 256. "Паспорт" in a plain
+    // filename="" made every Cyrillic, Greek, Arabic or CJK title a 500.
+    for (const name of ["Паспорт.pdf", "Łukasz.pdf", "护照.pdf", "Carte didentité.pdf"]) {
+      const header = contentDisposition(name);
+      expect(() => new Response(null, { headers: { "content-disposition": header } })).not.toThrow();
+      expect(header).toContain(`filename*=UTF-8''${encodeURIComponent(name)}`);
+    }
+  });
+
+  test("gives older browsers a plain-ASCII name to fall back on", () => {
+    expect(contentDisposition("Carte didentité.pdf")).toContain('filename="Carte didentite.pdf"');
+    expect(contentDisposition("Паспорт.pdf")).toContain('filename="document.pdf"');
+    expect(contentDisposition("Passport-2.pdf")).toBe(`attachment; filename="Passport-2.pdf"; filename*=UTF-8''Passport-2.pdf`);
+  });
+});
+
+describe("the step-up cookie", () => {
+  test("is Secure exactly when the vault is served over https, like the session cookie", async () => {
+    // A browser drops a Secure cookie set over plain http. Marked Secure for
+    // every production build, it never stuck on a vault reached at a LAN
+    // address, and "Confirm it is you" asked again forever.
+    const original = process.env.BETTER_AUTH_URL;
+    try {
+      for (const [url, secure] of [
+        ["http://minipc.example.invalid:4020", false],
+        ["https://vault.example.invalid", true],
+      ] as const) {
+        process.env.BETTER_AUTH_URL = url;
+        vi.resetModules();
+        const fresh = await import("./stepup.server");
+        expect(/;\s*Secure/i.test(await fresh.grantStepUp(USER)), url).toBe(secure);
+      }
+    } finally {
+      process.env.BETTER_AUTH_URL = original;
+      vi.resetModules();
+    }
   });
 });

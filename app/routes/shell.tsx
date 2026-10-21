@@ -3,6 +3,7 @@ import { Form, Link, NavLink, Outlet, useLocation, useNavigate } from "react-rou
 import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/shell";
+import { Icon, type IconName } from "../icons";
 import { Logo } from "../logo";
 import { roleLabel } from "../roles";
 import { getSignedInUser, withVault } from "../session.server";
@@ -32,43 +33,43 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { user: { name: user.name, role: user.role }, drafts };
 }
 
-type Item = { to: string; label: string; adminOnly?: boolean; fileOnly?: boolean; count?: number };
+type Item = { to: string; label: string; icon: IconName; adminOnly?: boolean; fileOnly?: boolean; count?: number };
 
 const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Find",
     items: [
-      { to: "/", label: "Dashboard" },
-      { to: "/vault", label: "Vault" },
-      { to: "/folders", label: "Folders" },
-      { to: "/search", label: "Search" },
-      { to: "/tree", label: "Family tree" },
+      { to: "/", label: "Dashboard", icon: "home" },
+      { to: "/vault", label: "Vault", icon: "vault" },
+      { to: "/folders", label: "Folders", icon: "folder" },
+      { to: "/search", label: "Search", icon: "search" },
+      { to: "/tree", label: "Family tree", icon: "tree" },
     ],
   },
   {
     title: "File",
     items: [
-      { to: "/upload", label: "File a document" },
-      { to: "/bulk", label: "File many" },
-      { to: "/unfinished", label: "Unfinished", fileOnly: true },
+      { to: "/upload", label: "File a document", icon: "file", fileOnly: true },
+      { to: "/bulk", label: "File many", icon: "many", fileOnly: true },
+      { to: "/unfinished", label: "Unfinished", icon: "unfinished", fileOnly: true },
     ],
   },
   {
     title: "Household",
     items: [
-      { to: "/people", label: "People" },
-      { to: "/access", label: "Access", adminOnly: true },
-      { to: "/settings", label: "Settings" },
+      { to: "/people", label: "People", icon: "people" },
+      { to: "/access", label: "Access", icon: "access", adminOnly: true },
+      { to: "/settings", label: "Settings", icon: "settings" },
     ],
   },
 ];
 
 /** On a phone, the four things done most, in reach of a thumb; the rest is under More. */
 const TABS: Item[] = [
-  { to: "/", label: "Dashboard" },
-  { to: "/vault", label: "Vault" },
-  { to: "/search", label: "Search" },
-  { to: "/upload", label: "File" },
+  { to: "/", label: "Dashboard", icon: "home" },
+  { to: "/vault", label: "Vault", icon: "vault" },
+  { to: "/search", label: "Search", icon: "search" },
+  { to: "/upload", label: "File", icon: "file" },
 ];
 
 export default function Shell({ loaderData }: Route.ComponentProps) {
@@ -77,34 +78,41 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   // Signed out: the page's own loader has already redirected to sign-in.
   if (!user) return <Outlet />;
 
+  // Presentation, like adminOnly: `intakes_start` (0017) refuses a draft from
+  // anybody else, and /upload says so. A third party or an emergency contact
+  // is simply not offered a way to file.
+  const canFile = user.role === "admin" || user.role === "individual";
   const groups = GROUPS.map((group) => ({
     ...group,
     items: group.items
       .filter((item) => !item.adminOnly || user.role === "admin")
-      .filter((item) => !item.fileOnly || user.role === "admin" || user.role === "individual")
+      .filter((item) => !item.fileOnly || canFile)
       .map((item) => (item.to === "/unfinished" ? { ...item, count: drafts } : item)),
-  }));
+  })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[14rem_1fr]">
-      <aside className="sticky top-0 hidden [view-transition-name:sidebar] h-screen flex-col gap-7 overflow-y-auto bg-side px-4 py-6 text-side-ink md:flex">
-        <Link to="/" viewTransition className="flex items-center gap-3 border-b border-side-muted/30 px-2 pb-5">
-          <Logo />
-          <span className="text-[0.95rem] font-bold uppercase tracking-[0.2em]">Safehouse</span>
+    <div className="min-h-screen md:grid md:grid-cols-[15rem_1fr]">
+      <aside className="sticky top-0 hidden [view-transition-name:sidebar] h-screen flex-col gap-6 overflow-y-auto border-r border-gray-100 bg-side px-3 py-5 text-side-ink md:flex">
+        <Link to="/" viewTransition className="flex items-center justify-center gap-3 rounded-lg px-2 py-1 no-underline">
+          <Logo size={44} />
+          <span className="text-[1.75rem] font-semibold tracking-[-0.025em] text-gray-950">SafeHouse</span>
         </Link>
-        <Link to="/upload" viewTransition className="btn btn-serial mx-2">
-          File a document
-        </Link>
-        <nav aria-label="Safehouse" className="flex flex-col gap-6">
+        {canFile ? (
+          <Link to="/upload" viewTransition className="btn btn-primary mx-1 no-underline">
+            <Icon name="file" size={16} />
+            File a document
+          </Link>
+        ) : null}
+        <nav aria-label="SafeHouse" className="flex flex-col gap-5">
           <Groups groups={groups.map((g) => ({ ...g, items: g.items.filter((i) => i.to !== "/upload") }))} />
         </nav>
-        <div className="mt-auto flex flex-col items-start gap-1 border-t border-side-muted/30 pt-4 text-sm">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-gray-100 px-1 pt-4 text-sm">
           <Who user={user} />
         </div>
       </aside>
 
       {/* Room for the tab bar, so it never covers the end of a page. */}
-      <div className="min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div className="min-w-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0">
         <Outlet />
       </div>
 
@@ -136,14 +144,11 @@ function useSlashToSearch() {
 }
 
 function Groups({ groups, tone = "side" }: { groups: { title: string; items: Item[] }[]; tone?: "side" | "sheet" }) {
-  const quiet = tone === "side" ? "text-side-muted" : "text-gray-500";
-  const idle = tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100";
-  const here = tone === "side" ? "bg-side-on font-semibold text-side-on-ink" : "bg-accent font-semibold text-on-accent";
   return groups.map((group) => (
     <div key={group.title}>
       {/* Not a heading: the page's own h1 is the first heading a reader meets. */}
-      <p aria-hidden className={`index mb-1.5 px-3 ${quiet}`}>{group.title}</p>
-      <ul aria-label={group.title} className="flex flex-col gap-0.5">
+      <p aria-hidden className="index mb-1 px-2.5 text-side-muted">{group.title}</p>
+      <ul aria-label={group.title} className="flex flex-col gap-px">
         {group.items.map((item) => (
           <li key={item.to}>
             <NavLink
@@ -151,16 +156,31 @@ function Groups({ groups, tone = "side" }: { groups: { title: string; items: Ite
               viewTransition
               end={item.to === "/"}
               className={({ isActive }) =>
-                "block rounded-md px-3 py-2.5 text-sm md:py-1.5 " + (isActive ? here : idle)
+                "relative flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm no-underline transition-colors duration-150 md:py-[0.4rem] " +
+                (isActive ? "font-medium text-side-on-ink" : "text-side-ink hover:bg-side-hover")
               }
             >
-              {item.label}
-              {item.count ? (
-                <span className="ml-2 font-mono text-xs">
-                  {item.count}
-                  <span className="sr-only"> waiting</span>
-                </span>
-              ) : null}
+              {({ isActive }) => (
+                <>
+                  {isActive ? (
+                    // The honey mark on where you are. In the sidebar it is
+                    // named, so a page change glides it to the new row.
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 rounded-lg bg-side-on"
+                      style={tone === "side" ? { viewTransitionName: "nav-here" } : undefined}
+                    />
+                  ) : null}
+                  <Icon name={item.icon} className={"relative " + (isActive ? "text-accent" : "text-side-muted")} />
+                  <span className="relative flex-1">{item.label}</span>
+                  {item.count ? (
+                    <span className="relative font-mono text-xs text-side-muted">
+                      {item.count}
+                      <span className="sr-only"> waiting</span>
+                    </span>
+                  ) : null}
+                </>
+              )}
             </NavLink>
           </li>
         ))}
@@ -169,18 +189,19 @@ function Groups({ groups, tone = "side" }: { groups: { title: string; items: Ite
   ));
 }
 
-function Who({ user, tone = "side" }: { user: { name: string; role: string }; tone?: "side" | "sheet" }) {
+function Who({ user }: { user: { name: string; role: string } }) {
   return (
     <>
-      <p className={`px-3 ${tone === "side" ? "text-side-ink" : "text-gray-700"}`}>
-        {user.name}
-        <span className={`block text-xs ${tone === "side" ? "text-side-muted" : "text-gray-500"}`}>{roleLabel(user.role)}</span>
+      <p className="min-w-0 px-1.5 text-gray-900">
+        <span className="block truncate font-medium">{user.name}</span>
+        <span className="block text-xs text-gray-500">{roleLabel(user.role)}</span>
       </p>
-      <Form method="post" action="/sign-out">
+      <Form method="post" action="/sign-out" className="shrink-0">
         <button
-          className={`rounded-md px-3 py-2 underline ${tone === "side" ? "text-side-ink hover:bg-side-hover" : "text-gray-700 hover:bg-gray-100"}`}
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm text-gray-500 transition-colors hover:bg-side-hover hover:text-gray-900"
           type="submit"
         >
+          <Icon name="out" size={16} />
           Sign out
         </button>
       </Form>
@@ -189,9 +210,9 @@ function Who({ user, tone = "side" }: { user: { name: string; role: string }; to
 }
 
 /**
- * The phone's navigation: four tabs and More. More is a native disclosure, so
- * it works before the page's script has loaded; it closes itself when a link
- * in it is followed, or on Escape.
+ * The phone's navigation: four tabs and More, on a translucent bar. More is a
+ * native disclosure, so it works before the page's script has loaded; it
+ * closes itself when a link in it is followed, or on Escape.
  */
 function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; user: { name: string; role: string } }) {
   const more = useRef<HTMLDetailsElement>(null);
@@ -200,30 +221,29 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
     more.current?.removeAttribute("open");
   }, [location.pathname, location.search]);
 
-  const tabTargets = new Set(TABS.map((t) => t.to));
+  // Somebody who cannot file gets Folders where File would be.
+  const canFile = user.role === "admin" || user.role === "individual";
+  const tabs = canFile ? TABS : TABS.map((t) => (t.to === "/upload" ? { to: "/folders", label: "Folders", icon: "folder" as const } : t));
+  const tabTargets = new Set(tabs.map((t) => t.to));
   const inMore = groups.some((g) => g.items.some((i) => !tabTargets.has(i.to) && location.pathname.startsWith(i.to)));
-  const tab = "flex h-16 flex-col items-center justify-center text-xs";
+  const tab = "flex h-[4.25rem] flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium no-underline transition-colors";
 
   return (
     <nav
-      aria-label="Safehouse"
-      className="fixed inset-x-0 bottom-0 z-20 [view-transition-name:tabbar] bg-side pb-[env(safe-area-inset-bottom)] text-side-ink md:hidden"
+      aria-label="SafeHouse"
+      className="fixed inset-x-0 bottom-0 z-20 [view-transition-name:tabbar] border-t border-gray-100 bg-side/85 pb-[env(safe-area-inset-bottom)] text-side-ink backdrop-blur-xl backdrop-saturate-150 md:hidden"
     >
       <ul className="grid grid-cols-5">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <li key={item.to}>
             <NavLink
               to={item.to}
               viewTransition
               end={item.to === "/"}
-              className={({ isActive }) => `${tab} ${isActive ? "font-semibold text-side-ink" : "text-side-muted"}`}
+              className={({ isActive }) => `${tab} ${isActive ? "text-accent" : "text-side-muted"}`}
             >
-              {({ isActive }) => (
-                <>
-                  <span aria-hidden className={`mb-1.5 h-0.5 w-7 ${isActive ? "bg-serial" : "bg-transparent"}`} />
-                  {item.label}
-                </>
-              )}
+              <Icon name={item.icon} size={22} />
+              {item.label}
             </NavLink>
           </li>
         ))}
@@ -234,11 +254,14 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
               if (event.key === "Escape") more.current?.removeAttribute("open");
             }}
           >
-            <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "font-semibold text-side-ink" : "text-side-muted"}`}>
-              <span aria-hidden className={`mb-1.5 h-0.5 w-7 ${inMore ? "bg-serial" : "bg-transparent"}`} />
+            <summary className={`${tab} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${inMore ? "text-accent" : "text-side-muted"}`}>
+              <Icon name="more" size={22} />
               More
             </summary>
-            <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto border-t-2 border-side bg-white px-4 py-4 text-gray-900">
+            <div
+              className="fixed inset-x-2 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto rounded-2xl border border-gray-200 bg-[var(--raised)] px-3 py-4 text-gray-900"
+              style={{ boxShadow: "var(--shadow-float)" }}
+            >
               <div className="flex flex-col gap-4">
                 <Groups
                   tone="sheet"
@@ -247,7 +270,7 @@ function TabBar({ groups, user }: { groups: { title: string; items: Item[] }[]; 
                     .filter((g) => g.items.length > 0)}
                 />
                 <div className="flex items-center justify-between gap-2 border-t border-gray-200 pt-3 text-sm">
-                  <Who user={user} tone="sheet" />
+                  <Who user={user} />
                 </div>
               </div>
             </div>

@@ -123,6 +123,36 @@ describe("a photographed card, filed", () => {
   });
 });
 
+describe("a photo over the pixel ceiling", () => {
+  test("is refused for its size, not as a photo that cannot be opened", async () => {
+    // 42 megapixels of one grey: tiny as a PNG, past the 40 MP every step reads.
+    const huge = await sharp({ create: { width: 7000, height: 6000, channels: 3, background: "#888" } }).png().toBuffer();
+    await expect(intake.examine(huge, "image/png")).rejects.toThrow(/megapixels/);
+  });
+});
+
+describe("a TIFF with several pages", () => {
+  test("arrives as one page each, in order, not just its first", async () => {
+    const colour = (background: string) =>
+      sharp({ create: { width: 300, height: 400, channels: 3, background } }).png().toBuffer();
+    const pages = await Promise.all(["#ff0000", "#00ff00", "#0000ff"].map(colour));
+    const tiff = await sharp(pages, { join: { animated: true } }).tiff().toBuffer();
+
+    const split = await intake.splitPages({ mime: "image/tiff", bytes: tiff });
+    expect(split).toHaveLength(3);
+    const dominant = async (bytes: Buffer) => (await sharp(bytes).stats()).dominant;
+    expect(await Promise.all(split.map((p) => dominant(p.bytes)))).toEqual([
+      { r: 248, g: 8, b: 8 },
+      { r: 8, g: 248, b: 8 },
+      { r: 8, g: 8, b: 248 },
+    ]);
+
+    // One page, or anything else, comes through untouched.
+    const single = { mime: "image/tiff", bytes: await sharp(pages[0]).tiff().toBuffer() };
+    expect(await intake.splitPages(single)).toEqual([single]);
+  });
+});
+
 describe("a paper filed as an image before D39", () => {
   test("is offered for converting, and converting files the PDF as its next version", async () => {
     const photo = await photographedCard();
@@ -145,6 +175,14 @@ describe("a paper filed as an image before D39", () => {
     expect(draft!.values.expires_on).toEqual({ value: "2029-02-28", source: "person" });
     expect(draft!.hasIdentifier).toBe(true);
     expect(await asUser(USER.maya, (db) => intake.convertible(db))).not.toContainEqual(expect.objectContaining({ documentId: old.documentId }));
+
+    // The next version of a record keeps its owner, name and kind. A form that
+    // says otherwise changes nothing, rather than being quietly ignored at filing.
+    await asUser(USER.maya, (db) =>
+      intake.saveDetails(db, id, { ownerId: OWNER.rose, category: "medical", title: "Something else", values: {} }),
+    );
+    const kept = await asUser(USER.maya, (db) => intake.loadIntake(db, id));
+    expect([kept!.ownerId, kept!.category, kept!.title]).toEqual([OWNER.maya, "personal", `${MARK} an old image`]);
 
     const { documentId, released } = await asUser(USER.maya, (db) => intake.submitIntake(db, id));
     await Promise.all(released.map((key) => storage.deleteBlob(key)));
@@ -225,6 +263,29 @@ describe("what stops a draft being filed", () => {
   });
 });
 
+describe("filing it twice", () => {
+  test("two presses of File it at once file one paper, and the second is told so", async () => {
+    // The uploader and the admin together, or a reload after a slow filing:
+    // without a lock both build the PDF and both insert a record.
+    const title = `${MARK} pressed twice`;
+    const id = await draftWith(USER.maya, await photographedCard(), "image/jpeg", title);
+    await asUser(USER.maya, (db) =>
+      intake.saveDetails(db, id, { ownerId: OWNER.maya, category: "personal", title, values: {} }),
+    );
+
+    const results = await Promise.allSettled([
+      asUser(USER.maya, (db) => intake.submitIntake(db, id)),
+      asUser(USER.priya, (db) => intake.submitIntake(db, id)),
+    ]);
+    const filed = results.filter((r) => r.status === "fulfilled");
+    for (const r of filed) await Promise.all((r as PromiseFulfilledResult<{ released: string[] }>).value.released.map((k) => storage.deleteBlob(k)));
+
+    expect(filed).toHaveLength(1);
+    const records = await owner()`select id from records where title = ${title}`;
+    expect(records).toHaveLength(1);
+  });
+});
+
 describe("whose draft it is", () => {
   test("another member cannot open, change or file it, and an admin can open it", async () => {
     const id = await draftWith(USER.maya, await photographedCard(), "image/jpeg", `${MARK} maya's draft`);
@@ -257,5 +318,31 @@ describe("whose draft it is", () => {
     });
     expect(view!.values.expires_on).toEqual({ value: "2030-01-01", source: "person" });
     expect(view!.values.issuer_country).toEqual({ value: "UTO", source: "mrz", verified: true });
+  });
+
+  test("a number the reader found is sealed, and kept nowhere else on the draft", async () => {
+    const number = "ZZ/DRAFT/5512";
+    const id = await draftWith(USER.maya, await photographedCard(), "image/jpeg", `${MARK} schedule`);
+    await asUser(USER.maya, (db) =>
+      intake.saveRead(db, id, [
+        {
+          proposals: [{ field: "identifier", value: number, source: "pdf-text", verified: false }],
+          text: "",
+          how: "Read by a test.",
+          terms: {
+            how: "",
+            sections: [],
+            facts: [],
+            signposts: [],
+            proposals: [
+              { field: "identifier", value: number, source: "pdf-text", verified: false, note: `From "Policy Number" on page 1, printed as "${number}".` },
+            ],
+          },
+        },
+      ]),
+    );
+    const [row] = await owner()`select fields::text as fields, identifier_sealed from intakes where id = ${id}`;
+    expect(row.identifier_sealed).not.toBeNull();
+    expect(row.fields).not.toContain(number);
   });
 });

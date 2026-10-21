@@ -97,7 +97,8 @@ button per role that signs in as that account. The button sends only which
 account; the server adds the password and signs in through better-auth as
 usual. Every use sits behind `import.meta.env.DEV`, so a production build
 contains none of it: after touching it, build and grep `build/` for
-`safehouse-dev-password`, which must find nothing.
+`example.invalid`, which must find nothing. (The dev password is `password`,
+too common a word to grep for; the dev accounts' addresses are the marker.)
 
 `npm test` needs the database running. It builds `safehouse_test` from the
 migrations and the fixture in `app/db/fixture.ts` on every run.
@@ -149,3 +150,26 @@ worth reading.
 - Propose a plan before multi-file changes.
 - Small commits. One concern each.
 - If a request would weaken the one rule above, say so instead of doing it.
+- When asking the owner to decide something, recommend an answer for each
+  question.
+
+## Versioning
+
+SemVer in `package.json`, and an annotated `vX.Y.Z` tag on the commit. Every
+commit bumps it, in that same commit:
+
+- **patch:** fixes only; nothing new to see, nothing to do when deploying
+- **minor:** anything new, or anything that needs a step when deploying (a
+  migration, a new env var, an image rebuild)
+- **major:** held for 1.0, the first install in another household
+
+```
+npm version <patch|minor> --no-git-tag-version   # package.json and the lock
+git commit ...
+git tag -a vX.Y.Z -m "<one line: what changed>"
+git push --follow-tags                           # only when asked to push
+```
+
+The build bakes the version in (`vite.config.ts`). Settings shows it and the
+server prints it at boot, so `docker compose logs app` says what the mini PC is
+running.

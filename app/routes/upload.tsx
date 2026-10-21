@@ -2,14 +2,14 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { sql } from "drizzle-orm";
 
 import type { Route } from "./+types/upload";
-import { withVault } from "../session.server";
+import { requireUser, withVault } from "../session.server";
 import { ACCEPTED_TYPES, CATEGORIES, MAX_UPLOAD_BYTES } from "../documents";
 import { draftFromUploads, refusedByPolicy } from "../intake-request.server";
 import { UploadRefused } from "../upload.server";
 import { Masthead, Page } from "../masthead";
 
 export function meta() {
-  return [{ title: "File a document — Safehouse" }];
+  return [{ title: "File a document — SafeHouse" }];
 }
 
 type OwnerOption = { id: string; displayName: string; kind: string };
@@ -46,6 +46,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
+  // Before the body: a stranger's upload is refused, not read into memory.
+  await requireUser(request);
   const form = await request.formData();
   const files = form.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
 

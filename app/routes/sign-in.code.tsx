@@ -6,7 +6,7 @@ import { safeNext } from "../next";
 import { SignedOut } from "../signed-out";
 
 export function meta() {
-  return [{ title: "Your code — Safehouse" }];
+  return [{ title: "Your code — SafeHouse" }];
 }
 
 /**
@@ -42,7 +42,7 @@ export default function SignInCode({ actionData }: Route.ComponentProps) {
   return (
     <SignedOut title="Your code">
       <p className="-mt-4 text-sm text-gray-500 max-w-prose">
-        The six digits your authenticator app shows for Safehouse.
+        The six digits your authenticator app shows for SafeHouse.
       </p>
 
       <Form method="post" className="flex flex-col gap-4">

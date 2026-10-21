@@ -8,7 +8,7 @@ import { Masthead, Page } from "../masthead";
 import { withVault } from "../session.server";
 
 export function meta() {
-  return [{ title: "File many — Safehouse" }];
+  return [{ title: "File many — SafeHouse" }];
 }
 
 type OwnerOption = { id: string; displayName: string; kind: string };
@@ -128,7 +128,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
     <>
       <Masthead title="File many">
         <nav className="flex gap-4 text-sm">
-          <Link className="btn btn-serial btn-sm" to="/upload">File one</Link>
+          <Link className="btn btn-secondary btn-sm" to="/upload">File one</Link>
         </nav>
       </Masthead>
 
@@ -194,7 +194,7 @@ export default function Bulk({ loaderData }: Route.ComponentProps) {
             <div className="sheet overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-900 text-left text-gray-500">
+                  <tr className="border-b border-gray-200 text-left text-gray-500">
                     <th className="index px-3 pb-2 pt-4 md:pl-5">File (not stored)</th>
                     <th className="index px-3 pb-2 pt-4">Whose</th>
                     <th className="index px-3 pb-2 pt-4">Kind</th>

@@ -28,7 +28,6 @@ import { sql } from "drizzle-orm";
 import {
   ACCEPTED_TYPES,
   CATEGORIES,
-  MAX_UPLOAD_BYTES,
   type Category,
 } from "./documents";
 import { ACTIONS, record } from "./activity.server";
@@ -51,6 +50,14 @@ export type Filed = {
   fileId: string;
 };
 
+/**
+ * The ceiling on one PDF the vault builds (D39). Not the upload limit: that is
+ * met by each photo or PDF on its way into a draft (`MAX_UPLOAD_BYTES`), and a
+ * paper built from several keeps every original, so it can be several times
+ * over it. Sealing still holds the whole file in memory, hence a ceiling at all.
+ */
+export const MAX_FILED_BYTES = 100 * 1024 * 1024;
+
 /** Thrown for a refusal the person can fix. Never for a permission refusal. */
 export class UploadRefused extends Error {}
 
@@ -63,11 +70,6 @@ export function checkFiling(filing: {
 }): asserts filing is { title: string; mime: string; size: number; ownerId: string; category: Category } {
   if (filing.size === 0) {
     throw new UploadRefused("That file is empty.");
-  }
-
-  if (filing.size > MAX_UPLOAD_BYTES) {
-    const mb = Math.round(MAX_UPLOAD_BYTES / 1024 / 1024);
-    throw new UploadRefused(`Files are limited to ${mb} MB.`);
   }
 
   if (!ACCEPTED_TYPES.includes(filing.mime as (typeof ACCEPTED_TYPES)[number])) {
@@ -172,6 +174,10 @@ export async function fileVersion(
  * nothing, which is a document that has disappeared.
  */
 async function insertFile(db: VaultTransaction, documentId: string, mime: string, bytes: Buffer): Promise<string> {
+  if (bytes.length > MAX_FILED_BYTES) {
+    throw new UploadRefused(`A paper is limited to ${MAX_FILED_BYTES / 1024 / 1024} MB with its photos. File it as two.`);
+  }
+
   const fileId = randomUUID();
   const storageKey = storageKeyFor(fileId);
   const sealed = sealFile(bytes, fileId);

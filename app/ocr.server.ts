@@ -22,8 +22,6 @@
  */
 
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -344,44 +342,45 @@ export async function preparePage(
 /* ------------------------------------------------------------------ */
 
 /**
- * One call to the binary, on a temporary file, with a hard timeout.
+ * One call to the binary, the page piped in and the answer piped out, with a
+ * hard timeout. Nothing touches the disk: a page in a temporary file outlives
+ * a process that dies mid-read, as an unencrypted picture of somebody's papers.
  *
  * No wrapper package: every one of them is abandoned, and this is shorter than
  * their documentation. `OMP_THREAD_LIMIT=1` keeps one page from taking every
  * core on a machine that is also serving the vault.
  */
+async function piped(image: Buffer, args: string[]): Promise<Buffer> {
+  const call = run("tesseract", ["stdin", "stdout", ...args], {
+    timeout: TIMEOUT_MS,
+    maxBuffer: 16 * 1024 * 1024,
+    encoding: "buffer",
+    env: { ...process.env, OMP_THREAD_LIMIT: "1" },
+  });
+  // A binary that stops before reading all of it closes the pipe. That failure
+  // is the call's to report, not an unhandled error on the stream.
+  call.child.stdin?.on("error", () => {});
+  call.child.stdin?.end(image);
+  return (await call).stdout;
+}
+
 async function tesseract(
   image: Buffer,
   options: { model?: string; psm: string; whitelist?: string },
 ): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "safehouse-ocr-"));
-  const input = join(dir, "page.png");
+  const args = ["--psm", options.psm, "--oem", "1"];
 
-  try {
-    await writeFile(input, image);
-
-    const args = [input, "stdout", "--psm", options.psm, "--oem", "1"];
-
-    if (options.model) {
-      args.push("--tessdata-dir", EXTRA_TESSDATA, "-l", options.model);
-    } else {
-      args.push("-l", "eng");
-    }
-
-    if (options.whitelist) {
-      args.push("-c", `tessedit_char_whitelist=${options.whitelist}`);
-    }
-
-    const { stdout } = await run("tesseract", args, {
-      timeout: TIMEOUT_MS,
-      maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, OMP_THREAD_LIMIT: "1" },
-    });
-
-    return stdout;
-  } finally {
-    await rm(dir, { recursive: true, force: true });
+  if (options.model) {
+    args.push("--tessdata-dir", EXTRA_TESSDATA, "-l", options.model);
+  } else {
+    args.push("-l", "eng");
   }
+
+  if (options.whitelist) {
+    args.push("-c", `tessedit_char_whitelist=${options.whitelist}`);
+  }
+
+  return (await piped(image, args)).toString("utf8");
 }
 
 /**
@@ -393,20 +392,11 @@ async function tesseract(
  */
 export async function textLayer(image: Buffer): Promise<Buffer | null> {
   if (!(await readerAvailable())) return null;
-  const dir = await mkdtemp(join(tmpdir(), "safehouse-ocr-"));
   try {
-    const input = join(dir, "page.img");
-    await writeFile(input, image);
-    await run("tesseract", [input, join(dir, "layer"), "-l", "eng", "--psm", "3", "-c", "textonly_pdf=1", "pdf"], {
-      timeout: TIMEOUT_MS,
-      env: { ...process.env, OMP_THREAD_LIMIT: "1" },
-    });
-    return await readFile(join(dir, "layer.pdf"));
+    return await piped(image, ["-l", "eng", "--psm", "3", "-c", "textonly_pdf=1", "pdf"]);
   } catch {
     // Not logged: the error could quote the page.
     return null;
-  } finally {
-    await rm(dir, { recursive: true, force: true });
   }
 }
 
@@ -497,29 +487,23 @@ export function proposalsFromMrz(fields: Record<string, string>): Proposal[] {
 }
 
 /**
- * MRZ dates are two digits of year, so a century has to be guessed. An expiry
- * is in the future and a birth date is in the past, which settles it for the
- * only two dates that appear.
+ * MRZ dates are two digits of year, so a century has to be guessed. A birth
+ * date is in the past. An expiry is at most a passport's ten years ahead, but
+ * often behind — expired passports are filed too — so it is read as this
+ * century unless that puts it more than twenty years out.
  */
 function fromMrzDate(value: string, lean: "future" | "past"): string | null {
   if (!/^\d{6}$/.test(value)) return null;
 
-  const year = Number(value.slice(0, 2));
+  const now = new Date().getFullYear();
   const month = value.slice(2, 4);
   const day = value.slice(4, 6);
-  const current = new Date().getFullYear() % 100;
+  let year = now - (now % 100) + Number(value.slice(0, 2));
+  if (year > now + (lean === "future" ? 20 : 0)) year -= 100;
 
-  const century =
-    lean === "future"
-      ? year < current - 10
-        ? 2100
-        : 2000
-      : year > current
-        ? 1900
-        : 2000;
-
-  const iso = `${century + year}-${month}-${day}`;
-  return Number.isNaN(Date.parse(iso)) ? null : iso;
+  const iso = `${year}-${month}-${day}`;
+  // Date.parse takes 2027-02-31 and rolls it into March; this does not.
+  return normaliseDate(iso);
 }
 
 /** Dates a document labels as its own expiry, and nothing else. */
@@ -555,30 +539,38 @@ export function proposalsFromText(
   ];
 }
 
-function normaliseDate(raw: string): string | null {
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  if (iso) return raw;
+/**
+ * A printed date as the vault stores it (YYYY-MM-DD), or null. Only a day the
+ * calendar has: a misread "38/06/2027" is nothing, not a value the database
+ * refuses when it is saved.
+ */
+export function normaliseDate(raw: string): string | null {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (iso) return realDate(iso[1], Number(iso[2]), Number(iso[3]));
 
-  const named = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(raw);
+  const named = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/.exec(raw.trim());
   if (named) {
     const month = MONTHS.indexOf(named[2].slice(0, 3).toLowerCase()) + 1;
     if (month === 0) return null;
-    return `${named[3]}-${pad(month)}-${pad(Number(named[1]))}`;
+    return realDate(named[3], month, Number(named[1]));
   }
 
-  const numeric = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(raw);
+  const numeric = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(raw.trim());
   if (numeric) {
     const [, first, second, year] = numeric;
     // Day-first, because this household is not American and the ambiguous
     // cases are better left to a person than guessed at.
-    if (Number(first) > 12) {
-      return `${fullYear(year)}-${pad(Number(second))}-${pad(Number(first))}`;
-    }
     if (Number(second) > 12) return null;
-    return `${fullYear(year)}-${pad(Number(second))}-${pad(Number(first))}`;
+    return realDate(fullYear(year), Number(second), Number(first));
   }
 
   return null;
+}
+
+function realDate(year: string, month: number, day: number): string | null {
+  const date = new Date(Date.UTC(Number(year), month - 1, day));
+  const real = date.getUTCFullYear() === Number(year) && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  return real ? `${year}-${pad(month)}-${pad(day)}` : null;
 }
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];

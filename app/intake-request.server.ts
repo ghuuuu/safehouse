@@ -14,6 +14,7 @@ import {
   type Examined,
   readablePages,
   saveRead,
+  splitPages,
   startIntake,
 } from "./intake.server";
 import { withVault } from "./session.server";
@@ -37,6 +38,7 @@ export async function draftFromUploads(
 ): Promise<{ intakeId: string; proposed: number }> {
   // Every upload is examined before anything is written, so one bad file in a
   // batch refuses the batch rather than leaving half a draft.
+  uploads = (await Promise.all(uploads.map(splitPages))).flat();
   const examined: Examined[] = [];
   for (const upload of uploads) examined.push(await examine(upload.bytes, upload.mime));
 

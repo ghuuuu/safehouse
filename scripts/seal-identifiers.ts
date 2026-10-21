@@ -62,11 +62,37 @@ try {
 
   await sql`alter table documents validate constraint identifier_is_sealed`;
 
+  // What the reader proposed is stored beside each document and draft. Before
+  // 2026-10-20 a proposed policy number kept a note that quoted it ("printed
+  // as ..."), so the number sat there in the clear. The app no longer writes
+  // or sends one (`sealedProposal`); this empties the ones already stored. No
+  // key needed: nothing is sealed, the copies just go.
+  // Constant SQL only: the table, column and path below are fixed strings.
+  const scrub = (table: string, column: string, path: string[]) => {
+    const at = `${column}->'${path.join("'->'")}'`;
+    return `
+      update ${table} set ${column} = jsonb_set(${column}, '{${path.join(",")}}', (
+        select coalesce(jsonb_agg(
+          case when p->>'field' = 'identifier' then (p - 'value' - 'note') || '{"masked": true}'::jsonb else p end
+          order by n), '[]'::jsonb)
+        from jsonb_array_elements(${at}) with ordinality as e(p, n)))
+      where jsonb_typeof(${at}) = 'array'
+        and exists (select 1 from jsonb_array_elements(${at}) p
+                    where p->>'field' = 'identifier' and (p ? 'note' or p ? 'value'))
+    `;
+  };
+  const scrubbed = await sql.begin(async (tx) => {
+    const documents = await tx.unsafe(scrub("documents", "extraction", ["proposals"]));
+    const drafts = await tx.unsafe(scrub("intakes", "fields", ["terms", "proposals"]));
+    return documents.count + drafts.count;
+  });
+
   console.log(
     sealed === 0
       ? "Identifiers: none readable in the database."
       : `Identifiers: sealed ${sealed}. None readable in the database.`,
   );
+  if (scrubbed > 0) console.log(`Identifiers: removed the reader's copy from ${scrubbed} stored read(s).`);
 } catch (error) {
   console.error(`Sealing identifiers failed: ${(error as Error).message}`);
   process.exitCode = 1;

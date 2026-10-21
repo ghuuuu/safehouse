@@ -8,7 +8,7 @@ import { runSearch } from "../search.server";
 import { resolveViewContext } from "../view-as.server";
 
 export function meta() {
-  return [{ title: "Search — Safehouse" }];
+  return [{ title: "Search — SafeHouse" }];
 }
 
 /**
@@ -61,7 +61,7 @@ export default function Search({ loaderData }: Route.ComponentProps) {
             autoFocus
           />
           {viewing ? <input type="hidden" name="as" value={viewing.id} /> : null}
-          <button className="btn btn-serial" type="submit">
+          <button className="btn btn-secondary" type="submit">
             Search
           </button>
         </Form>

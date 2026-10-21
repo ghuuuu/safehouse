@@ -4,17 +4,16 @@ import type { Route } from "./+types/verify";
 import { passwordMatches } from "../auth.server";
 import { requireUser } from "../session.server";
 import { grantStepUp, STEP_UP_SECONDS } from "../stepup.server";
+import { TOO_MANY_TRIES } from "../tries.server";
+import { safeNext } from "../next";
 import { SignedOut } from "../signed-out";
 
 export function meta() {
-  return [{ title: "Confirm it is you — Safehouse" }];
+  return [{ title: "Confirm it is you — SafeHouse" }];
 }
 
 /** Only ever back into this server, never to wherever a query string says. */
-function safeNext(value: FormDataEntryValue | string | null): string {
-  const next = String(value ?? "");
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/vault";
-}
+const backTo = (value: FormDataEntryValue | string | null) => safeNext(value, "/vault");
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
@@ -22,7 +21,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     name: user.name,
-    next: safeNext(url.searchParams.get("next")),
+    next: backTo(url.searchParams.get("next")),
     // Sent from the loader rather than imported into the component: the module
     // that knows this number is a server module, and the form only needs to
     // say it out loud.
@@ -33,11 +32,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   const user = await requireUser(request);
   const form = await request.formData();
-  const next = safeNext(form.get("next"));
+  const next = backTo(form.get("next"));
 
-  const ok = await passwordMatches(user.id, String(form.get("password") ?? ""));
+  const answer = await passwordMatches(user.id, String(form.get("password") ?? ""));
 
-  if (!ok) {
+  if (answer === "locked") return { error: TOO_MANY_TRIES };
+  if (answer === "wrong") {
     // One message, and no indication whether the account even has a password
     // set — the asker is already signed in as this person, but the page should
     // not become a way to confirm anything about them either.

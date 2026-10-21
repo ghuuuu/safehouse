@@ -35,6 +35,25 @@ start, saying which directory it cannot write.
 
 ---
 
+## Reaching it from other devices
+
+As shipped, the app answers plain HTTP on port 4020 on every network interface
+of the machine. Anybody on the same Wi-Fi can read what crosses it: passwords,
+session cookies, the papers themselves. Before the vault holds real papers, put
+TLS in front of it:
+
+1. Something that speaks https on the same machine and forwards to
+   `127.0.0.1:4020`: Caddy (`reverse_proxy 127.0.0.1:4020`, with `tls internal`
+   for a name only your network knows, whose root each device then trusts), or
+   `tailscale serve`, which gives the machine an https name inside your tailnet.
+2. `BETTER_AUTH_URL` in `.env` set to that https address. It is what marks the
+   cookies Secure — the session's and the step-up's alike — so a browser never
+   sends them over plain HTTP. Left at `http://`, they are sent in the clear.
+3. The app's port bound to loopback in `docker-compose.yml`
+   (`"127.0.0.1:4020:3000"`), so nothing on the network can go around the proxy.
+
+---
+
 ## The key
 
 **If the key file is lost, every document in the vault is gone. Nobody can get
@@ -140,6 +159,13 @@ docker compose up -d --build app
 
 Anything filed between the upgrade and the restore is lost from the database.
 Its sealed file stays in the store, unreferenced.
+
+A restore never writes over the live database. It restores into a new one
+beside it, in one transaction, and swaps the names only once that has worked;
+a failure leaves the live vault as it was. The database it replaced is kept as
+`safehouse_before_restore_<time>`, and the command prints how to drop it once
+the restored vault is working. The swap needs the app stopped: with it running,
+the restore stops before changing anything and says so.
 
 ---
 

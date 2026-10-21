@@ -26,7 +26,7 @@ export async function action({ request }: Route.ActionArgs) {
         headers: {
           "content-type": "application/zip",
           "content-length": String(zip.length),
-          "content-disposition": `attachment; filename="Safehouse.zip"`,
+          "content-disposition": `attachment; filename="SafeHouse.zip"`,
           "cache-control": "private, no-store, max-age=0",
           "referrer-policy": "no-referrer",
           "x-content-type-options": "nosniff",

@@ -178,6 +178,8 @@ export type FamilyLine = {
   /** For a child's line, who it leads to. */
   child?: string;
   label?: string;
+  /** Where the line lands on the child's card, and which side of it the label goes. */
+  landing?: { x: number; side: "left" | "right" };
 };
 
 const INKS: LineColour[] = ["line-1", "line-2", "line-3", "line-4", "line-5"];
@@ -232,7 +234,33 @@ export function familyLines(edges: TreeEdge[], layout: Layout): FamilyLine[] {
     lines.push({ key: `child:${child}`, child, colour: couple.colour, ended: false, d: `M ${couple.midX} ${couple.y} V ${y} H ${x} V ${top}` });
   }
 
-  for (const edge of sorted.filter((e) => e.kind === "parent_of" && !covered.has(e))) {
+  // Two lines leaving one card (Rose's guardianships, say) each get their own
+  // exit, ordered by where their child sits, so their dashes never overlap
+  // and their runs never cross.
+  const own = sorted.filter((e) => e.kind === "parent_of" && !covered.has(e));
+  const exits = new Map<TreeEdge, number>();
+  for (const source of new Set(own.map((e) => e.from))) {
+    const out = own.filter((e) => e.from === source).sort((a, b) => at[a.to].x - at[b.to].x);
+    out.forEach((e, i) => exits.set(e, (i - (out.length - 1) / 2) * 14));
+  }
+
+  // A line into a child who already has one (Maya's step line into Theo, under
+  // his parents' line) lands beside it, on the side it comes from, so two
+  // lines never arrive as one.
+  const landings = new Map<TreeEdge, number>();
+  for (const child of new Set(own.map((e) => e.to))) {
+    const into = own.filter((e) => e.to === child);
+    const hasCouple = [...covered].some((e) => e.to === child);
+    if (into.length + (hasCouple ? 1 : 0) < 2) continue;
+    for (const side of [-1, 1]) {
+      const fromSide = into
+        .filter((e) => Math.sign(at[e.from].x - at[child].x || 1) === side)
+        .sort((a, b) => side * (at[a.from].x - at[b.from].x));
+      fromSide.forEach((e, i) => landings.set(e, side * (i + 1) * 14));
+    }
+  }
+
+  for (const edge of own) {
     const from = at[edge.from];
     const to = at[edge.to];
     const guardian = edge.parentType === "guardian";
@@ -241,19 +269,74 @@ export function familyLines(edges: TreeEdge[], layout: Layout): FamilyLine[] {
       if (!colourOf.has(edge.from)) colourOf.set(edge.from, fresh());
       colour = colourOf.get(edge.from)!;
     }
-    const x1 = from.x + NODE_WIDTH / 2;
+    const x1 = from.x + NODE_WIDTH / 2 + exits.get(edge)!;
     const bottom = from.y + NODE_HEIGHT;
     const y = laneY(`${edge.from}@${from.y}`, bottom, to.y, from.y);
     const kind = edge.parentType && edge.parentType !== "biological" ? edge.parentType : null;
+    const offset = landings.get(edge) ?? 0;
+    const x2 = to.x + NODE_WIDTH / 2 + offset;
     lines.push({
       key: `parent:${edge.from}:${edge.to}`,
       child: edge.to,
       colour,
       ended: edge.ended,
       label: edge.ended ? `former ${kind ?? "parent"}` : (kind ?? undefined),
-      d: `M ${x1} ${bottom} V ${y} H ${to.x + NODE_WIDTH / 2} V ${to.y}`,
+      landing: { x: x2, side: offset < 0 ? "left" : "right" },
+      d: `M ${x1} ${bottom} V ${y} H ${x2} V ${to.y}`,
     });
   }
 
-  return lines;
+  return bridged(lines);
+}
+
+const HOP = 5;
+
+type Run = { x1: number; y1: number; x2: number; y2: number };
+
+/** A path's straight runs. The tree's paths are only M, H and V. */
+function runs(d: string): Run[] {
+  const t = d.split(" ");
+  const out: Run[] = [];
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < t.length; ) {
+    const c = t[i++];
+    if (c === "M") [x, y] = [Number(t[i++]), Number(t[i++])];
+    else if (c === "H") { const nx = Number(t[i++]); out.push({ x1: x, y1: y, x2: nx, y2: y }); x = nx; }
+    else if (c === "V") { const ny = Number(t[i++]); out.push({ x1: x, y1: y, x2: x, y2: ny }); y = ny; }
+  }
+  return out;
+}
+
+/**
+ * Where a line runs across another line's drop, it hops over it in a small
+ * arc, the way a wiring diagram does, so a crossing never reads as a join.
+ * Only true crossings: a line ending on another (a child hanging from a
+ * couple) is a junction and stays one.
+ */
+function bridged(lines: FamilyLine[]): FamilyLine[] {
+  const drops = lines.map((line) => runs(line.d).filter((r) => r.x1 === r.x2));
+  return lines.map((line, n) => {
+    const others = drops.filter((_, m) => m !== n).flat();
+    const t = line.d.split(" ");
+    const out: string[] = [];
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < t.length; ) {
+      const c = t[i++];
+      if (c === "M") { [x, y] = [Number(t[i]), Number(t[i + 1])]; out.push(c, t[i++], t[i++]); continue; }
+      if (c === "V") { y = Number(t[i]); out.push(c, t[i++]); continue; }
+      const nx = Number(t[i++]);
+      const dir = Math.sign(nx - x);
+      const lo = Math.min(x, nx) + HOP;
+      const hi = Math.max(x, nx) - HOP;
+      const xs = [...new Set(others
+        .filter((r) => r.x1 > lo && r.x1 < hi && Math.min(r.y1, r.y2) < y && Math.max(r.y1, r.y2) > y)
+        .map((r) => r.x1))].sort((a, b) => dir * (a - b));
+      for (const cx of xs) out.push("H", String(cx - dir * HOP), "a", String(HOP), String(HOP), "0", "0", dir > 0 ? "1" : "0", String(2 * dir * HOP), "0");
+      out.push("H", String(nx));
+      x = nx;
+    }
+    return { ...line, d: out.join(" ") };
+  });
 }

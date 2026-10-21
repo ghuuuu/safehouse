@@ -5,7 +5,7 @@ import { auth, noUsersYet } from "../auth.server";
 import { SignedOut } from "../signed-out";
 
 export function meta() {
-  return [{ title: "First run — Safehouse" }];
+  return [{ title: "First run — SafeHouse" }];
 }
 
 /**

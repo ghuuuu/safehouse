@@ -18,7 +18,7 @@ import { hashPassword } from "better-auth/crypto";
 import type postgres from "postgres";
 
 /** Not a secret, and not meant to look like one: fictional accounts on one machine. */
-export const DEV_PASSWORD = "safehouse-dev-password";
+export const DEV_PASSWORD = "password";
 
 export const DEV_LOGINS = [
   { email: "priya@example.invalid", name: "Priya Raman", role: "Administrator", note: "sees everything, runs Access" },

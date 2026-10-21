@@ -17,6 +17,9 @@
  *   * Only the **current** version counts (D20). A superseded passport expired
  *     years ago by design; saying so every time the page loads is noise.
  *
+ * And two more of the same kind: nothing more than a year gone, and nothing
+ * of somebody who has died. Neither is a renewal anybody is going to make.
+ *
  * Who is told is decided where it always is. This reads `documents` and
  * `records` through the ordinary policies, so a document the viewer may not open
  * produces no row and therefore no reminder — there is no filtering here to get
@@ -86,6 +89,12 @@ export async function findExpiring(
       -- current_date, not a date computed in Node. The container's clock and
       -- the database's can disagree, and only one of them wrote the row.
       and d.expires_on - current_date <= ${leadDays}
+      -- A year gone, it is history — an old passport kept for the record —
+      -- not a renewal anybody is still going to make.
+      and d.expires_on - current_date >= -365
+      -- Nor is a renewal for somebody who has died. Read through the policies
+      -- like the rest: a viewer who cannot see the person is still reminded.
+      and not exists (select 1 from people p where p.owner_id = r.owner_id and p.died_on is not null)
     order by d.expires_on, r.title
   `);
 

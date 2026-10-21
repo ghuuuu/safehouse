@@ -13,7 +13,7 @@
  * impossible to honour.
  */
 
-import { access, constants, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
 import { requireEnv } from "./config.server";
@@ -84,6 +84,10 @@ function pathFor(key: string, dir: string): string {
  * looks like a whole one is a document that fails to open months later, with
  * nothing to say whether the disk or the key was at fault. Rename is atomic on
  * the same filesystem.
+ *
+ * Synced before the rename, and the directory after it, because the caller
+ * commits the row pointing here as soon as this returns. A power cut after
+ * that commit must not find an empty file, or no file, under the name.
  */
 export async function putBlob(
   key: string,
@@ -94,8 +98,24 @@ export async function putBlob(
   const temporary = `${path}.partial`;
 
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(temporary, sealed, { mode: 0o600 });
+  const file = await open(temporary, "w", 0o600);
+  try {
+    await file.writeFile(sealed);
+    await file.sync();
+  } finally {
+    await file.close();
+  }
   await rename(temporary, path);
+
+  // Windows cannot open a directory to sync it, and has no need to.
+  if (process.platform !== "win32") {
+    const folder = await open(dirname(path), "r");
+    try {
+      await folder.sync();
+    } finally {
+      await folder.close();
+    }
+  }
 }
 
 export async function getBlob(

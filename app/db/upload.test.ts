@@ -23,7 +23,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { openFile } from "../crypto.server";
 import { storageKeyFor } from "../storage.server";
-import { fileDocument, UploadRefused } from "../upload.server";
+import { fileDocument, MAX_FILED_BYTES, UploadRefused } from "../upload.server";
 import { OWNER, USER } from "./fixture";
 import { closeTestDatabase, owner, prepareTestDatabase } from "./test-harness";
 
@@ -210,12 +210,22 @@ describe("what this module refuses before the database is asked", () => {
     ).rejects.toBeInstanceOf(UploadRefused);
   });
 
-  test("refuses a file over the ceiling", async () => {
-    const huge = Buffer.alloc(26 * 1024 * 1024);
+  test("takes a built PDF over the upload limit, which only each upload has to meet", async () => {
+    // Five phone photos, each well under the limit, become one PDF that keeps
+    // every original (D39). That PDF was refused for being over 25 MB.
+    const built = Buffer.alloc(30 * 1024 * 1024);
+
+    await expect(
+      asUser(USER.maya, (db) => fileDocument(db, filing({ bytes: built }))),
+    ).resolves.toHaveProperty("fileId");
+  });
+
+  test("refuses a paper over the ceiling for one built file", async () => {
+    const huge = Buffer.alloc(MAX_FILED_BYTES + 1);
 
     await expect(
       asUser(USER.maya, (db) => fileDocument(db, filing({ bytes: huge }))),
-    ).rejects.toThrow(/25 MB/);
+    ).rejects.toThrow(/File it as two/);
   });
 });
 

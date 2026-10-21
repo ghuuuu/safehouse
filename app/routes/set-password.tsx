@@ -6,7 +6,7 @@ import { MIN_PASSWORD, setPasswordWithLink } from "../auth.server";
 import { SignedOut } from "../signed-out";
 
 export function meta() {
-  return [{ title: "Set your password — Safehouse" }];
+  return [{ title: "Set your password — SafeHouse" }];
 }
 
 /**

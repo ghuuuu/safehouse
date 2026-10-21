@@ -54,6 +54,9 @@ services:
       # Optional: expiry and break-glass alerts beyond the app (D37). Empty
       # keeps them in the app only.
       SAFEHOUSE_NOTIFY_WEBHOOK: ${SAFEHOUSE_NOTIFY_WEBHOOK:-}
+      # The household's time zone, which decides which day is "today" for
+      # expiry dates. Unset is UTC.
+      TZ: ${TZ:-UTC}
     secrets:
       - safehouse_key
     volumes:

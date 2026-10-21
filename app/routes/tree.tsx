@@ -9,7 +9,7 @@ import { getFamilyTree } from "../tree.server";
 import { resolveViewContext, withViewedVault } from "../view-as.server";
 
 export function meta() {
-  return [{ title: "Family tree — Safehouse" }];
+  return [{ title: "Family tree — SafeHouse" }];
 }
 
 const TABS = [

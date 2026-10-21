@@ -17,6 +17,7 @@ import {
   findRecordView,
   revealIdentifier,
   saveFields,
+  saveExtraction,
   saveProposals,
 } from "../record.server";
 import { DOCUMENT, FIXTURE_KEY, USER } from "./fixture";
@@ -109,6 +110,34 @@ describe("the masked field", () => {
 
     expect(view?.document.hasIdentifier).toBe(true);
     expect(JSON.stringify(view)).not.toContain("FIXTURE-PP-0001");
+  });
+
+  test("a number the reader quoted in a note is not in the payload, or stored, either", async () => {
+    // The reader says where each proposal came from, raw string included. For
+    // a masked field that note is the number by another route: past the
+    // password check, past the log, and in the clear at rest (D35).
+    const number = "ZZ/NOTE/4471";
+    const proposal = {
+      field: "identifier",
+      value: number,
+      note: `From "Policy Number" on page 2, printed as "${number}".`,
+    };
+    const [before] = await owner()`select extraction from documents where id = ${DOCUMENT.mayaPassport}`;
+    try {
+      await asUser(USER.maya, (db) => saveExtraction(db, DOCUMENT.mayaPassport, { proposals: [proposal], facts: [] }));
+      const [row] = await owner()`select extraction::text as text from documents where id = ${DOCUMENT.mayaPassport}`;
+      expect(row.text).not.toContain(number);
+
+      // A row written before this rule existed: the note is still there.
+      await owner()`
+        update documents set extraction = ${JSON.stringify({ proposals: [{ ...proposal, value: undefined, masked: true }] })}::text::jsonb
+        where id = ${DOCUMENT.mayaPassport}
+      `;
+      const view = await asUser(USER.maya, (db) => findRecordView(db, DOCUMENT.mayaPassport));
+      expect(JSON.stringify(view)).not.toContain(number);
+    } finally {
+      await owner()`update documents set extraction = ${JSON.stringify(before.extraction)}::text::jsonb where id = ${DOCUMENT.mayaPassport}`;
+    }
   });
 
   test("revealing it returns the value", async () => {

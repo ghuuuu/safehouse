@@ -34,7 +34,7 @@
  */
 
 import type { TextLine } from "./ocr.server";
-import type { Proposal } from "./ocr.server";
+import { normaliseDate, type Proposal } from "./ocr.server";
 
 export type SectionType = "motor_certificate" | "schedule" | "ipid" | "wording";
 
@@ -296,17 +296,25 @@ export function proposeFields(lines: TextLine[], allowed: Set<number>): Proposal
       for (const label of labels) {
         const value = valueFor(line, lines, label);
         if (!value) continue;
+        // A date is proposed the way it is stored, or not at all; the printed
+        // form stays in the note below.
+        const stored = field.endsWith("_on") ? normaliseDate(value) : value;
+        if (!stored) continue;
 
         const printed = label.exec(line.text)?.[0]?.trim() ?? "";
 
         proposals.push({
           field,
-          value,
+          value: stored,
           source: "pdf-text",
           verified: false,
           // The label verbatim, the page, and the raw string — which is also
-          // where a reader notices that 03/04/2027 was read day-first.
-          note: `From "${printed}" on page ${line.page}, printed as "${value}".`,
+          // where a reader notices that 03/04/2027 was read day-first. Not
+          // for the policy number: it is masked, and a note repeating it
+          // would hand it to every viewer past the password check (D35).
+          note: field === "identifier"
+            ? `From "${printed}" on page ${line.page}.`
+            : `From "${printed}" on page ${line.page}, printed as "${value}".`,
         });
       }
     }

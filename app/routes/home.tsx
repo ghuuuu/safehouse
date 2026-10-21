@@ -14,10 +14,11 @@ import { withVault } from "../session.server";
 import type { OwnerLink } from "../tree";
 import { TreePicture, type MapTag } from "../tree-picture";
 import { Segmented } from "../segmented";
+import { TimeLeft } from "../time-left";
 import { longDate, When } from "../when";
 
 export function meta() {
-  return [{ title: "Safehouse" }];
+  return [{ title: "SafeHouse" }];
 }
 
 /**
@@ -116,8 +117,8 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
   return (
     <>
       <Masthead
+        wide
         title={title}
-        seed={title}
         serial={
           <>
             <span suppressHydrationWarning>{todayStamp()}</span> · {total} {mode === "businesses" ? "business" : "personal and household"} {total === 1 ? "paper" : "papers"}
@@ -131,18 +132,18 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             name="q"
             type="search"
             aria-keyshortcuts="/"
-            placeholder="Search titles, people, or a document's number"
+            placeholder="Papers, people, numbers"
             className="field min-w-0 flex-1 border-transparent"
           />
-          <button className="btn btn-serial" type="submit">Search</button>
+          <button className="btn btn-secondary" type="submit">Search</button>
         </Form>
       </Masthead>
 
-      <Page>
+      <Page wide>
         <p className="-mb-2 text-base text-gray-700">
           {needs === 0
             ? "Nothing needs you right now."
-            : `${needs} ${needs === 1 ? "paper needs" : "papers need"} you.${expiring.soon.every((item) => item.ownerId) ? ` ${needs === 1 ? "It is" : "Each is"} stamped on whoever it belongs to.` : ""}`}
+            : `${needs} ${needs === 1 ? "paper needs" : "papers need"} you.${expiring.soon.every((item) => item.ownerId) ? ` ${needs === 1 ? "It is" : "Each is"} marked on whoever it belongs to.` : ""}`}
         </p>
 
         {user.role === "emergency" ? (
@@ -167,45 +168,46 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             {delivery.failing > 0 ? (
               <p>
                 {delivery.failing} notification{delivery.failing === 1 ? "" : "s"} could not be sent to your phone.{" "}
-                <Link className="underline" to="/settings#notifications">See why</Link>
+                <Link className="underline" to="/settings?tab=notifications">See why</Link>
               </p>
             ) : null}
-            {delivery.stale ? <p>Notifications have not been checked for over an hour. Restart Safehouse if this stays.</p> : null}
+            {delivery.stale ? <p>Notifications have not been checked for over an hour. Restart SafeHouse if this stays.</p> : null}
           </div>
         ) : null}
 
-        {safekeeping ? <div className="order-2 md:order-none"><Safekeeping {...safekeeping} /></div> : null}
+        {safekeeping ? <Safekeeping {...safekeeping} /> : null}
 
-        <div className="order-3 flex flex-wrap items-center gap-x-5 gap-y-3 md:order-none">
-          <Segmented
-            label="Mode"
-            options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
-          />
-          {chips.length > 0 ? (
-            <ul aria-label="Quick searches" className="flex flex-wrap gap-2 text-sm">
-              {chips.map((chip) => (
-                <li key={chip.label}>
-                  <Link
-                    className="inline-flex items-baseline gap-2 rounded-sm border border-gray-300 bg-white px-2.5 py-1 hover:border-gray-600 pointer-coarse:py-2"
-                    to={`/search?q=${encodeURIComponent(chip.label)}`}
-                  >
-                    {chip.label} <span className="font-mono text-xs text-gray-500">{chip.count}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
 
-        <section aria-labelledby="family" className="sheet order-4 flex min-w-0 flex-col gap-4 p-4 md:order-none md:p-6">
+
+        <section aria-labelledby="family" className="sheet flex min-w-0 flex-col gap-4 p-4 md:p-6">
             <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 pb-3">
-              <h2 id="family" className="text-lg font-semibold">
+              <h2 id="family" className="text-2xl font-semibold tracking-[-0.02em]">
                 {mode === "individuals" ? "The family" : "Businesses and the household"}
               </h2>
               {mode === "individuals" ? (
                 <span className="text-xs text-gray-500">
                   <span className="font-mono">{tree.people.length}</span> {tree.people.length === 1 ? "person" : "people"}
                 </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <Segmented
+                label="Mode"
+                options={MODES.map((m) => ({ to: m === "individuals" ? "/" : `/?mode=${m}`, label: MODE_LABEL[m], current: mode === m }))}
+              />
+              {chips.length > 0 ? (
+                <ul aria-label="Quick searches" className="flex flex-wrap gap-2 text-sm">
+                  {chips.map((chip) => (
+                    <li key={chip.label}>
+                      <Link
+                        className="inline-flex items-baseline gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1 text-gray-800 no-underline transition-colors duration-150 hover:border-gray-300 hover:bg-gray-200 pointer-coarse:py-2"
+                        to={`/search?q=${encodeURIComponent(chip.label)}`}
+                      >
+                        {chip.label} <span className="font-mono text-xs text-gray-500">{chip.count}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
             {mode === "individuals" ? (
@@ -218,87 +220,91 @@ export default function Home({ loaderData, actionData }: Route.ComponentProps) {
             <Owners owners={owners} empty={mode === "businesses" ? "No businesses that you can see." : null} vaultFor={vaultFor} tags={tags} />
           </section>
 
-          <div className="order-1 grid items-start gap-8 md:order-none lg:grid-cols-2">
-            <section aria-labelledby="running-out" className="sheet flex flex-col">
-              <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-                <h2 id="running-out" className="text-lg font-semibold">Running out</h2>
-                <span className="text-xs text-gray-500">
-                  {expiring.leadDays ? <>next <span className="font-mono">{expiring.leadDays}</span> days</> : null}
-                </span>
-              </div>
-              {expiring.soon.length === 0 ? (
-                <p className="px-4 py-5 text-sm text-gray-500 md:px-5">
-                  Nothing {mode === "businesses" ? "of the businesses' " : ""}confirmed to run out
-                  {expiring.leadDays ? ` in the next ${expiring.leadDays} days` : ""}.
-                </p>
-              ) : (
-                <ul className="text-sm">
-                  {expiring.soon.map((item) => (
-                    <li
-                      key={item.documentId}
-                      className="relative grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5"
-                    >
-                      <Link className="row-link font-semibold" to={`/record/${item.documentId}`}>
-                        {item.title}
-                      </Link>
-                      <span className="justify-self-end">
-                        {item.daysLeft < 0 ? (
-                          <span className="stamp stamp-warn" aria-label={when(item.daysLeft)}>Expired</span>
-                        ) : (
-                          <span className="stamp stamp-soon" aria-label={when(item.daysLeft)}>
-                            {item.daysLeft === 0 ? "Today" : `${item.daysLeft} days`}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-gray-500">
-                        {item.ownerName ?? "Owner not shown"} · <span className="ref">{reference(item.category, item.documentId)}</span>
-                      </span>
-                      <span className="justify-self-end font-mono text-xs text-gray-600">{longDate(item.expiresOn)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">
-                Dates somebody has confirmed. A date a reader proposed and nobody checked is not counted.
+        {/* Side by side from 1024px: what needs you, and what kind of papers there are. */}
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <section aria-labelledby="running-out" className="sheet flex flex-col">
+            <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="running-out" className="text-2xl font-semibold tracking-[-0.02em]">Running out</h2>
+              <span className="text-xs text-gray-500">
+                {expiring.leadDays ? <>next <span className="font-mono">{expiring.leadDays}</span> days</> : null}
+              </span>
+            </div>
+            {expiring.soon.length === 0 ? (
+              <p className="px-4 py-5 text-sm text-gray-500 md:px-5">
+                Nothing {mode === "businesses" ? "of the businesses' " : ""}confirmed to run out
+                {expiring.leadDays ? ` in the next ${expiring.leadDays} days` : ""}.
               </p>
-            </section>
-
-            <section aria-labelledby="by-kind" className="sheet flex flex-col">
-              <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-                <h2 id="by-kind" className="text-lg font-semibold">By kind</h2>
-                <span className="text-xs text-gray-500">
-                  <span className="font-mono">{total}</span> {mode === "businesses" ? "business" : "personal and household"}
-                </span>
-              </div>
-              <ul className="grid grid-cols-2 text-sm">
-                {categories.map(({ category, count }) => (
-                  <li key={category} className="border-b border-gray-200 odd:border-r [&:nth-last-child(-n+2)]:border-b-0">
-                    {count > 0 ? (
-                      <Link
-                        className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-gray-50 md:px-5"
-                        to={`/vault#${category}`}
-                      >
-                        <span className="flex items-center gap-2.5 capitalize">
-                          <CategoryMark category={category} />
-                          {category}
+            ) : (
+              <ul className="text-sm">
+                {expiring.soon.map((item) => (
+                  <li
+                    key={item.documentId}
+                    className="relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3.5 gap-y-0.5 border-b border-gray-100 px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-gray-50 md:px-5"
+                  >
+                    <span className="row-span-2">
+                      <TimeLeft daysLeft={item.daysLeft} window={expiring.leadDays ?? 90} />
+                    </span>
+                    <Link className="row-link font-semibold text-gray-950 no-underline" to={`/record/${item.documentId}`}>
+                      {item.title}
+                    </Link>
+                    <span className="justify-self-end">
+                      {item.daysLeft < 0 ? (
+                        <span className="stamp stamp-warn" aria-label={when(item.daysLeft)}>Expired</span>
+                      ) : (
+                        <span className="stamp stamp-soon" aria-label={when(item.daysLeft)}>
+                          {item.daysLeft === 0 ? "Today" : `${item.daysLeft} days`}
                         </span>
-                        <span className="font-mono text-base font-medium">{count}</span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center justify-between gap-2 px-4 py-3 text-gray-500 md:px-5">
-                        <span className="flex items-center gap-2.5 capitalize">
-                          <CategoryMark category={category} />
-                          {category}
-                        </span>
-                        <span className="font-mono text-base">0</span>
-                      </span>
-                    )}
+                      )}
+                    </span>
+                    <span className="text-gray-500">
+                      {item.ownerName ?? "Owner not shown"} · <span className="ref">{reference(item.category, item.documentId)}</span>
+                    </span>
+                    <span className="justify-self-end font-mono text-xs text-gray-600">{longDate(item.expiresOn)}</span>
                   </li>
                 ))}
               </ul>
-              <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">Current versions you can see.</p>
-            </section>
-          </div>
+            )}
+            <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">
+              Dates somebody has confirmed. A date a reader proposed and nobody checked is not counted.
+            </p>
+          </section>
+
+          <section aria-labelledby="by-kind" className="sheet flex flex-col">
+            <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="by-kind" className="text-2xl font-semibold tracking-[-0.02em]">By kind</h2>
+              <span className="text-xs text-gray-500">
+                <span className="font-mono">{total}</span> {mode === "businesses" ? "business" : "personal and household"}
+              </span>
+            </div>
+            <ul className="grid grid-cols-2 text-sm">
+              {categories.map(({ category, count }) => (
+                <li key={category} className="border-b border-r border-gray-100 even:border-r-0 [&:nth-last-child(-n+2)]:border-b-0">
+                  {count > 0 ? (
+                    <Link
+                      className="flex items-center justify-between gap-2 px-4 py-3 hover:bg-gray-50 md:px-5"
+                      to={`/vault#${category}`}
+                    >
+                      <span className="flex items-center gap-2.5 capitalize">
+                        <CategoryMark category={category} />
+                        {category}
+                      </span>
+                      <span className="font-mono text-base font-medium">{count}</span>
+                    </Link>
+                  ) : (
+                    <span className="flex items-center justify-between gap-2 px-4 py-3 text-gray-500 md:px-5">
+                      <span className="flex items-center gap-2.5 capitalize">
+                        <CategoryMark category={category} />
+                        {category}
+                      </span>
+                      <span className="font-mono text-base">0</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="border-t border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">Current versions you can see.</p>
+          </section>
+        </div>
       </Page>
     </>
   );
@@ -323,11 +329,11 @@ function Owners({
     return empty ? <p className="text-sm text-gray-500">{empty}</p> : null;
   }
   return (
-    <ul aria-label="Papers that belong to no one person" className="flex flex-wrap gap-3 text-sm">
+    <ul aria-label="Papers that belong to no one person" className="grid gap-x-6 border-t border-gray-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
       {owners.map((owner) => (
         <li key={owner.ownerId}>
           <Link
-            className="flex flex-col rounded-sm border-[3px] border-double border-gray-900 bg-white px-4 py-2.5 hover:border-accent"
+            className="-mx-2 flex flex-col rounded-lg px-2 py-2 text-gray-900 no-underline transition-colors duration-150 hover:bg-gray-50"
             to={vaultFor(owner.ownerId)}
           >
             <span className="font-semibold">{owner.name}</span>
@@ -362,7 +368,7 @@ function BreakGlass({ open, error }: { open: { expiresAt: string } | null; error
   }
   return (
     <Form method="post" className="sheet flex flex-col gap-3 border-red-300 p-5 text-sm">
-      <h2 className="text-lg font-semibold">Emergency access</h2>
+      <h2 className="text-2xl font-semibold tracking-[-0.02em]">Emergency access</h2>
       <p className="max-w-prose">
         Opening a window lets you see the household&apos;s medical and legal papers for a limited time. The
         administrator is told straight away, with the reason you give, and can close it.

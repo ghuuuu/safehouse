@@ -507,7 +507,9 @@ is then filed together with what the reader proposed, in one transaction
 (`app/bulk.server.ts`). Proposals stay unconfirmed and numbers are sealed. A
 blank title becomes "<Kind> document", and the file's name is never stored.
 
-**Acceptance, as met.**
+**Acceptance, as met.** (`app/db/bulk.test.ts` went with commit `ee0b06d`,
+when bulk uploads became drafts (D40); a draft's reading, sealing and refusals
+are now covered by `app/db/intake-flow.test.ts`.)
 - `app/db/bulk.test.ts`: a filed document arrives with its proposals, none
   confirmed, and the number is sealed. A reader that throws still files the
   document. A third party, or a member filing outside their circle, is refused
@@ -581,8 +583,9 @@ the admin (D19).
   holds the rules.
 - **Delivery:** one channel, `SAFEHOUSE_NOTIFY_WEBHOOK`. A sweep runs at boot
   and every 15 minutes; it writes `expiry.soon` rows for admins, once per
-  document, and delivers anything undelivered. A break-glass alert goes out at
-  once.
+  document per stage (entering the window, a week out, three days out, the
+  day; 0019), and delivers anything undelivered. A break-glass alert goes out
+  at once.
 - **Visible failures:** every attempt is recorded on its row, and the
   dashboard warns about failed deliveries and about a sweep that has stopped.
 

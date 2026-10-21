@@ -62,7 +62,7 @@ function AutoLock({ minutes }: { minutes: number }) {
 }
 
 /**
- * While the vault is waiting on the server, a gold rule runs along the top of
+ * While the vault is waiting on the server, a honey line runs along the top of
  * the page, and the button that was pressed says it is busy. The rule waits
  * 150ms before it shows (app.css), so a quick page never flickers. One place
  * for every form: whichever button submitted is marked `aria-busy` while the

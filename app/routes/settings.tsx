@@ -1,7 +1,8 @@
-import { data, Form, useNavigation } from "react-router";
+import { data, Form, useNavigation, useSearchParams } from "react-router";
 
 import type { Route } from "./+types/settings";
-import { auth, listDevices, MIN_PASSWORD, signOutDevice } from "../auth.server";
+import { auth, listDevices, MIN_PASSWORD, signOutDevice, unlessLocked } from "../auth.server";
+import { TOO_MANY_TRIES } from "../tries.server";
 import { requireUser, withVault } from "../session.server";
 import { roleLabel } from "../roles";
 import { LIMITS } from "../settings";
@@ -10,9 +11,10 @@ import { deliveryStatus, message } from "../notify.server";
 import { sql } from "drizzle-orm";
 import { When } from "../when";
 import { Masthead, Page } from "../masthead";
+import { Segmented } from "../segmented";
 
 export function meta() {
-  return [{ title: "Settings — Safehouse" }];
+  return [{ title: "Settings — SafeHouse" }];
 }
 
 /**
@@ -84,18 +86,22 @@ export async function action({ request }: Route.ActionArgs) {
     if (field("newPassword").length < MIN_PASSWORD) {
       return { section: "password", error: `Use at least ${MIN_PASSWORD} characters.` } satisfies Result;
     }
-    const response = await auth.api.changePassword({
-      body: { currentPassword: field("currentPassword"), newPassword: field("newPassword"), revokeOtherSessions: true },
-      headers,
-      asResponse: true,
-    });
+    const response = await unlessLocked(
+      auth.api.changePassword({
+        body: { currentPassword: field("currentPassword"), newPassword: field("newPassword"), revokeOtherSessions: true },
+        headers,
+        asResponse: true,
+      }),
+    );
+    if (!response) return { section: "password", error: TOO_MANY_TRIES } satisfies Result;
     return response.ok
       ? withCookies<Result>({ section: "password", ok: "Changed. Every other device has been signed out." }, response)
       : ({ section: "password", error: "That is not your current password." } satisfies Result);
   }
 
   if (intent === "2fa-start") {
-    const response = await auth.api.enableTwoFactor({ body: { password: field("password") }, headers, asResponse: true });
+    const response = await unlessLocked(auth.api.enableTwoFactor({ body: { password: field("password") }, headers, asResponse: true }));
+    if (!response) return { section: "2fa", error: TOO_MANY_TRIES } satisfies Result;
     if (!response.ok) return { section: "2fa", error: "That is not your password." } satisfies Result;
     const body = (await response.clone().json()) as { totpURI: string; backupCodes: string[] };
     const secret = new URL(body.totpURI).searchParams.get("secret") ?? "";
@@ -114,7 +120,8 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "2fa-off") {
-    const response = await auth.api.disableTwoFactor({ body: { password: field("password") }, headers, asResponse: true });
+    const response = await unlessLocked(auth.api.disableTwoFactor({ body: { password: field("password") }, headers, asResponse: true }));
+    if (!response) return { section: "2fa", error: TOO_MANY_TRIES } satisfies Result;
     return response.ok
       ? withCookies<Result>({ section: "2fa", ok: "Two-factor is off." }, response)
       : ({ section: "2fa", error: "That is not your password." } satisfies Result);
@@ -145,10 +152,21 @@ export async function action({ request }: Route.ActionArgs) {
   return { section: "", error: "Nothing to do." } satisfies Result;
 }
 
+/**
+ * Four tabs, each its own short page rather than one long scroll. The tab is in
+ * the URL (`?tab=security`), so a form posts back to the tab it was on and a
+ * link can open one directly (the dashboard's "See why" opens Notifications).
+ */
+const TABS = [
+  { key: "account", label: "Account" },
+  { key: "security", label: "Security" },
+  { key: "notifications", label: "Notifications" },
+  { key: "household", label: "Household" },
+] as const;
+type Tab = (typeof TABS)[number]["key"];
+
 const panel = "sheet flex flex-col gap-4 p-5 md:p-6";
-const panelHead = "border-b border-gray-900 pb-2 text-lg font-semibold";
-/** A part of a panel, ruled off from the part above it. */
-const part = "flex flex-col gap-3 border-t border-gray-200 pt-4";
+const panelHead = "text-xl font-semibold tracking-[-0.015em]";
 const input = "field";
 const numberInput = "field max-w-40 font-mono font-normal";
 /** The most recent devices are shown; the rest wait behind "Show all". */
@@ -169,199 +187,232 @@ function Note({ result, section }: { result: Result | undefined; section: string
 }
 
 export default function Settings({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, twoFactorOn, devices, settings, delivery, notifications, isAdmin, minPassword } = loaderData;
+  const { user, isAdmin } = loaderData;
   const result = actionData as Result | undefined;
-  const busy = useNavigation().state !== "idle";
-  const setup = result?.section === "2fa" ? result.setup : undefined;
+  const [params] = useSearchParams();
+  const tab: Tab = TABS.find((t) => t.key === params.get("tab"))?.key ?? "account";
 
   return (
     <>
-    <Masthead title="Settings" serial={<>{user.name} · {roleLabel(user.role)}</>} />
-    <Page narrow>
-      <section className={panel}>
-        <h2 className={panelHead}>Account</h2>
+      <Masthead title="Settings" serial={<>{user.name} · {roleLabel(user.role)}</>} />
+      <Page narrow>
+        <Segmented
+          label="Settings"
+          options={TABS.map((t) => ({ to: t.key === "account" ? "/settings" : `/settings?tab=${t.key}`, label: t.label, current: t.key === tab }))}
+        />
+        {tab === "account" ? <AccountTab data={loaderData} result={result} /> : null}
+        {tab === "security" ? <SecurityTab data={loaderData} result={result} /> : null}
+        {tab === "notifications" ? <NotificationsTab data={loaderData} /> : null}
+        {tab === "household" ? <HouseholdTab data={loaderData} result={result} isAdmin={isAdmin} /> : null}
+        <p className="mt-10 text-xs text-gray-600">SafeHouse {__APP_VERSION__}</p>
+      </Page>
+    </>
+  );
+}
+
+type Data = Route.ComponentProps["loaderData"];
+
+function AccountTab({ data, result }: { data: Data; result: Result | undefined }) {
+  const { user, minPassword } = data;
+  const busy = useNavigation().state !== "idle";
+  return (
+    <>
+      <section className={panel} aria-labelledby="you">
+        <h2 id="you" className={panelHead}>You</h2>
         <dl className="grid grid-cols-[6rem_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
           <dt className="index text-gray-500">Name</dt><dd className="min-w-0 break-words">{user.name}</dd>
           <dt className="index text-gray-500">Email</dt><dd className="min-w-0 break-words">{user.email}</dd>
           <dt className="index text-gray-500">Role</dt><dd>{roleLabel(user.role)}</dd>
         </dl>
+      </section>
 
-        <Form method="post" className="flex flex-col gap-3 border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-semibold">Change your password</h3>
+      <section className={panel} aria-labelledby="password">
+        <h2 id="password" className={panelHead}>Change your password</h2>
+        <Form method="post" className="flex flex-col gap-3">
           <input type="hidden" name="intent" value="password" />
           <input className={input} type="password" name="currentPassword" autoComplete="current-password" placeholder="Current password" aria-label="Current password" required />
           <input className={input} type="password" name="newPassword" autoComplete="new-password" minLength={minPassword} placeholder={`New password, at least ${minPassword} characters`} aria-label="New password" required />
           <Note result={result} section="password" />
           <button className={button} type="submit" disabled={busy}>Change password</button>
+          <p className="text-xs text-gray-500 max-w-prose">Changing it signs out every other device.</p>
         </Form>
       </section>
-
-      <section className={panel}>
-        <h2 className={panelHead}>Security</h2>
-
-        <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold">Two-factor sign-in</h3>
-          {setup ? (
-            <Form method="post" className="flex flex-col gap-3 text-sm">
-              <p>
-                In your authenticator app, add an account by typing this key. Then type the six digits it shows.
-              </p>
-              <code className="break-all rounded-md border border-gray-200 bg-gray-50 p-3 font-mono text-base tracking-wider">{setup.secret}</code>
-              <p>
-                Keep these backup codes somewhere safe and offline. Each one signs you in once if you lose your phone,
-                and they are not shown again:
-              </p>
-              <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-3 font-mono tracking-wider sm:grid-cols-3">
-                {setup.backupCodes.map((code) => <li key={code}>{code}</li>)}
-              </ul>
-              <input type="hidden" name="intent" value="2fa-confirm" />
-              <input className={input} name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="Six-digit code" aria-label="Code from your app" required />
-              <button className={button} type="submit" disabled={busy}>Turn it on</button>
-            </Form>
-          ) : twoFactorOn ? (
-            <Form method="post" className="flex flex-col gap-3 text-sm">
-              <p>On. Signing in asks for a code from your authenticator app.</p>
-              <input type="hidden" name="intent" value="2fa-off" />
-              <input className={input} type="password" name="password" autoComplete="current-password" placeholder="Your password, to turn it off" aria-label="Password" required />
-              <button className={button} type="submit" disabled={busy}>Turn it off</button>
-            </Form>
-          ) : (
-            <Form method="post" className="flex flex-col gap-3 text-sm">
-              <p>Off. With it on, a stolen password is not enough to get in.</p>
-              <input type="hidden" name="intent" value="2fa-start" />
-              <input className={input} type="password" name="password" autoComplete="current-password" placeholder="Your password, to start" aria-label="Password" required />
-              <button className={button} type="submit" disabled={busy}>Set it up</button>
-            </Form>
-          )}
-          <Note result={result} section="2fa" />
-        </div>
-
-        <div className={part}>
-          <h3 className="text-sm font-semibold">Signed-in devices</h3>
-          <ul className="flex flex-col border-y border-gray-200 text-sm">
-            {devices.slice(0, RECENT_DEVICES).map((device) => (
-              <li key={device.id} className={deviceRow}>
-                <span className="min-w-0">
-                  <span className="font-medium">{device.device}</span>
-                  {device.current ? <span className="text-gray-500"> · this one</span> : null}
-                  <span className="block text-xs text-gray-500">
-                    {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
-                    last seen <When at={device.lastSeenAt} />
-                  </span>
-                </span>
-                {device.current ? null : (
-                  <Form method="post">
-                    <input type="hidden" name="intent" value="device-out" />
-                    <input type="hidden" name="sessionId" value={device.id} />
-                    <button className={deviceOut} type="submit" disabled={busy}>sign out</button>
-                  </Form>
-                )}
-              </li>
-            ))}
-          </ul>
-          {devices.length > RECENT_DEVICES ? (
-            <details className="text-sm">
-              <summary className="cursor-pointer py-1 text-gray-600 underline">
-                Show all <span className="font-mono">{devices.length}</span>
-              </summary>
-              <ul className="mt-1 flex flex-col border-b border-gray-200">
-                {devices.slice(RECENT_DEVICES).map((device) => (
-                  <li key={device.id} className={deviceRow}>
-                    <span className="min-w-0">
-                      <span className="font-medium">{device.device}</span>
-                      <span className="block text-xs text-gray-500">
-                        {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
-                        last seen <When at={device.lastSeenAt} />
-                      </span>
-                    </span>
-                    <Form method="post">
-                      <input type="hidden" name="intent" value="device-out" />
-                      <input type="hidden" name="sessionId" value={device.id} />
-                      <button className={deviceOut} type="submit" disabled={busy}>sign out</button>
-                    </Form>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
-          {devices.length > 1 ? (
-            <Form method="post">
-              <input type="hidden" name="intent" value="others-out" />
-              <button className={button} type="submit" disabled={busy}>Sign out everywhere else</button>
-            </Form>
-          ) : null}
-          <Note result={result} section="devices" />
-        </div>
-
-        {settings ? (
-          <p className="border-t border-gray-200 pt-4 text-sm text-gray-500 max-w-prose">
-            Auto-lock: a page left alone for <span className="font-mono">{settings.autoLockMinutes}</span> minutes signs itself out.
-          </p>
-        ) : null}
-      </section>
-
-      <section id="notifications" className={panel}>
-        <h2 className={panelHead}>Notifications</h2>
-        {delivery ? (
-          <p className="text-sm">
-            {delivery.channel
-              ? "Sent to your phone through the webhook this server was given."
-              : "Nothing is sent outside the app: no channel is configured. Set SAFEHOUSE_NOTIFY_WEBHOOK (an ntfy topic, a Telegram bot, any URL that takes a POST) and restart."}{" "}
-            {delivery.lastSweepAt ? <>Last checked <When at={delivery.lastSweepAt} />.</> : null}
-          </p>
-        ) : (
-          <p className="text-sm text-gray-500 max-w-prose">What is running out is on your dashboard. Messages outside the app go to the administrator.</p>
-        )}
-        {notifications.length > 0 ? (
-          <ul className="flex flex-col border-y border-gray-200 text-sm">
-            {notifications.map((n) => (
-              <li key={n.id} className="flex flex-col gap-1 border-b border-gray-200 py-3 last:border-b-0">
-                <span>{sentence(n.text.replace(/^Safehouse: /, ""))}</span>
-                <span className="text-xs text-gray-500">
-                  <When at={n.createdAt} /> ·{" "}
-                  {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700 dark:text-red-400">not sent: {n.error}</span> : "in the app only"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <p className="text-xs text-gray-500 max-w-prose">
-          A message never names a document, a person or a number. It says to open Safehouse.
-        </p>
-      </section>
-
-      {settings ? (
-        <section className={panel}>
-          <h2 className={panelHead}>Household</h2>
-          <Form method="post" className="flex flex-col gap-3">
-            <input type="hidden" name="intent" value="household" />
-            <fieldset disabled={!isAdmin || busy} className="flex flex-col gap-4 text-sm">
-              <label className="flex flex-col gap-1 font-medium">
-                Warn this many days before a document expires
-                <input className={numberInput} type="number" name="expiryReminderLeadDays" defaultValue={settings.expiryReminderLeadDays} min={LIMITS.expiryReminderLeadDays.min} max={LIMITS.expiryReminderLeadDays.max} required />
-              </label>
-              <label className="flex flex-col gap-1 font-medium">
-                An emergency window lasts this many hours
-                <input className={numberInput} type="number" name="emergencyWindowHours" defaultValue={settings.emergencyWindowHours} min={LIMITS.emergencyWindowHours.min} max={LIMITS.emergencyWindowHours.max} required />
-                <span className="text-xs font-normal text-gray-500">
-                  At most {LIMITS.emergencyWindowHours.max}. That ceiling is fixed in the code, not a setting.
-                </span>
-              </label>
-              <label className="flex flex-col gap-1 font-medium">
-                Auto-lock after this many idle minutes
-                <input className={numberInput} type="number" name="autoLockMinutes" defaultValue={settings.autoLockMinutes} min={LIMITS.autoLockMinutes.min} max={LIMITS.autoLockMinutes.max} required />
-              </label>
-              {isAdmin ? (
-                <button className={button} type="submit">Save</button>
-              ) : (
-                <p className="text-gray-500">Only the household administrator can change these.</p>
-              )}
-            </fieldset>
-            <Note result={result} section="household" />
-          </Form>
-        </section>
-      ) : null}
-    </Page>
     </>
+  );
+}
+
+function SecurityTab({ data, result }: { data: Data; result: Result | undefined }) {
+  const { twoFactorOn, devices, settings } = data;
+  const busy = useNavigation().state !== "idle";
+  const setup = result?.section === "2fa" ? result.setup : undefined;
+
+  return (
+    <>
+      <section className={panel} aria-labelledby="two-factor">
+        <h2 id="two-factor" className={panelHead}>Two-factor sign-in</h2>
+        {setup ? (
+          <Form method="post" className="flex flex-col gap-3 text-sm">
+            <p>
+              In your authenticator app, add an account by typing this key. Then type the six digits it shows.
+            </p>
+            <code className="break-all rounded-md border border-gray-200 bg-gray-50 p-3 font-code text-base tracking-wider">{setup.secret}</code>
+            <p>
+              Keep these backup codes somewhere safe and offline. Each one signs you in once if you lose your phone,
+              and they are not shown again:
+            </p>
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-md border border-gray-200 bg-gray-50 p-3 font-code tracking-wider sm:grid-cols-3">
+              {setup.backupCodes.map((code) => <li key={code}>{code}</li>)}
+            </ul>
+            <input type="hidden" name="intent" value="2fa-confirm" />
+            <input className={input} name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="Six-digit code" aria-label="Code from your app" required />
+            <button className={button} type="submit" disabled={busy}>Turn it on</button>
+          </Form>
+        ) : twoFactorOn ? (
+          <Form method="post" className="flex flex-col gap-3 text-sm">
+            <p><span className="stamp stamp-quiet">On</span> Signing in asks for a code from your authenticator app.</p>
+            <input type="hidden" name="intent" value="2fa-off" />
+            <input className={input} type="password" name="password" autoComplete="current-password" placeholder="Your password, to turn it off" aria-label="Password" required />
+            <button className={button} type="submit" disabled={busy}>Turn it off</button>
+          </Form>
+        ) : (
+          <Form method="post" className="flex flex-col gap-3 text-sm">
+            <p><span className="stamp stamp-soon">Off</span> With it on, a stolen password is not enough to get in.</p>
+            <input type="hidden" name="intent" value="2fa-start" />
+            <input className={input} type="password" name="password" autoComplete="current-password" placeholder="Your password, to start" aria-label="Password" required />
+            <button className={button} type="submit" disabled={busy}>Set it up</button>
+          </Form>
+        )}
+        <Note result={result} section="2fa" />
+      </section>
+
+      <section className={panel} aria-labelledby="devices">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="devices" className={panelHead}>Signed-in devices</h2>
+          <span className="text-xs text-gray-500"><span className="font-mono">{devices.length}</span> {devices.length === 1 ? "device" : "devices"}</span>
+        </div>
+        <ul className="flex flex-col border-y border-gray-200 text-sm">
+          {devices.slice(0, RECENT_DEVICES).map((device) => <Device key={device.id} device={device} busy={busy} />)}
+        </ul>
+        {devices.length > RECENT_DEVICES ? (
+          <details className="text-sm">
+            <summary className="cursor-pointer py-1 text-gray-600">
+              Show all <span className="font-mono">{devices.length}</span>
+            </summary>
+            <ul className="mt-1 flex flex-col border-b border-gray-200">
+              {devices.slice(RECENT_DEVICES).map((device) => <Device key={device.id} device={device} busy={busy} />)}
+            </ul>
+          </details>
+        ) : null}
+        {devices.length > 1 ? (
+          <Form method="post">
+            <input type="hidden" name="intent" value="others-out" />
+            <button className={button} type="submit" disabled={busy}>Sign out everywhere else</button>
+          </Form>
+        ) : null}
+        <Note result={result} section="devices" />
+        {settings ? (
+          <p className="border-t border-gray-200 pt-4 text-sm text-gray-500">
+            Auto-lock: a page left alone for <span className="font-mono">{settings.autoLockMinutes}</span> minutes signs itself out.
+            The administrator sets it under Household.
+          </p>
+        ) : null}
+      </section>
+    </>
+  );
+}
+
+function Device({ device, busy }: { device: Data["devices"][number]; busy: boolean }) {
+  return (
+    <li className={deviceRow}>
+      <span className="min-w-0">
+        <span className="font-medium">{device.device}</span>
+        {device.current ? <span className="text-gray-500"> · this one</span> : null}
+        <span className="block text-xs text-gray-500">
+          {device.ipAddress ? <span className="font-mono">{device.ipAddress} · </span> : ""}
+          last seen <When at={device.lastSeenAt} />
+        </span>
+      </span>
+      {device.current ? null : (
+        <Form method="post">
+          <input type="hidden" name="intent" value="device-out" />
+          <input type="hidden" name="sessionId" value={device.id} />
+          <button className={deviceOut} type="submit" disabled={busy}>Sign out</button>
+        </Form>
+      )}
+    </li>
+  );
+}
+
+function NotificationsTab({ data }: { data: Data }) {
+  const { delivery, notifications } = data;
+  return (
+    <section className={panel} aria-labelledby="notifications">
+      <h2 id="notifications" className={panelHead}>Notifications</h2>
+      {delivery ? (
+        <p className="text-sm">
+          {delivery.channel
+            ? "Sent to your phone through the webhook this server was given."
+            : "Nothing is sent outside the app: no channel is configured. Set SAFEHOUSE_NOTIFY_WEBHOOK (an ntfy topic, a Telegram bot, any URL that takes a POST) and restart."}{" "}
+          {delivery.lastSweepAt ? <>Last checked <When at={delivery.lastSweepAt} />.</> : null}
+        </p>
+      ) : (
+        <p className="text-sm text-gray-500 max-w-prose">What is running out is on your dashboard. Messages outside the app go to the administrator.</p>
+      )}
+      {notifications.length > 0 ? (
+        <ul className="flex flex-col border-y border-gray-200 text-sm">
+          {notifications.map((n) => (
+            <li key={n.id} className="flex flex-col gap-1 border-b border-gray-200 py-3 last:border-b-0">
+              <span>{sentence(n.text.replace(/^SafeHouse: /i, ""))}</span>
+              <span className="text-xs text-gray-500">
+                <When at={n.createdAt} /> ·{" "}
+                {n.deliveredAt ? "sent" : n.error ? <span className="text-red-700 dark:text-red-400">not sent: {n.error}</span> : "in the app only"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-gray-500">Nothing yet.</p>
+      )}
+      <p className="text-xs text-gray-500 max-w-prose">
+        A message never names a document, a person or a number. It says to open SafeHouse.
+      </p>
+    </section>
+  );
+}
+
+function HouseholdTab({ data, result, isAdmin }: { data: Data; result: Result | undefined; isAdmin: boolean }) {
+  const { settings } = data;
+  const busy = useNavigation().state !== "idle";
+  if (!settings) return <p className="text-sm text-gray-500">The household&apos;s settings could not be read.</p>;
+  return (
+    <section className={panel} aria-labelledby="household">
+      <h2 id="household" className={panelHead}>Household</h2>
+      <Form method="post" className="flex flex-col gap-3">
+        <input type="hidden" name="intent" value="household" />
+        <fieldset disabled={!isAdmin || busy} className="flex flex-col gap-5 text-sm">
+          <label className="flex flex-col gap-1.5 font-medium">
+            Warn this many days before a document expires
+            <input className={numberInput} type="number" name="expiryReminderLeadDays" defaultValue={settings.expiryReminderLeadDays} min={LIMITS.expiryReminderLeadDays.min} max={LIMITS.expiryReminderLeadDays.max} required />
+          </label>
+          <label className="flex flex-col gap-1.5 font-medium">
+            An emergency window lasts this many hours
+            <input className={numberInput} type="number" name="emergencyWindowHours" defaultValue={settings.emergencyWindowHours} min={LIMITS.emergencyWindowHours.min} max={LIMITS.emergencyWindowHours.max} required />
+            <span className="text-xs font-normal text-gray-500">
+              At most {LIMITS.emergencyWindowHours.max}. That ceiling is fixed in the code, not a setting.
+            </span>
+          </label>
+          <label className="flex flex-col gap-1.5 font-medium">
+            Auto-lock after this many idle minutes
+            <input className={numberInput} type="number" name="autoLockMinutes" defaultValue={settings.autoLockMinutes} min={LIMITS.autoLockMinutes.min} max={LIMITS.autoLockMinutes.max} required />
+          </label>
+          {isAdmin ? (
+            <button className={button} type="submit">Save</button>
+          ) : (
+            <p className="text-gray-500">Only the household administrator can change these.</p>
+          )}
+        </fieldset>
+        <Note result={result} section="household" />
+      </Form>
+    </section>
   );
 }

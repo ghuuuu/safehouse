@@ -109,6 +109,18 @@ describe("a photographed card", () => {
     expect(mm).toEqual({ w: 54, h: 85.6 });
     expect([meta.width, meta.height]).toEqual([638, 1011]);
   });
+
+  test("a page the largest size allowed keeps that size, at fewer dots, not 140 million pixels", async () => {
+    // A metre square at 300 dpi is an 11811 px square: 418 MB to warp, from
+    // one form field anybody signed in can fill.
+    const { jpeg, mm } = await flatten(await photo(8), card(8), { w: 1000, h: 1000 });
+    const meta = await sharp(jpeg).metadata();
+    expect(mm).toEqual({ w: 1000, h: 1000 });
+    expect(meta.width! * meta.height!).toBeLessThanOrEqual(40_000_000);
+    expect(meta.width).toBe(meta.height);
+    // The density says what it is, so the page still prints a metre wide.
+    expect(Math.round((meta.width! / meta.density!) * 25.4)).toBe(1000);
+  });
 });
 
 describe("a flatbed scan", () => {

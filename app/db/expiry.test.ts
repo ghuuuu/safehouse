@@ -16,7 +16,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { findExpiring } from "../expiry.server";
-import { DOCUMENT, USER } from "./fixture";
+import { DOCUMENT, OWNER, USER } from "./fixture";
 import { closeTestDatabase, owner, prepareTestDatabase } from "./test-harness";
 
 let asUser: typeof import("../db.server").asUser;
@@ -78,6 +78,27 @@ describe("the window", () => {
     // mentioning the passport on the morning it actually matters.
     expect(soon[0]?.documentId).toBe(DOCUMENT.danielPassport);
     expect(soon[0]?.daysLeft).toBeLessThan(0);
+  });
+
+  test("a paper more than a year gone is history, not a reminder", async () => {
+    // An old passport kept for the record. Forty days gone is a renewal to
+    // make; four hundred is not one anybody will.
+    const [{ was }] = await owner()`select expires_on::text as was from documents where id = ${DOCUMENT.danielPassport}`;
+    await owner()`update documents set expires_on = current_date - 400 where id = ${DOCUMENT.danielPassport}`;
+    try {
+      expect(await expiringFor(USER.priya)).not.toContain(DOCUMENT.danielPassport);
+    } finally {
+      await owner()`update documents set expires_on = ${was}::date where id = ${DOCUMENT.danielPassport}`;
+    }
+  });
+
+  test("nobody is reminded to renew the papers of somebody who has died", async () => {
+    await owner()`update people set died_on = current_date - 10 where owner_id = ${OWNER.daniel}`;
+    try {
+      expect(await expiringFor(USER.priya)).not.toContain(DOCUMENT.danielPassport);
+    } finally {
+      await owner()`update people set died_on = null where owner_id = ${OWNER.daniel}`;
+    }
   });
 
   test("a superseded version is not nagged about", async () => {

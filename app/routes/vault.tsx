@@ -16,7 +16,7 @@ import {
 } from "../view-as.server";
 
 export function meta() {
-  return [{ title: "Vault — Safehouse" }];
+  return [{ title: "Vault — SafeHouse" }];
 }
 
 type DocumentRow = {
@@ -171,7 +171,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
           // Hidden while viewing as somebody else, because the transaction that
           // would file it is read-only: offering the link would be offering a
           // button that cannot work.
-          <Link className="btn btn-serial" to="/upload">
+          <Link className="btn btn-secondary" to="/upload">
             File a document
           </Link>
         )}
@@ -215,7 +215,7 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
         // Folded away: it is for checking access, not for finding a paper,
         // and on a phone it would otherwise fill the first screen.
         <details open={isViewingAs} className="text-sm">
-          <summary className="cursor-pointer py-1 text-gray-600 underline">View as somebody else</summary>
+          <summary className="cursor-pointer py-1 text-gray-600 hover:text-gray-900">View as somebody else</summary>
         <Form method="get" className="mt-2 flex flex-wrap items-center gap-2">
           {owner ? <input type="hidden" name="owner" value={owner.id} /> : null}
           <label className="text-gray-500" htmlFor="as">
@@ -298,11 +298,11 @@ export default function Vault({ loaderData }: Route.ComponentProps) {
                   ) : null}
                   {document.fileId ? (
                     <Link
-                      className="relative z-10 -my-2 px-1 py-2 underline"
+                      className="btn btn-secondary btn-sm relative z-10 -my-1 no-underline"
                       to={`/file/${document.fileId}`}
                       reloadDocument
                     >
-                      open{document.fileCount > 1 ? ` (${document.fileCount} pages)` : ""}
+                      Open{document.fileCount > 1 ? ` (${document.fileCount} pages)` : ""}
                     </Link>
                   ) : null}
                 </span>

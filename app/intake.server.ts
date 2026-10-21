@@ -39,10 +39,11 @@ import {
   scannedSize,
   sizeFor,
 } from "./paper.server";
-import { EDITABLE_FIELDS, findRecordView, saveExtraction, saveFields, type EditableField } from "./record.server";
+import { EDITABLE_FIELDS, findRecordView, saveExtraction, saveFields, sealedProposal, type EditableField } from "./record.server";
 import { findFile, readFileContents } from "./download.server";
 import { getBlob, putBlob, storageKeyFor } from "./storage.server";
 import { fileDocument, fileVersion, UploadRefused } from "./upload.server";
+import { isUuid } from "./ids";
 
 export { UploadRefused };
 
@@ -106,6 +107,29 @@ export function checkUpload(upload: { mime: string; size: number }): void {
   }
 }
 
+/** More pages than this in one TIFF is a job for a scanner's PDF setting. */
+const MAX_TIFF_PAGES = 50;
+
+/**
+ * A TIFF can hold several pages, and every step after this one reads only the
+ * first. So a TIFF of several pages arrives as several uploads, one PNG a page:
+ * lossless, and a format each of those steps reads. Anything else, and a TIFF
+ * of one page, comes through as it is.
+ */
+export async function splitPages(upload: { mime: string; bytes: Buffer }): Promise<{ mime: string; bytes: Buffer }[]> {
+  if (upload.mime !== "image/tiff") return [upload];
+  checkUpload({ mime: upload.mime, size: upload.bytes.length });
+  // Unreadable is not decided here: `examine` refuses it in its own words.
+  const count = (await sharp(upload.bytes).metadata().catch(() => null))?.pages ?? 1;
+  if (count <= 1) return [upload];
+  if (count > MAX_TIFF_PAGES) throw new UploadRefused(`That TIFF has more than ${MAX_TIFF_PAGES} pages. Save it as a PDF instead.`);
+  const pages = [];
+  for (let page = 0; page < count; page++) {
+    pages.push({ mime: "image/png", bytes: await sharp(upload.bytes, { page, limitInputPixels: 40_000_000 }).png().toBuffer() });
+  }
+  return pages;
+}
+
 export type Examined = { pages: { sourcePage: number; corners: Outline | null; size: PaperSize | null }[] };
 
 /**
@@ -132,6 +156,11 @@ export async function examine(bytes: Buffer, mime: string): Promise<Examined> {
   try {
     outline = await findCorners(bytes);
   } catch {
+    // Reading the header alone is not held to the ceiling, so it says which.
+    const meta = await sharp(bytes).metadata().catch(() => null);
+    if (meta?.width && meta.height && meta.width * meta.height > 40_000_000) {
+      throw new UploadRefused("That photo is over 40 megapixels. Save a smaller copy and file that.");
+    }
     throw new UploadRefused("That photo cannot be opened. Try saving it as a JPEG.");
   }
   const corners: Outline = { points: outline.corners, found: outline.found, width: outline.width, height: outline.height };
@@ -213,6 +242,7 @@ export async function addSource(
 /* ------------------------------------------------------------------ */
 
 export async function loadIntake(db: VaultTransaction, intakeId: string): Promise<IntakeView | null> {
+  if (!isUuid(intakeId)) return null;
   const rows = await db.execute<{
     id: string; createdBy: string; ownerId: string | null; category: Category | null; title: string | null;
     recordId: string | null; baseDocumentId: string | null; fields: Stored["fields"]; hasIdentifier: boolean;
@@ -439,12 +469,15 @@ export async function saveDetails(
     else values[field] = { value, source: "person" };
   }
 
-  const category = CATEGORIES.includes(details.category as Category) ? details.category : null;
+  // A conversion files the next version of a record that already has an
+  // owner, a name and a kind (D39), and keeps them whatever the form says.
+  const kept = intake.recordId ? { ownerId: intake.ownerId ?? "", category: intake.category ?? "", title: intake.title ?? "" } : details;
+  const category = CATEGORIES.includes(kept.category as Category) ? kept.category : null;
   await db.execute(sql`
     update intakes set
-      owner_id = ${details.ownerId || null},
+      owner_id = ${kept.ownerId || null},
       category = ${category},
-      title = ${details.title.trim().slice(0, 200) || null},
+      title = ${kept.title.trim().slice(0, 200) || null},
       fields = jsonb_set(fields, '{values}', ${JSON.stringify(values)}::jsonb),
       ${identifier === undefined ? sql`` : sql`identifier_sealed = ${identifier},`}
       updated_at = now()
@@ -522,7 +555,9 @@ export async function saveRead(db: VaultTransaction, intakeId: string, reads: (R
   // Each upload explains itself; a sentence said twice is said once.
   const sentences = reads.flatMap((r) => r?.how?.split(/(?<=\.)\s+/) ?? []).filter(Boolean);
   const how = [...new Set(sentences)].join(" ") || "The reader could not open these pages.";
-  const fields = { values, how, ...(terms ? { terms } : {}) };
+  // The number itself went into identifier_sealed above; the copy in what the
+  // reader proposed is sealed too, value and note, before it is stored (D35).
+  const fields = { values, how, ...(terms ? { terms: { ...terms, proposals: terms.proposals.map(sealedProposal) } } : {}) };
   await db.execute(sql`
     update intakes set fields = ${JSON.stringify(fields)}::jsonb,
       ${identifier === undefined ? sql`` : sql`identifier_sealed = ${identifier},`}
@@ -557,6 +592,12 @@ export async function submitIntake(
   /** The newer version the person has seen and chosen to file over (D42). */
   confirm: { over?: string } = {},
 ): Promise<{ documentId: string; released: string[] }> {
+  // One filing per draft. A second press of File it, or the uploader and the
+  // admin at once, waits here for the first to commit, and then finds the
+  // draft gone rather than filing it a second time.
+  if (!isUuid(intakeId)) throw new Response("No such draft.", { status: 404 });
+  const [held] = [...(await db.execute(sql`select 1 from intakes where id = ${intakeId} for update`))];
+  if (!held) throw new UploadRefused("This draft has already been filed or thrown away.");
   const intake = await loadIntake(db, intakeId);
   if (!intake) throw new Response("No such draft.", { status: 404 });
   if (!intake.ownerId) throw new UploadRefused("Choose whose it is.");
@@ -644,7 +685,10 @@ export async function submitIntake(
     await saveExtraction(db, filed.documentId, stored.fields.terms as Parameters<typeof saveExtraction>[2]);
   }
 
-  return { documentId: filed.documentId, released: await discardIntake(db, intakeId) };
+  const released = await discardIntake(db, intakeId);
+  // Under the lock above this cannot happen; if it ever does, file nothing.
+  if (released.length === 0) throw new UploadRefused("This draft has already been filed or thrown away.");
+  return { documentId: filed.documentId, released };
 }
 
 /* ------------------------------------------------------------------ */
@@ -693,7 +737,9 @@ export async function convertDocument(db: VaultTransaction, createdBy: string, d
     const bytes = await readFileContents(row).catch(() => {
       throw new UploadRefused("A page of this one cannot be opened, so it cannot be converted.");
     });
-    pages.push({ mime: page.mime, bytes, examined: await examine(bytes, page.mime) });
+    for (const one of await splitPages({ mime: page.mime, bytes })) {
+      pages.push({ ...one, examined: await examine(one.bytes, one.mime) });
+    }
   }
 
   const ownerRow = [...(await db.execute<{ ownerId: string | null }>(sql`select owner_id as "ownerId" from records where id = ${view.recordId}`))][0];

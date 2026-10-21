@@ -133,19 +133,39 @@ describe("the schedule", () => {
     const proposals = proposeFields(PACK, allowed);
     const byField = Object.fromEntries(proposals.map((p) => [p.field, p]));
 
-    expect(byField.issued_on.value).toBe("14/03/2026");
-    expect(byField.expires_on.value).toBe("14/03/2027");
+    // Dates as the vault stores them; the printed form stays in the note.
+    expect(byField.issued_on.value).toBe("2026-03-14");
+    expect(byField.expires_on.value).toBe("2027-03-14");
+    expect(byField.expires_on.note).toContain('printed as "14/03/2027"');
     expect(byField.identifier.value).toBe("FX/ZZ/8891023");
+  });
+
+  test("a printed date that is no date at all is not proposed", () => {
+    // Stored raw, "14/03/2027" was cast month-first by the database and the
+    // whole "Read it from the scan" failed; "31/02/2027" fails any way round.
+    const odd = page(2, ["Expiry Date: 31/02/2027"]);
+    expect(proposeFields(odd, allowed).filter((p) => p.field === "expires_on")).toEqual([]);
   });
 
   test("every proposal says where it came from, verbatim", () => {
     // The raw string is in the note on purpose: it is how somebody notices
     // that 03/04/2027 was read day-first when a US document turns up.
-    const [first] = proposeFields(PACK, allowed);
+    // Every proposal but the masked number, whose note says where and not what.
+    const first = proposeFields(PACK, allowed).find((p) => p.field !== "identifier")!;
 
     expect(first.note).toMatch(/on page 2/);
     expect(first.note).toMatch(/printed as/);
     expect(first.verified).toBe(false);
+  });
+
+  test("a policy number's note says where it was, not what it says", () => {
+    // The number is masked; a note carrying it would be the number by another
+    // route, sent to every viewer and stored in the clear.
+    const identifier = proposeFields(PACK, allowed).find((p) => p.field === "identifier")!;
+
+    expect(identifier.value).toBe("FX/ZZ/8891023");
+    expect(identifier.note).toMatch(/on page 2/);
+    expect(identifier.note).not.toContain("FX/ZZ/8891023");
   });
 
   test("a policy number never arrives as a quoted fact", () => {

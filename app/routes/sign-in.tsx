@@ -1,14 +1,15 @@
 import { Form, Link, redirect, useSearchParams } from "react-router";
 
 import type { Route } from "./+types/sign-in";
-import { auth, noUsersYet } from "../auth.server";
+import { auth, noUsersYet, unlessLocked } from "../auth.server";
+import { TOO_MANY_TRIES } from "../tries.server";
 import { DEV_LOGINS, devCredentials, devLoginsEnabled } from "../dev-logins.server";
 import { getSignedInUser } from "../session.server";
 import { safeNext } from "../next";
 import { SignedOut } from "../signed-out";
 
 export function meta() {
-  return [{ title: "Sign in — Safehouse" }];
+  return [{ title: "Sign in — SafeHouse" }];
 }
 
 
@@ -32,14 +33,18 @@ export async function action({ request }: Route.ActionArgs) {
   const dev = import.meta.env.DEV ? devCredentials(form) : null;
   if (dev === false) return { error: "That email and password do not match." };
 
-  const response = await auth.api.signInEmail({
-    body: dev ?? {
-      email: String(form.get("email") ?? ""),
-      password: String(form.get("password") ?? ""),
-    },
-    headers: request.headers,
-    asResponse: true,
-  });
+  const response = await unlessLocked(
+    auth.api.signInEmail({
+      body: dev ?? {
+        email: String(form.get("email") ?? ""),
+        password: String(form.get("password") ?? ""),
+      },
+      headers: request.headers,
+      asResponse: true,
+    }),
+  );
+
+  if (!response) return { error: TOO_MANY_TRIES };
 
   if (!response.ok) {
     // The same sentence whether the address is unknown or the password is
@@ -123,7 +128,7 @@ export default function SignIn({ loaderData, actionData }: Route.ComponentProps)
  */
 function DevLogins({ logins, next }: { logins: { email: string; name: string; role: string; note: string }[]; next: string }) {
   return (
-    <section aria-labelledby="dev-logins" className="flex flex-col gap-3 border-t border-gray-900 pt-4">
+    <section aria-labelledby="dev-logins" className="flex flex-col gap-3 border-t border-gray-200 pt-4">
       <div>
         <h2 id="dev-logins" className="text-sm font-semibold">Sign in as… (development)</h2>
         <p className="mt-1 text-xs text-gray-500">Fictional accounts. These buttons do not exist in a real install.</p>

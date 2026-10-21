@@ -20,6 +20,7 @@ import { sql } from "drizzle-orm";
 import { openFile } from "./crypto.server";
 import type { VaultTransaction } from "./db.server";
 import { getBlob } from "./storage.server";
+import { isUuid } from "./ids";
 
 export type StoredFile = {
   id: string;
@@ -43,6 +44,7 @@ export async function findFile(
   db: VaultTransaction,
   fileId: string,
 ): Promise<Row | null> {
+  if (!isUuid(fileId)) return null;
   const rows = await db.execute<Row>(sql`
     select f.id, f.mime, f.byte_size as "byteSize", f.sha256, f.page_no as "pageNo",
            f.storage_key as "storageKey", f.wrapped_dek as "wrappedDek", f.nonce,
@@ -110,6 +112,20 @@ export function downloadName(row: StoredFile): string {
  * dropped, so a title of "../../etc/passwd" cannot arrive as a hidden file or
  * a path.
  */
+/**
+ * The header for a download named `name` (already through `safeName`). A
+ * header value must be bytes under 256, so the real name goes in `filename*`
+ * as UTF-8 (RFC 6266), and `filename` carries an ASCII stand-in for a browser
+ * that ignores it: accents dropped, anything else gone, "document" if nothing
+ * is left.
+ */
+export function contentDisposition(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const [base, extension] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+  const ascii = base.normalize("NFKD").replace(/[^\x20-\x7e]/g, "").replace(/["\\]/g, "").trim() || "document";
+  return `attachment; filename="${ascii}${extension}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+}
+
 export function safeName(text: string, fallback = "Untitled"): string {
   return (
     text

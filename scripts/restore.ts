@@ -124,12 +124,48 @@ if (existing > 0) {
 console.log("Making sure the application's roles exist…");
 await run("node", ["scripts/db-setup.mjs"]);
 
-console.log("Restoring the database…");
-await run(
-  "docker",
-  ["compose", "exec", "-T", "db", "psql", "-q", "-v", "ON_ERROR_STOP=1", "-U", "safehouse", "-d", "safehouse"],
-  dump,
-);
+// Never over the live database. The dump's own `drop ... if exists` lines
+// stop at the first object a later migration made depend on what they drop,
+// and every line before that has already happened: a vault restored over one
+// migrated past the backup was left half-dropped. So the dump goes into a
+// new, empty database beside it, in one transaction, and only a complete
+// restore is swapped in. The database it replaces is renamed, not dropped.
+const live = new URL(ownerUrl).pathname.slice(1);
+const restoring = `${live}_restoring`;
+const aside = `${live}_before_restore_${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`;
+const maintenanceUrl = new URL(ownerUrl);
+maintenanceUrl.pathname = "/postgres";
+const maintenance = postgres(maintenanceUrl.toString(), { max: 1, onnotice: () => {} });
+
+try {
+  console.log("Restoring the database beside the live one…");
+  await maintenance.unsafe(`drop database if exists "${restoring}"`);
+  await maintenance.unsafe(`create database "${restoring}"`);
+  try {
+    await run(
+      "docker",
+      ["compose", "exec", "-T", "db", "psql", "-q", "-1", "-v", "ON_ERROR_STOP=1", "-U", "safehouse", "-d", restoring],
+      dump,
+    );
+  } catch (error) {
+    await maintenance.unsafe(`drop database if exists "${restoring}"`);
+    console.error("The backup did not restore. The live vault was not touched.");
+    throw error;
+  }
+
+  console.log("Swapping it in…");
+  try {
+    await maintenance.unsafe(`alter database "${live}" rename to "${aside}"`);
+  } catch (error) {
+    await maintenance.unsafe(`drop database if exists "${restoring}"`);
+    console.error("Could not set the live database aside. Is the app still running?");
+    console.error("Stop it (docker compose stop app) and run this again. Nothing was changed.");
+    throw error;
+  }
+  await maintenance.unsafe(`alter database "${restoring}" rename to "${live}"`);
+} finally {
+  await maintenance.end();
+}
 
 console.log("Restoring the document store…");
 await cp(join(backupDir, "storage"), storeDir, { recursive: true, force: true });
@@ -137,3 +173,7 @@ await cp(join(backupDir, "storage"), storeDir, { recursive: true, force: true })
 console.log("");
 console.log("Restored. Run `npm run db:migrate` before starting the app: it brings an");
 console.log("older backup's schema forward and seals any identifier it holds in the clear.");
+console.log("");
+console.log(`The database it replaced is kept as ${aside}. Once the vault is`);
+console.log("working, remove it with:");
+console.log(`  docker compose exec db dropdb -U safehouse ${aside}`);

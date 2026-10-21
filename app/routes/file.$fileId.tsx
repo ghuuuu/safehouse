@@ -1,5 +1,6 @@
 import type { Route } from "./+types/file.$fileId";
 import {
+  contentDisposition,
   downloadName,
   findFile,
   readFileContents,
@@ -58,7 +59,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         "content-length": String(bytes.length),
         // `attachment` rather than `inline`: a PDF rendered in the tab is a
         // PDF the browser may cache, hand to a plugin, or print to a service.
-        "content-disposition": `attachment; filename="${downloadName(row)}"`,
+        "content-disposition": contentDisposition(downloadName(row)),
         // The vault's whole job is to be the only copy that matters.
         "cache-control": "private, no-store, max-age=0",
         "referrer-policy": "no-referrer",

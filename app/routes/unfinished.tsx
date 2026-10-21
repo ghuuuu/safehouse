@@ -8,7 +8,7 @@ import { withVault } from "../session.server";
 import { When } from "../when";
 
 export function meta() {
-  return [{ title: "Unfinished — Safehouse" }];
+  return [{ title: "Unfinished — SafeHouse" }];
 }
 
 /**
@@ -69,7 +69,7 @@ export default function Unfinished({ loaderData, actionData }: Route.ComponentPr
         ) : null}
 
         <section aria-labelledby="drafts" className="sheet">
-          <h2 id="drafts" className="border-b border-gray-900 px-4 py-3 text-lg font-semibold md:px-5">Drafts</h2>
+          <h2 id="drafts" className="border-b border-gray-200 px-4 py-3 text-2xl font-semibold tracking-[-0.02em] md:px-5">Drafts</h2>
           {drafts.length === 0 ? (
             <p className="px-4 py-4 text-sm text-gray-500 md:px-5">
               None. <Link className="underline hover:text-gray-900" to="/upload">File a document</Link> starts one.
@@ -94,7 +94,7 @@ export default function Unfinished({ loaderData, actionData }: Route.ComponentPr
 
         {images.length > 0 ? (
           <section aria-labelledby="images" className="sheet">
-            <h2 id="images" className="border-b border-gray-900 px-4 py-3 text-lg font-semibold md:px-5">Filed as images</h2>
+            <h2 id="images" className="border-b border-gray-200 px-4 py-3 text-2xl font-semibold tracking-[-0.02em] md:px-5">Filed as images</h2>
             <p className="px-4 pt-3 text-sm text-gray-500 md:px-5">
               Filed before every paper became a PDF. Converting opens a draft from it; filing that draft adds the PDF
               as the next version, and the image stays in the record&apos;s history.

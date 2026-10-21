@@ -19,7 +19,13 @@ let cached: postgres.Sql | undefined;
  * database.
  */
 function client(): postgres.Sql {
-  cached ??= postgres(requireEnv("APP_DATABASE_URL"), { max: 10 });
+  cached ??= postgres(requireEnv("APP_DATABASE_URL"), {
+    max: 10,
+    // The household's today rather than UTC's: `current_date` decides
+    // "expires today" and the days left. `TZ` is the container's, which
+    // Node's own dates follow as well, so the two agree on the day.
+    ...(process.env.TZ ? { connection: { TimeZone: process.env.TZ } } : {}),
+  });
   return cached;
 }
 

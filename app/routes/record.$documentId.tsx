@@ -4,6 +4,7 @@ import type { Route } from "./+types/record.$documentId";
 import { ACTIONS, record as logEvent } from "../activity.server";
 import { findFile, readFileContents } from "../download.server";
 import { CategoryMark } from "../folder-tab";
+import { Icon } from "../icons";
 import { Masthead, Page } from "../masthead";
 import { readDocument } from "../ocr.server";
 import {
@@ -20,7 +21,7 @@ import { requireStepUp } from "../stepup.server";
 import { longDate } from "../when";
 
 export function meta({ data }: Route.MetaArgs) {
-  return [{ title: data ? `${data.view.title} — Safehouse` : "Safehouse" }];
+  return [{ title: data ? `${data.view.title} — SafeHouse` : "SafeHouse" }];
 }
 
 /**
@@ -192,13 +193,13 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         <p className="-mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600">
           <CategoryMark category={view.category} />
           <span className="capitalize">{view.category}</span>
-          {view.subcategory ? <span>· {view.subcategory}</span> : null}
+          {view.subcategory ? <><span aria-hidden className="text-gray-400">·</span><span>{view.subcategory}</span></> : null}
           {view.isPrivate ? <span className="stamp stamp-quiet ml-1">Private</span> : null}
         </p>
 
         <section aria-labelledby="what-it-says" className="sheet flex flex-col">
-          <div className="flex items-center justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-            <h2 id="what-it-says" className="text-lg font-semibold">What it says</h2>
+          <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+            <h2 id="what-it-says" className="text-2xl font-semibold tracking-[-0.02em]">What it says</h2>
             {canEdit && !editing ? (
               <Link className="btn btn-secondary btn-sm" to={`${here}?edit`}>
                 Edit
@@ -278,8 +279,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
         </section>
 
         <section aria-labelledby="pages" className="sheet flex flex-col">
-          <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-            <h2 id="pages" className="text-lg font-semibold">Pages</h2>
+          <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+            <h2 id="pages" className="text-2xl font-semibold tracking-[-0.02em]">Pages</h2>
             <span className="text-xs text-gray-500">
               <span className="font-mono">{view.pages.length}</span> {view.pages.length === 1 ? "page" : "pages"}
             </span>
@@ -298,8 +299,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                   <span className="font-medium">Page <span className="font-mono">{page.pageNo}</span></span>
                   <span className="flex gap-3 text-xs text-gray-500">
                     <span><span className="font-mono">{Math.max(1, Math.round(page.byteSize / 1024))}</span> KB</span>
-                    <Link className="row-link underline" to={`/file/${page.id}`} reloadDocument>
-                      open
+                    <Link className="row-link btn btn-secondary btn-sm -my-1 no-underline" to={`/file/${page.id}`} reloadDocument>
+                      Open
                     </Link>
                   </span>
                 </li>
@@ -310,8 +311,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
         {facts.length > 0 ? (
           <section aria-labelledby="insurer" className="sheet flex flex-col">
-            <div className="border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-              <h2 id="insurer" className="text-lg font-semibold">What your insurer wrote</h2>
+            <div className="border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="insurer" className="text-2xl font-semibold tracking-[-0.02em]">What your insurer wrote</h2>
             </div>
             <p className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500 md:px-5">
               Quoted exactly, with their own wording and the page. Nothing here is
@@ -337,11 +338,11 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
         {signposts.length > 0 ? (
           <section aria-labelledby="conditions" className="flex flex-col gap-3">
-            <div className="border-b border-gray-900 pb-2">
-              <h2 id="conditions" className="text-lg font-semibold">Where the conditions are</h2>
+            <div className="border-b border-gray-200 pb-2">
+              <h2 id="conditions" className="text-2xl font-semibold tracking-[-0.02em]">Where the conditions are</h2>
             </div>
             <p className="text-xs text-gray-500 max-w-prose">
-              Headings found in the document. Safehouse does not read these for
+              Headings found in the document. SafeHouse does not read these for
               you — it tells you which page to turn to.
             </p>
             <ul className="flex flex-wrap gap-2 text-sm">
@@ -360,8 +361,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
 
         {view.versions.length > 1 ? (
           <section aria-labelledby="versions" className="sheet flex flex-col">
-            <div className="flex items-baseline justify-between gap-4 border-b border-gray-900 px-4 pb-2 pt-4 md:px-5">
-              <h2 id="versions" className="text-lg font-semibold">Versions</h2>
+            <div className="flex items-baseline justify-between gap-4 border-b border-gray-200 px-4 pb-2 pt-4 md:px-5">
+              <h2 id="versions" className="text-2xl font-semibold tracking-[-0.02em]">Versions</h2>
               <span className="text-xs text-gray-500"><span className="font-mono">{view.versions.length}</span> versions</span>
             </div>
             <ul className="text-sm">
@@ -371,11 +372,12 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
                   className="relative grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-b border-gray-200 px-4 py-3 last:border-b-0 hover:bg-gray-50 md:px-5"
                 >
                   <Link
-                    className={"row-link " + (version.id === view.document.id ? "font-semibold" : "underline")}
+                    className={"row-link inline-flex items-center gap-1 no-underline " + (version.id === view.document.id ? "font-semibold text-gray-950" : "text-gray-900 hover:text-accent")}
                     to={`/record/${version.id}`}
                   >
                     Version {version.versionNo}
                     {version.isCurrent ? " (current)" : ""}
+                    {version.id === view.document.id ? null : <Icon name="next" size={14} className="text-gray-500" />}
                   </Link>
                   <span className="justify-self-end">
                     {version.isCurrent ? null : <span className="stamp stamp-quiet">Superseded</span>}
@@ -392,7 +394,8 @@ export default function RecordScreen({ loaderData, actionData }: Route.Component
           </section>
         ) : null}
 
-        <Link className="self-start py-2 text-sm text-gray-500 underline" to="/vault">
+        <Link className="inline-flex items-center gap-1 self-start py-2 text-sm text-gray-500 no-underline hover:text-gray-900" to="/vault">
+          <Icon name="back" size={14} />
           Back to the vault
         </Link>
       </Page>
@@ -419,7 +422,7 @@ function MaskedNumber({ hasIdentifier }: { hasIdentifier: boolean }) {
         className="btn btn-secondary btn-sm"
         onClick={() => reveal.submit({ intent: "reveal" }, { method: "post" })}
       >
-        {reveal.state === "submitting" ? "checking…" : "reveal"}
+        {reveal.state === "submitting" ? "Checking…" : "Reveal"}
       </button>
     </span>
   );

@@ -536,6 +536,8 @@ export const notifications = pgTable("notifications", {
   deliveryAttempts: integer("delivery_attempts").notNull().default(0),
   deliveryError: text("delivery_error"),
   deliveredChannels: text("delivered_channels").array().notNull().default([]),
+  /** Which expiry reminder this is: early, week, three, today (0019). */
+  stage: text("stage"),
 });
 
 /** One row per passed restore drill, written by the drill as the owner (0016, D38). */

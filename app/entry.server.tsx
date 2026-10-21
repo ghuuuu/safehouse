@@ -25,6 +25,21 @@ if (process.env.NODE_ENV !== "test") startSweeper();
 
 export const streamTimeout = 5_000;
 
+/**
+ * What the server log gets when a loader or action throws, in place of React
+ * Router's default `console.error(error)`: the kind of error, the database's
+ * code, the path and where in the code. Never the message, because a failed
+ * query's message carries its parameters, and those are record field values
+ * (CLAUDE.md: never logged).
+ */
+export function handleError(error: unknown, { request }: { request: Request }) {
+  if (request.signal.aborted) return;
+  const failed = error as { name?: string; stack?: string; cause?: { code?: string } } | null;
+  const code = failed?.cause?.code ? ` (database ${failed.cause.code})` : "";
+  const where = failed?.stack?.split("\n").slice(1, 6).join("\n") ?? "";
+  console.error(`${failed?.name ?? "Error"}${code} on ${request.method} ${new URL(request.url).pathname}\n${where}`);
+}
+
 export default function handleRequest(
   request: Request,
   responseStatusCode: number,
@@ -73,6 +88,14 @@ export default function handleRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          // No page of the vault may be framed by another site (clickjacking
+          // a Reveal or a Save), sniffed as something else, or named in a
+          // Referer sent elsewhere. Not a full script policy: that needs the
+          // framework's inline scripts nonced first, and is listed as work.
+          responseHeaders.set("Content-Security-Policy", "frame-ancestors 'none'");
+          responseHeaders.set("X-Frame-Options", "DENY");
+          responseHeaders.set("X-Content-Type-Options", "nosniff");
+          responseHeaders.set("Referrer-Policy", "same-origin");
 
           pipe(body);
 

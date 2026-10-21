@@ -18,6 +18,8 @@ FROM node:24-alpine
 COPY ./package.json package-lock.json /app/
 COPY --from=production-dependencies-env /app/node_modules /app/node_modules
 COPY --from=build-env /app/build /app/build
+# The server itself (D44): React Router's Express adapter, logging no query strings.
+COPY server.mjs /app/
 WORKDIR /app
 
 # The reader (D27). Apache-2.0 engine and models, no GPU, no Python, no second

@@ -1,35 +1,39 @@
 @import "tailwindcss";
 
 /*
- * Safehouse is printed like the papers it keeps: passport visa pages,
- * banknotes, share certificates. A deep teal shell, pale security paper,
- * one ink, and a guilloché plate behind each page's name (app/guilloche.ts).
+ * Safehouse at night: a calm, native-feeling private app on a dark, tinted
+ * ground, finished like the best small Mac apps. The craft is in layered
+ * surfaces, type and quiet motion, not in a metaphor (docs/DESIGN.md).
+ *
+ * Always dark. `dark:` is on everywhere (the variant below), so a component's
+ * `dark:` classes are simply its classes.
  *
  * Every `gray-*` and `white` class reads the roles below, so the whole app is
  * one palette with no per-page colour decisions to drift. Low numbers are the
- * paper and its ruled lines, high numbers are ink. In dark mode the scale
- * turns over: a class means the same role in both ("gray-500" is always muted
- * text, "gray-900" always the strongest ink), and no component needs a
- * `dark:` variant for a grey. Every text step reads at 4.5:1 or better
- * against every ground, in both.
+ * ground and its surfaces and lines, high numbers are ink: "gray-500" is
+ * always muted text, "gray-900" the strongest ink. Every text step from 500 up
+ * reads at 4.5:1 or better on every surface.
  *
- * `red-*` is claret and `amber-*` is old gold: the only two inks besides teal
- * that carry meaning. Claret is expired, emergency, and anything destructive;
- * gold is about to run out, and a notice that something wants doing. Unlike
- * the greys they do not turn over at night: they run light to dark in both
- * modes, so pair them with `dark:` the way Tailwind expects.
+ * `red-*` is the soft red of something expired, an emergency, or anything
+ * destructive; `amber-*` is the orange of something about to run out. Honey,
+ * the accent, is the one colour that means "you, here, now": the primary
+ * action, where you are, focus.
  */
-@theme {
-  --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "Red Hat Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+@custom-variant dark (&);
 
-  /* Engraved, not pressed: every corner is a hair off square. */
-  --radius-xs: 1px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 3px;
-  --radius-xl: 4px;
-  --radius-2xl: 4px;
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Numbers are set in the words' own face, with even figures (below). */
+  --font-mono: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "Red Hat Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  /* Soft, the way a native app's corners are: never a pill, never square. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
 
   --color-white: var(--sheet);
   --color-paper: var(--paper);
@@ -84,130 +88,89 @@
 }
 
 :root {
-  --paper: #e7eee9;
-  --sheet: #f6f9f6;
-  --g50: #eef3ef;
-  --g100: #dde6e0;
-  --g200: #c6d3cb;
-  --g300: #a7b8ae;
-  --g400: #7d8f88;
-  --g500: #4c5e65;
-  --g600: #3d4f56;
-  --g700: #2f3f46;
-  --g800: #223139;
-  --g900: #14232b;
-  --g950: #0b161c;
+  color-scheme: dark;
 
-  /* Claret. */
-  --c50: #fbf0f3;
-  --c100: #f6e0e7;
-  --c200: #efcbd6;
-  --c300: #e3a6b9;
-  --c400: #d47f9a;
-  --c500: #a83a5c;
-  --c600: #8f2b4b;
-  --c700: #7a1f3d;
-  --c800: #5f1830;
-  --c900: #441223;
-  --c950: #2a0a16;
+  /* The ground, and the surfaces stacked on it, each a step lighter. */
+  --paper: #0f1013;
+  --sheet: #1a1b20;
+  --raised: #222329;
+  --g50: #202127;
+  --g100: #25262d;
+  --g200: #2d2e36;
+  --g300: #3b3c46;
+  --g400: #61626d;
+  --g500: #a0a1ab;
+  --g600: #b5b6bf;
+  --g700: #c9cad2;
+  --g800: #dcdde3;
+  --g900: #ececf1;
+  --g950: #f8f8fb;
 
-  /* Old gold. */
-  --o50: #fbf5e6;
-  --o100: #f4e6c2;
-  --o200: #e9cf8d;
-  --o300: #ddb75b;
-  --o400: #d4a94a;
-  --o500: #b98a2e;
-  --o600: #9a7022;
-  --o700: #7c591b;
-  --o800: #5f4415;
-  --o900: #46320f;
-  --o950: #2b1f09;
+  /* Soft red: expired, emergency, destructive. Dark tints for grounds, light for words. */
+  --c50: #2a1618;
+  --c100: #ffdcd8;
+  --c200: #ffc2bb;
+  --c300: #7a3a37;
+  --c400: #ff8f85;
+  --c500: #ff7b70;
+  --c600: #f0675c;
+  --c700: #ff8f85;
+  --c800: #5b2b2b;
+  --c900: #3a1c1d;
+  --c950: #2a1618;
 
-  --accent: #13394a;
-  --accent-deep: #0b2836;
-  --on-accent: #ffffff;
-  /* Intaglio green: a paper's reference, and a value somebody confirmed. */
-  --ref: #2f5e45;
-  --side: #13394a;
-  --side-deep: #0d2c3a;
-  --side-ink: #dbe8ea;
-  --side-muted: #a1bec5;
-  --side-hover: #1c4a5e;
-  --side-on: #f6f9f6;
-  --side-on-ink: #14232b;
-  /* The serial line on the masthead: gold that reads on deep teal. */
-  --serial: #d9b25a;
-  /* The guilloché plate's own ink, faint behind the masthead's words. */
-  --plate: #2f6b80;
+  /* Orange: about to run out, and a notice that something wants doing. */
+  --o50: #2a1e11;
+  --o100: #ffe7c9;
+  --o200: #ffd3a0;
+  --o300: #7a5226;
+  --o400: #ffae5e;
+  --o500: #ff9f45;
+  --o600: #f08c2e;
+  --o700: #ffae5e;
+  --o800: #5e3f1c;
+  --o900: #3b2914;
+  --o950: #2a1e11;
 
-  --warn: var(--c700);
-  --on-warn: #ffffff;
-  --soon: var(--o400);
-  --soon-ink: var(--o700);
-  --on-soon: #14232b;
+  /* Honey: you, here, now. */
+  --accent: #f2bd55;
+  --accent-deep: #f7cd77;
+  --on-accent: #1b1406;
+  --accent-tint: color-mix(in oklab, var(--accent) 14%, transparent);
+  /* A paper's reference. */
+  --ref: #b5b6bf;
+  --side: #15161a;
+  --side-deep: #0f1013;
+  --side-ink: #dcdde3;
+  --side-muted: #8e8f99;
+  --side-hover: #202127;
+  --side-on: var(--accent-tint);
+  --side-on-ink: #f8f8fb;
+  --serial: var(--accent);
 
-  /* Family lines are engraved in one ink; guardianship is the gold. */
-  --line: var(--g900);
-  --line-guardian: var(--o700);
+  --warn: #ff8f85;
+  --on-warn: #1d0d0c;
+  --soon: #ffae5e;
+  --soon-ink: #ffae5e;
+  --on-soon: #1d1307;
 
-  /* Category marks (PRODUCT.md, Taxonomy): banknote inks. Each passes 4.5:1 as text. */
-  --cat-personal: #23597a;
-  --cat-medical: #2f6b4c;
-  --cat-business: #554a86;
-  --cat-financial: #7c591b;
-  --cat-legal: #6b3a2a;
-  --cat-general: #575447;
-}
+  /* Family lines: one quiet ink; guardianship is honey. */
+  --line: #61626d;
+  --line-guardian: var(--accent);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --paper: #0e1b21;
-    --sheet: #142429;
-    --g50: #12222a;
-    --g100: #1a2e36;
-    --g200: #243b44;
-    --g300: #35515a;
-    --g400: #6c868e;
-    --g500: #9db3b9;
-    --g600: #b7c9ce;
-    --g700: #ccdadd;
-    --g800: #dde8ea;
-    --g900: #edf4f4;
-    --g950: #f8fbfb;
+  /* Category dots (PRODUCT.md, Taxonomy). Each reads at 4.5:1 as text. */
+  --cat-personal: #7fb2ff;
+  --cat-medical: #62d2a2;
+  --cat-business: #b9a2ff;
+  --cat-financial: #5cc8d6;
+  --cat-legal: #e391d3;
+  --cat-general: #b0b3bd;
 
+  /* Depth: offset and soft, darker than the ground, never a halo. */
+  --shadow-raised: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+  --shadow-float: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 12px 40px -8px rgb(0 0 0 / 0.75);
 
-    --accent: #8cc3d3;
-    --accent-deep: #b3d9e4;
-    --on-accent: #0b161c;
-    --ref: #92c9a9;
-    --side: #0b2029;
-    --side-deep: #07161d;
-    --side-ink: #dbe8ea;
-    --side-muted: #90b0b8;
-    --side-hover: #143545;
-    --side-on: #dbe8ea;
-    --side-on-ink: #0b2029;
-    --serial: #e2b65a;
-    --plate: #3c7d93;
-
-    --warn: #db8aa2;
-    --on-warn: #0b161c;
-    --soon: #e2b65a;
-    --soon-ink: #e2b65a;
-    --on-soon: #0b161c;
-
-    --line: var(--g800);
-    --line-guardian: #e2b65a;
-
-    --cat-personal: #8dbfdc;
-    --cat-medical: #92c9a9;
-    --cat-business: #b2a9e0;
-    --cat-financial: #e2b65a;
-    --cat-legal: #dfa58f;
-    --cat-general: #c4c0ac;
-  }
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /*
@@ -215,36 +178,28 @@
  * tell a font server which pages the household is opening.
  */
 @font-face {
-  font-family: "Public Sans";
+  font-family: "Figtree";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 300 900;
   font-display: swap;
-  src: url("/fonts/public-sans-latin.woff2") format("woff2");
+  src: url("/fonts/figtree-latin-wght-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Public Sans";
+  font-family: "Figtree";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 300 900;
   font-display: swap;
-  src: url("/fonts/public-sans-latin-ext.woff2") format("woff2");
+  src: url("/fonts/figtree-latin-ext-wght-normal.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "Public Sans";
+  font-family: "Figtree";
   font-style: italic;
-  font-weight: 100 900;
+  font-weight: 300 900;
   font-display: swap;
-  src: url("/fonts/public-sans-italic-latin.woff2") format("woff2");
+  src: url("/fonts/figtree-latin-wght-italic.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Public Sans";
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/fonts/public-sans-italic-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Red Hat Mono";
@@ -267,40 +222,59 @@ html,
 body {
   @apply bg-paper text-gray-900;
   font-feature-settings: "tnum" 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Browser surfaces carry the print too. */
+/* The parts of the page the browser draws are dark and honey too. */
 :root {
+  /* 17px at the browser's default: every rem-sized word and gap a step up
+     together, and still the reader's own setting if they changed it. */
+  font-size: 106.25%;
   accent-color: var(--accent);
   caret-color: var(--accent);
   scrollbar-color: var(--g300) transparent;
 }
 ::selection {
-  background: color-mix(in oklab, var(--accent) 22%, transparent);
-  color: inherit;
+  background: color-mix(in oklab, var(--accent) 32%, transparent);
+  color: var(--g950);
 }
 a {
-  text-underline-offset: 0.2em;
+  text-underline-offset: 0.22em;
   text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
+}
+a:hover {
+  text-decoration-color: currentColor;
 }
 table,
 time,
 .font-mono {
   font-variant-numeric: tabular-nums;
 }
+code,
+kbd,
+pre {
+  font-family: var(--font-code);
+}
 
-/* Anything you write on is a sheet on the paper, ruled like a form. */
 @layer base {
   input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], [type="range"]),
   select,
   textarea {
-    background-color: var(--sheet);
+    background-color: var(--g100);
     border-radius: var(--radius-md);
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out,
+      background-color 150ms ease-out;
   }
   input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], [type="range"]):focus,
   select:focus,
   textarea:focus {
     border-color: var(--accent);
+    background-color: var(--g50);
   }
   input::placeholder,
   textarea::placeholder {
@@ -314,16 +288,28 @@ time,
     padding: 0.4rem 0.9rem;
     border: 1px solid var(--g300);
     border-radius: var(--radius-md);
-    background: var(--sheet);
+    background: var(--g100);
     color: var(--g900);
     cursor: pointer;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: -0.012em;
   }
 }
 
 @layer components {
   /*
-   * Buttons. One primary per form, in teal; secondary on the sheet with a
-   * ruled edge; danger in claret. Square-cornered, like a stamp's frame.
+   * Buttons. One primary per form, in honey; secondary a raised surface with
+   * a hairline; danger said in red on a red tint, the way a native app does.
+   * A press sinks a hair.
    */
   .btn {
     display: inline-flex;
@@ -331,7 +317,7 @@ time,
     justify-content: center;
     gap: 0.5rem;
     min-height: 2.5rem;
-    padding: 0.5rem 1.1rem;
+    padding: 0.5rem 1.05rem;
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     font-size: 0.875rem;
@@ -340,55 +326,65 @@ time,
     white-space: nowrap;
     cursor: pointer;
     transition:
-      background-color 120ms ease-out,
-      border-color 120ms ease-out,
-      color 120ms ease-out;
+      background-color 150ms ease-out,
+      border-color 150ms ease-out,
+      color 150ms ease-out,
+      box-shadow 150ms ease-out,
+      transform 120ms var(--ease-out);
+  }
+  .btn:not(:disabled):active {
+    transform: scale(0.97);
   }
   .btn:disabled,
   .btn[aria-disabled="true"] {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: not-allowed;
+  }
+  /* A primary that cannot be pressed yet gives up its honey, not just its strength. */
+  .btn-primary:disabled,
+  .btn-primary[aria-disabled="true"] {
+    opacity: 1;
+    background: var(--g100);
+    border-color: var(--g200);
+    color: var(--g500);
+    box-shadow: none;
   }
   .btn-primary {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--on-accent);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.25) inset,
+      0 1px 2px rgb(0 0 0 / 0.4);
   }
   .btn-primary:not(:disabled):hover {
     background: var(--accent-deep);
     border-color: var(--accent-deep);
   }
   .btn-secondary {
-    background: var(--sheet);
-    border-color: var(--g300);
+    background: var(--raised);
+    border-color: var(--g200);
     color: var(--g900);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
   }
   .btn-secondary:not(:disabled):hover {
-    border-color: var(--g600);
+    background: var(--g200);
+    border-color: var(--g300);
   }
   .btn-danger {
-    background: var(--c700);
-    border-color: var(--c700);
-    color: var(--on-warn);
+    background: color-mix(in oklab, var(--c500) 14%, transparent);
+    border-color: color-mix(in oklab, var(--c500) 30%, transparent);
+    color: var(--c400);
   }
   .btn-danger:not(:disabled):hover {
-    background: var(--c800);
-    border-color: var(--c800);
-  }
-  /* On the teal masthead and sidebar: gold, the one ink that reads there. */
-  .btn-serial {
-    background: var(--serial);
-    border-color: var(--serial);
-    color: var(--side-on-ink);
-  }
-  .btn-serial:not(:disabled):hover {
-    background: transparent;
-    color: var(--serial);
+    background: color-mix(in oklab, var(--c500) 22%, transparent);
+    border-color: color-mix(in oklab, var(--c500) 45%, transparent);
   }
   .btn-sm {
     min-height: 2rem;
     padding: 0.3rem 0.75rem;
     font-size: 0.8125rem;
+    border-radius: var(--radius-sm);
   }
 
   /* A text field, the same everywhere. */
@@ -396,70 +392,65 @@ time,
     width: 100%;
     min-height: 2.5rem;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--g300);
+    border: 1px solid var(--g200);
     border-radius: var(--radius-md);
-    background: var(--sheet);
+    background: var(--g100);
     color: var(--g900);
   }
 
   /*
-   * A sheet that scrolls sideways says so: a soft edge of ink at the right
-   * while there is more, which the content's own end covers once there is
-   * not. Backgrounds only, no script (background-attachment local/scroll).
+   * A surface that scrolls sideways says so: a soft shade at the right while
+   * there is more, which the content's own end covers once there is not.
+   * Backgrounds only, no script (background-attachment local/scroll).
    */
   .sheet.scroll-cue,
   .scroll-cue {
     background:
       linear-gradient(to right, transparent, var(--sheet) 70%) right center / 2.5rem 100% no-repeat local,
-      linear-gradient(to left, color-mix(in oklab, var(--g900) 16%, transparent), transparent) right center / 1.25rem 100% no-repeat scroll,
+      linear-gradient(to left, rgb(0 0 0 / 0.45), transparent) right center / 1.25rem 100% no-repeat scroll,
       var(--sheet);
   }
 
-  /* A sheet: anything read closely, set on the paper with a ruled edge. */
+  /* A surface: anything read closely, a step lighter than the ground. */
   .sheet {
     background: var(--sheet);
-    border: 1px solid var(--g200);
-    border-radius: var(--radius-md);
+    border: 1px solid var(--g100);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-raised);
   }
 
-  /*
-   * The index voice: table heads, the sidebar's groups, a label on a field
-   * panel. Small tracked capitals, the way a form prints its field names.
-   * Words, so not mono: mono is kept for what is counted, dated or numbered.
-   */
+  /* A small label: table heads, the sidebar's groups, a field panel's names. */
   .index {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.01em;
     line-height: 1.4;
-    text-transform: uppercase;
   }
 
-  /* A paper's reference, "PER·3F9A": mono, in intaglio green. */
+  /* A paper's reference, "PER-3F9A-21C0": the one place a typewriter mono belongs. */
   .ref {
-    font-family: var(--font-mono);
+    font-family: var(--font-code);
     font-size: 0.75rem;
     font-weight: 500;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.02em;
     color: var(--ref);
     white-space: nowrap;
   }
 
   /*
-   * A state stamped on a paper: expired, running out, private. Ruled twice,
-   * like an office stamp, and always words, never colour alone.
+   * A state on a paper: expired, running out, private. A soft badge in the
+   * state's colour, always in words, never colour alone.
    */
   .stamp {
     display: inline-flex;
     align-items: center;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
     line-height: 1;
-    text-transform: uppercase;
-    padding: 0.3rem 0.45rem;
-    border: 1.5px solid currentColor;
+    padding: 0.3rem 0.55rem;
     border-radius: var(--radius-sm);
+    background: color-mix(in oklab, currentColor 14%, transparent);
     white-space: nowrap;
   }
   .stamp-warn {
@@ -469,7 +460,7 @@ time,
     color: var(--soon-ink);
   }
   .stamp-quiet {
-    color: var(--g500);
+    color: var(--g600);
   }
 }
 
@@ -492,6 +483,33 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 }
 
 /*
+ * A disclosure that keeps the browser's own marker (View as somebody else,
+ * Discard this draft) gets a drawn chevron instead, which turns when it opens.
+ * Summaries that draw their own (`list-none`) are left alone.
+ */
+summary:not(.list-none) {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+summary:not(.list-none)::-webkit-details-marker {
+  display: none;
+}
+summary:not(.list-none)::before {
+  content: "";
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform 180ms var(--ease-out);
+}
+details[open] > summary:not(.list-none)::before {
+  transform: rotate(90deg);
+}
+
+/*
  * A row of a list that is one thing to open: the row's main link covers the
  * whole row, so a thumb does not have to find the words. The row needs
  * `relative`; any other control in it needs `relative z-10` to stay on top.
@@ -511,47 +529,30 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   }
 }
 
-/* A visible focus ring on every control, in teal, never removed. */
+/* A visible focus ring on every control, in honey, never removed. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-
-/*
- * The guilloché plate draws itself in once, the way a plate is inked: the
- * first time a page opens. Content is never hidden behind it.
- */
-@media (prefers-reduced-motion: no-preference) {
-  .plate-ink path {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-    animation: plate-ink 1400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  .plate-ink path:nth-child(3n + 1) {
-    animation-delay: 60ms;
-  }
-  .plate-ink path:nth-child(3n + 2) {
-    animation-delay: 140ms;
-  }
-}
-@keyframes plate-ink {
-  to {
-    stroke-dashoffset: 0;
-  }
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
 /*
- * Waiting on the server (root.tsx, Waiting). A gold rule along the top of the
- * page, the serial ink that reads on the teal masthead. It shows only after
- * 150ms, creeps towards the end, and when the answer arrives it completes and
- * fades. With reduced motion it is simply there, whole, until it is not.
+ * Waiting on the server (root.tsx, Waiting). A thin honey line along the top
+ * of the page. It shows only after 150ms, creeps towards the end, and when the
+ * answer arrives it completes and fades. With reduced motion it is simply
+ * there, whole, until it is not.
  */
 .loading-rule {
   position: fixed;
   inset: 0 0 auto;
   z-index: 50;
   height: 2px;
-  background: var(--serial);
+  background: linear-gradient(to right, transparent, var(--accent) 30%);
   transform-origin: left;
   opacity: 0;
   pointer-events: none;
@@ -561,7 +562,7 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   opacity: 1;
   transition: opacity 0s 150ms;
 }
-/* The button that was pressed: no second press, and a rule sweeping its foot. */
+/* The button that was pressed: no second press, and a soft shimmer across it. */
 [aria-busy="true"] {
   cursor: progress;
   pointer-events: none;
@@ -577,10 +578,9 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   .btn[aria-busy="true"]::after {
     content: "";
     position: absolute;
-    inset: auto 0 0;
-    height: 2px;
-    background: currentColor;
-    animation: busy-sweep 900ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+    animation: busy-sweep 1100ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
   }
 }
 @keyframes loading-rule {
@@ -602,17 +602,22 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 
 /*
  * Moving between pages (the shell's links and the view switch carry
- * `viewTransition`): the old page gives way to the new in a short cross-fade,
- * the new one settling up a few pixels. The sidebar and tab bar are named
- * apart (shell.tsx) so they hold still. Nothing moves with reduced motion, and
- * a browser without view transitions simply changes page.
+ * `viewTransition`). The old page gives way in a short fade, the new one
+ * settles up a few pixels out of a slight blur; the sidebar and tab bar hold
+ * still, and the honey mark on the current place glides to its new row
+ * (shell.tsx). Nothing moves with reduced motion, and a browser without view
+ * transitions simply changes page.
  */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(root) {
-    animation: 120ms ease-out both page-out;
+    animation: 140ms ease-out both page-out;
   }
   ::view-transition-new(root) {
-    animation: 220ms cubic-bezier(0.16, 1, 0.3, 1) both page-in;
+    animation: 320ms var(--ease-out) both page-in;
+  }
+  ::view-transition-group(nav-here) {
+    animation-duration: 320ms;
+    animation-timing-function: var(--ease-out);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -630,35 +635,43 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
+    filter: blur(3px);
   }
 }
 
 /*
- * A state that needs someone lands like an office stamp: a touch large and
- * faint, then pressed flat. Only warn and soon; a quiet stamp just sits. A
- * revealed number inks in from the left, the way a typewriter prints it.
+ * A state that needs someone fades up into place; a revealed number comes
+ * into focus out of a blur. Quiet badges just sit. The time-left ring
+ * (time-left.tsx) draws its arc once, from empty.
  */
 @media (prefers-reduced-motion: no-preference) {
   .stamp-warn,
   .stamp-soon {
-    animation: stamp-land 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 120ms both;
+    animation: badge-in 360ms var(--ease-out) 80ms both;
   }
   .ink-in {
-    animation: ink-in 480ms steps(12, end) both;
+    animation: ink-in 420ms var(--ease-out) both;
+  }
+  .ring-arc {
+    animation: ring-draw 900ms var(--ease-out) 120ms both;
   }
 }
-@keyframes stamp-land {
+@keyframes badge-in {
   from {
     opacity: 0;
-    transform: scale(1.18) rotate(-3deg);
+    transform: translateY(2px) scale(0.96);
   }
 }
 @keyframes ink-in {
   from {
-    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+    filter: blur(6px);
+    letter-spacing: 0.3em;
   }
-  to {
-    clip-path: inset(0);
+}
+@keyframes ring-draw {
+  from {
+    stroke-dasharray: 0 100;
   }
 }
