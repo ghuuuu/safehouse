@@ -766,3 +766,40 @@ absent rather than forgotten: D26 allows it only as a per-document choice with
 its own spec, and no such code exists. Until it does, the vault cannot send a
 document anywhere, which is a stronger guarantee than a setting that defaults
 to off.
+
+---
+
+## Future Milestones (Public Release & Version 1.0)
+
+With Acts I, II, and III (Steps 1–20) complete in v0.1.x, the vault is in daily
+production use for its initial household. The path toward wider community adoption
+and the v1.0 milestone focuses on onboarding accessibility, disaster resilience,
+and convenience without compromising the offline, server-enforced security model:
+
+### Milestone 1: First-Run Onboarding Wizard (Step 18 Unblocked — v0.2.0)
+- **Guided Household Setup**: A visual first-run experience on `/setup` for empty vaults.
+- **Tree Bootstrapping**: Create the initial administrator, partner/spouse, children, and
+  parents with an interactive graphical relationship builder, removing the requirement
+  to initialize with the dev fixture.
+- **Master Key Verification**: Interactive prompt requiring verification that the
+  generated master encryption key has been safely printed or written down offline.
+
+### Milestone 2: Mobile Capture & Scanning Ergonomics (v0.3.0)
+- **Camera Stream Capture**: Optimized mobile web camera integration (via Tailnet/HTTPS)
+  for instant photo-to-draft ingestion with automatic edge pre-detection.
+- **Batch Draft Organization**: Multi-page document reordering and rotation tools
+  directly within the mobile intake review flow.
+
+### Milestone 3: Access Recovery & Security Hardening (v0.4.0)
+- **Lost 2FA Rescue**: Admin-assisted one-time recovery workflow for household members who
+  lost their physical authenticator device.
+- **Write-down Key Checker**: Command-line and settings verification utility allowing
+  administrators to verify their physical paper key against the active vault without
+  exposing secret material in logs.
+- **Expanded Notification Adapters**: Native SMTP and Matrix/Telegram bots as first-class
+  adapters alongside the generic webhook endpoint (`SAFEHOUSE_NOTIFY_WEBHOOK`).
+
+### Milestone 4: Portability & Archival (v1.0.0)
+- **Encrypted Household Export**: Full vault export package with a cryptographic
+  manifest and independent offline HTML/PDF index for long-term disaster survival.
+- **Community Deployments**: Verified templates for unRAID, TrueNAS SCALE, and Proxmox LXC.

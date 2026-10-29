@@ -11,7 +11,7 @@ rem project dependencies - and asks first before installing anything onto the
 rem machine itself. Every step that fails says why and stops; nothing here
 rem carries on hoping the next step will work.
 rem
-rem Ports come from C:\Projects\project-ports.md: 4021 dev server, 4020 the
+rem Default ports: 4021 dev server, 4020 the
 rem packaged app (docker compose up --build), 5435 Postgres on the host.
 
 setlocal enableextensions enabledelayedexpansion

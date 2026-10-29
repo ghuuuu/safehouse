@@ -100,7 +100,7 @@ Weekly at the least, nightly if documents are filed often. On Linux, `crontab -e
 0 3 * * 0  cd /srv/safehouse && npm run backup && npm run backup:drill >> backups/drill.log 2>&1
 ```
 
-On Windows, a Task Scheduler task running `cmd /c "cd /d C:\safehouse && npm run backup && npm run backup:drill"`.
+On Windows, a Task Scheduler task running `cmd /c "cd /d C:\path\to\safehouse && npm run backup && npm run backup:drill"`.
 
 **Off the machine.** A backup on the same disk as the vault survives a
 mistake, not a fire. Copy `./backups` somewhere else after each run: another
